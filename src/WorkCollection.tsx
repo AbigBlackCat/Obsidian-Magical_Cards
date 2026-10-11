@@ -33,7 +33,7 @@ export default function WorkCollection({ kind, module, renameModule, works, orde
     if (removed) setDeleteCandidate(null);
   };
   const renderWork = (item: Work) => <>
-    <div className="bw-paper-image">{item.cover ? <CoverImage src={api.coverUrl(item.cover, item.path)} title={item.title} loading="eager" showFailure={!!module} /> : <div className="bw-paper-placeholder"><span style={{textAlign:item.cardTitleAlign??'left'}}>{item.title}</span><i>等待一张封面</i></div>}</div>
+    <div className="bw-paper-image">{item.cover ? <CoverImage src={api.coverUrl(item.cover, item.path)} source={item.cover} sourcePath={item.path} readSvg={api.readCoverSvg} title={item.title} loading="eager" showFailure={!!module} /> : <div className="bw-paper-placeholder"><span style={{textAlign:item.cardTitleAlign??'left'}}>{item.title}</span><i>等待一张封面</i></div>}</div>
     <div className="bw-paper-copy"><h3 style={{textAlign:item.cardTitleAlign??'left'}}>{item.title}</h3>{item.summary?.trim() && <p style={{textAlign:item.cardSummaryAlign??'left'}}>{item.summary}</p>}{!module && <footer><span>{item.type === 'book' ? item.author : [item.director, item.year].filter(Boolean).join(' · ')}</span></footer>}</div>
   </>;
   const noun = module ? '卡片' : kind === 'book' ? '书籍' : '影片';

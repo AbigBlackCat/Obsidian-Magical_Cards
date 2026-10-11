@@ -1,8 +1,10 @@
 import { TFile, normalizePath, type App } from 'obsidian';
+import { brotliDecompress } from 'node:zlib';
+import { Buffer } from 'node:buffer';
 import { createWork } from './domain';
 import { safeFilePart, validFolder } from './persistence';
 import { freshCardsSettings, readCardsSettings, validateCardsPatch } from './settings';
-import { STARTER_ASSETS } from './starter-assets';
+import { STARTER_ASSETS, type StarterAsset } from './starter-assets';
 import { GUIDE_TEMPLATE } from './onboarding-template';
 import type { CardsSettings, Work, WorkKind } from './types';
 import type { CardsStore } from './store';
@@ -10,6 +12,7 @@ import type { CardsStore } from './store';
 export interface StarterItem {
   asset: string; id: string; kind: WorkKind; title: string; createdAt: string;
   coverPath: string; notePath: string; assetDone: boolean; workDone: boolean;
+  retiredSkipped?: true;
 }
 export interface OnboardingJournal {
   version: 1; rootFolder: string; status: 'pending' | 'complete' | 'skipped';
@@ -22,6 +25,26 @@ export interface CardsPluginData extends Record<string, unknown> {
   onboarding?: OnboardingJournal; guideNotes?: Record<string, { id: string; path: string; created: boolean }>;
 }
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
+// Metadata only: old eight-item journals remain readable without bundling retired cover bytes.
+const RETIRED_STARTER_ASSETS = [
+  { id: 'demo-book-crime', type: 'book', title: '罪与罚', cover: 'demo-book-crime.jpg' },
+  { id: 'demo-book-gone', type: 'book', title: '飘（四十年荣誉珍藏版）', cover: 'demo-book-gone.jpg' },
+] as const;
+
+export async function decodeStarterAsset(asset: StarterAsset): Promise<Uint8Array<ArrayBuffer>> {
+  let bytes: Uint8Array<ArrayBuffer>;
+  try {
+    if(asset.encoding!=='brotli-base64'||!Number.isSafeInteger(asset.byteLength)||asset.byteLength<=0)throw new Error('格式无效');
+    const compressed=Buffer.from(asset.data,'base64');
+    const decoded=await new Promise<Uint8Array>((resolve,reject)=>{
+      brotliDecompress(compressed,{maxOutputLength:asset.byteLength},(error,result)=>{if(error)reject(error);else resolve(result);});
+    });
+    bytes=new Uint8Array(decoded);
+  }catch{throw new Error(`示例封面解压失败：${asset.title}。首次导入进度已保留，请检查插件文件后重试。`);}
+  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes.buffer)),value=>value.toString(16).padStart(2,'0')).join('');
+  if(bytes.byteLength!==asset.byteLength||hash!==asset.sha256)throw new Error(`示例封面校验失败：${asset.title}。未写入封面，首次导入进度已保留。`);
+  return bytes;
+}
 
 /** The new plugin's values win; old data is only read and remains available for recovery. */
 export async function loadCardsPluginData(app: App, saved: unknown): Promise<{ data: CardsPluginData; needsSave: boolean }> {
@@ -95,13 +118,15 @@ function journalValid(value: unknown, rootFolder: string): value is OnboardingJo
   if (!record(value) || value.version !== 1 || value.rootFolder !== rootFolder || !['pending', 'complete', 'skipped'].includes(String(value.status)) || !Array.isArray(value.items) || !record(value.defaultsBefore) || !uuid(value.guideId) || typeof value.guidePath !== 'string' || !validFolder(value.guidePath) || normalizePath(value.guidePath)!==value.guidePath || !value.guidePath.startsWith(`${rootFolder}/`)) return false;
   if(!['defaultsDone','guideCreated','helpOpened'].every(key=>typeof value[key]==='boolean'))return false;
   try{validateCardsPatch(value.defaultsBefore);}catch{return false;}
-  if(value.items.length!==(value.status==='skipped'?0:STARTER_ASSETS.length))return false;
+  const assets=value.status==='skipped'?[]:value.items.length===STARTER_ASSETS.length?STARTER_ASSETS:value.items.length===8?[...STARTER_ASSETS,...RETIRED_STARTER_ASSETS]:undefined;
+  if(!assets||value.items.length!==assets.length)return false;
   if(value.helpOpened&&!value.guideCreated)return false;
-  if(value.status==='complete'&&(!value.defaultsDone||!value.items.every(item=>record(item)&&item.assetDone&&item.workDone)))return false;
+  if(value.status==='complete'&&(!value.defaultsDone||!value.items.every(item=>record(item)&&(item.assetDone&&item.workDone||item.retiredSkipped===true))))return false;
   if(new Set(value.items.map(item=>record(item)?item.id:undefined)).size!==value.items.length||new Set(value.items.map(item=>record(item)?item.asset:undefined)).size!==value.items.length)return false;
   return value.items.every(item => {
     if(!record(item)||!uuid(item.id)||typeof item.asset!=='string'||typeof item.createdAt!=='string'||!Number.isFinite(Date.parse(item.createdAt))||typeof item.assetDone!=='boolean'||typeof item.workDone!=='boolean')return false;
-    const asset=STARTER_ASSETS.find(asset=>asset.id===item.asset);if(!asset||item.kind!==asset.type||item.title!==asset.title)return false;
+    const asset=assets.find(asset=>asset.id===item.asset);if(!asset||item.kind!==asset.type||item.title!==asset.title)return false;
+    if(item.retiredSkipped!==undefined&&(item.retiredSkipped!==true||!RETIRED_STARTER_ASSETS.some(asset=>asset.id===item.asset)))return false;
     const folder=asset.type==='book'?'书籍':'观影';
     return item.coverPath===`${rootFolder}/附件/示例-${item.id}.${asset.cover.split('.').at(-1)}`&&item.notePath===`${rootFolder}/${folder}/${folder}-${safeFilePart(asset.title)}-${safeFilePart(item.id).slice(-16)}.md`;
   });
@@ -109,7 +134,7 @@ function journalValid(value: unknown, rootFolder: string): value is OnboardingJo
 
 interface OnboardingOptions {
   app: App; api: CardsStore; rootFolder: string; ready: Promise<void>;
-  data(): CardsPluginData; update(patch: Partial<CardsPluginData>): Promise<void>; assertActive(): void;
+  data(): CardsPluginData; update(patch: Partial<CardsPluginData>): Promise<void>; assertActive: () => void;
   open(file: TFile): Promise<void>;
 }
 
@@ -181,13 +206,21 @@ export class CardsOnboarding {
       for (const item of journal.items) {
         const index = journal.items.indexOf(item);
         let updated = item;
+        if(item.retiredSkipped)continue;
+        const asset=STARTER_ASSETS.find(asset=>asset.id===item.asset);
+        // Resume old writes using an existing retired cover; never replace or remove user files.
+        if(!asset&&!app.vault.getAbstractFileByPath(item.coverPath)){
+          updated={...item,retiredSkipped:true};
+          journal={...journal,items:journal.items.map((value,i)=>i===index?updated:value)};await this.write(journal);
+          continue;
+        }
         if (!item.assetDone) {
           assertActive(); const existing = app.vault.getAbstractFileByPath(item.coverPath);
           if (existing && !(existing instanceof TFile)) throw new Error(`示例封面路径被占用：${item.coverPath}`);
           if (!existing) {
             await this.folder(`${rootFolder}/附件`); assertActive();
-            const asset = STARTER_ASSETS.find(asset => asset.id === item.asset)!;
-            const bytes = Uint8Array.from(atob(asset.dataUrl.split(',')[1]), character => character.charCodeAt(0));
+            if(!asset)throw new Error('旧示例封面已移除，首次导入进度已保留。');
+            const bytes = await decodeStarterAsset(asset); assertActive();
             await app.vault.createBinary(item.coverPath, bytes.buffer); assertActive();
           }
           updated = { ...updated, assetDone: true };
@@ -227,7 +260,8 @@ export class CardsOnboarding {
     let file=this.options.app.vault.getAbstractFileByPath(guide.path);
     if(file){if(!(file instanceof TFile))throw new Error('说明页路径被文件夹占用。');if(!guide.created){const text=await this.options.app.vault.read(file);this.options.assertActive();if(!text.includes(guide.id))throw new Error('说明页路径已有其他内容，未覆盖原笔记。');}}
     else {this.options.assertActive();file=await this.options.app.vault.create(guide.path,guideMarkdown(rootFolder,guide.id));}
-    this.options.assertActive();await this.options.open(file as TFile);this.options.assertActive();
+    if(!(file instanceof TFile))throw new Error('说明页未能建立，首次导入进度已保留。');
+    this.options.assertActive();await this.options.open(file);this.options.assertActive();
     await this.options.update({guideNotes:{...this.options.data().guideNotes,[rootFolder]:{...guide,created:true}}});
   }
 }

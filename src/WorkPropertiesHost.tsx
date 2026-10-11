@@ -14,16 +14,21 @@ export class WorkPropertiesHost {
  private failed=new Map<MarkdownView,string>();
  private unsubscribe:()=>void;
  private frame=0;
+ private frameWindow?:Window;
  private stopped=false;
  constructor(private app:App,private api:CardsAPI,plugin:Component,private sharedManager?:WorkPropertiesManager){
   this.manager=sharedManager??new WorkPropertiesManager(api);
   this.unsubscribe=api.subscribe(this.schedule);
-  for(const event of ['file-open','layout-change','active-leaf-change'] as const)plugin.registerEvent(app.workspace.on(event as 'layout-change',this.schedule));
+  plugin.registerEvent(app.workspace.on('file-open',this.schedule));
+  plugin.registerEvent(app.workspace.on('layout-change',this.schedule));
+  plugin.registerEvent(app.workspace.on('active-leaf-change',this.schedule));
   this.schedule();
  }
  private schedule=()=>{
   if(this.stopped||this.frame)return;
-  this.frame=window.requestAnimationFrame(()=>{this.frame=0;this.update();});
+  const win=this.app.workspace.containerEl?.win;
+  if(!win)return;
+  this.frameWindow=win;this.frame=win.requestAnimationFrame(()=>{this.frame=0;this.update();});
  };
  private header(view:MarkdownView){
   return view.getMode()==='preview'
@@ -40,14 +45,15 @@ export class WorkPropertiesHost {
    if(this.failed.get(view)===work.id)continue;
    this.failed.delete(view);
    if(!this.observers.has(view)){
-    const observer=new MutationObserver(this.schedule);observer.observe(view.contentEl,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});this.observers.set(view,observer);
+    const win=view.contentEl.ownerDocument.defaultView;if(!win)continue;
+    const observer=new win.MutationObserver(this.schedule);observer.observe(view.contentEl,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});this.observers.set(view,observer);
    }
    const header=this.header(view),existing=this.panels.get(view);
    if(!header){this.remove(view);continue;}
    if(existing?.id===work.id&&existing.el.parentElement===header)continue;
    this.remove(view);
    if(header.querySelector('.bw-work-properties-host'))continue;
-   const el=document.createElement('div');el.className='bw-work-properties-host';header.prepend(el);
+   const el=header.createDiv({cls:'bw-work-properties-host'});header.prepend(el);
    const root=createRoot(el,{onUncaughtError:()=>{this.failed.set(view,work.id);this.remove(view);new Notice('作品编辑区未能打开，已保留原始属性。');}});
    const panel:MountedPanel={id:work.id,el,root,raw:false,ready:false};this.panels.set(view,panel);
    const apply=()=>{
@@ -65,7 +71,7 @@ export class WorkPropertiesHost {
  }
  stop():Promise<void>{
   if(this.stopped)return Promise.resolve();
-  this.stopped=true;window.cancelAnimationFrame(this.frame);this.unsubscribe();
+  this.stopped=true;this.frameWindow?.cancelAnimationFrame(this.frame);this.unsubscribe();
   for(const observer of this.observers.values())observer.disconnect();this.observers.clear();
   const saving=this.manager.flushAll();
   for(const view of [...this.panels.keys()])this.remove(view);

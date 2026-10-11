@@ -44,12 +44,12 @@
 .bw-section-head p { color: var(--bw-muted); font-size: 12px; margin-top: 4px; max-width: 65ch; }
 .bw-empty { color: var(--bw-muted); padding: 18px 0; max-width: 65ch; font-size: 13px; line-height: 1.7; }
 .bw-count { color: var(--bw-muted); }
-.bw-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.bw-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; white-space: nowrap; border: 0; }
 .bw-app progress { width: 100%; height: 5px; display: block; border: 0; border-radius: 5px; overflow: hidden; background: var(--bw-soft); accent-color: var(--bw-accent); }
 .bw-app progress::-webkit-progress-bar { background: var(--bw-soft); border-radius: 5px; }
 .bw-app progress::-webkit-progress-value { background: var(--bw-accent); border-radius: 5px; }
 .bw-app progress::-moz-progress-bar { background: var(--bw-accent); }
-.bw-sync-note { color: var(--bw-muted); font-size: 11px !important; margin-bottom: 15px !important; overflow-wrap: anywhere; }
+.bw-app p.bw-sync-note { color: var(--bw-muted); font-size: 11px; margin-bottom: 15px; overflow-wrap: anywhere; }
 .bw-sync-note.is-error { color: var(--text-error, #b44937); }
 .bw-app details { border-bottom: 1px solid var(--bw-line); }
 .bw-app summary { cursor: pointer; font-size: 13px; padding: 12px 0; }
@@ -99,8 +99,8 @@
 .bw-work-order .bw-order-error { margin: 0 0 10px; color: var(--text-error, #9b3325); font-size: 13px; }
 .bw-work-order .bw-order-empty { color: var(--bw-muted); font-size: 13px; }
 .bw-work-properties { --bw-ink: var(--text-normal, #292721); --bw-muted: var(--text-muted, #69675f); --bw-line: var(--background-modifier-border, #d9d7ce); --bw-accent: var(--interactive-accent, #b54e39); box-sizing: border-box; width: 100%; min-width: 0; margin: 0 0 22px; padding: 14px 0 20px; border-bottom: 1px solid var(--bw-line); color: var(--bw-ink); font-family: var(--font-text, -apple-system, BlinkMacSystemFont, sans-serif); container-type: inline-size; }
-.bw-work-note:not(.bw-work-raw-visible) .metadata-container:not(.internal-embed .metadata-container):not(.markdown-embed .metadata-container):not(.mk-floweditor .metadata-container) { display: none !important; }
-.bw-work-note .mk-inline-context:not(.internal-embed .mk-inline-context):not(.markdown-embed .mk-inline-context):not(.mk-floweditor .mk-inline-context) { display: none !important; }
+.bw-work-note:not(.bw-work-raw-visible) .metadata-container:not(.internal-embed .metadata-container):not(.markdown-embed .metadata-container):not(.mk-floweditor .metadata-container) { display: none; }
+.bw-work-note .mk-inline-context:not(.internal-embed .mk-inline-context):not(.markdown-embed .mk-inline-context):not(.mk-floweditor .mk-inline-context) { display: none; }
 .bw-work-properties-host { width: 100%; min-width: 0; }
 .bw-work-properties *, .bw-work-properties *::before, .bw-work-properties *::after { box-sizing: border-box; }
 .bw-work-properties > header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 0 0 14px; }
@@ -154,7 +154,7 @@
 .bw-paper-stage[data-material="foil"] .bw-card-front::before { background: radial-gradient(ellipse at var(--bw-light-x, 35%) var(--bw-light-y, 20%), rgba(211, 245, 249, .22), transparent 58%), linear-gradient(125deg, rgba(146, 204, 223, .1), transparent 32%, rgba(215, 172, 205, .12) 57%, rgba(170, 223, 206, .1) 72%, transparent); }
 .bw-paper-stage[data-material="paper"] .bw-card-front::before { display: none; }
 .bw-card-front::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background: #121819; opacity: var(--bw-card-shade, 0); }
-.bw-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.bw-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; white-space: nowrap; border: 0; }
 .bw-app button.bw-paper-open { display: block; width: 100%; height: 100%; padding: 0; color: inherit; background: transparent; border: 0; border-radius: 14px; text-align: left; touch-action: pan-y; user-select: none; }
 .bw-app button.bw-paper-open:hover { background: transparent; }
 .bw-paper-open:focus-visible { outline: 2px solid var(--bw-card-ink); outline-offset: -5px; }
@@ -171,7 +171,7 @@
 .bw-paper-stage[data-card-style="cover"] .bw-paper-copy { position: absolute; inset: auto 0 0; height: auto; padding: 50px 23px 22px; background: linear-gradient(transparent, rgba(9, 17, 21, .92) 50%); color: #fff; }
 .bw-paper-stage[data-card-style="cover"] .bw-paper-copy p, .bw-paper-stage[data-card-style="cover"] .bw-paper-copy footer { color: #e0e5e6; }
 .bw-app button.bw-card-flip { position: relative; flex: 0 0 auto; min-height: 30px; padding: 5px; border: 0; background: transparent; color: var(--bw-card-ink); }
-.bw-card-front > .bw-card-flip { position: absolute !important; top: 12px; right: 12px; z-index: 2; width: 32px; height: 32px; border-radius: 7px; background: rgba(18, 26, 31, .85) !important; color: #fff !important; }
+.bw-app .bw-card-front > button.bw-card-flip { position: absolute; top: 12px; right: 12px; z-index: 2; width: 32px; height: 32px; border-radius: 7px; background: rgba(18, 26, 31, .85); color: #fff; }
 .bw-card-back-content { display: flex; flex-direction: column; gap: 18px; height: 100%; padding: 24px; cursor: auto; user-select: text; }
 .bw-card-back-header { display: flex; align-items: flex-start; gap: 10px; }
 .bw-card-back-header h3 { flex: 1; min-width: 0; font-family: 'Songti SC', 'STSong', serif; font-size: 20px; line-height: 1.4; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -215,7 +215,7 @@
   .bw-work-head h2 { font-size: 21px; }
   .bw-work-tools { gap: 5px; }
 }
-@media (prefers-reduced-motion: reduce) { .bw-app *, .bw-app *::before, .bw-app *::after { transition-duration: 0ms !important; animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .bw-app.bw-app *, .bw-app.bw-app *::before, .bw-app.bw-app *::after { transition-duration: 0ms; animation: none; } }
 
 .bw-note-picker { min-width: 0; width: 100%; }
 .bw-note-picker input { width: 100%; }

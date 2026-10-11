@@ -95,7 +95,7 @@ function gpuFixture(failure?: 'shader' | 'allocation' | 'texture' | 'unavailable
     getUniformLocation(_program: unknown, name: string) { return name; }, uniform1f(name: string, value: number) { values.set(name, value); },
   };
   const surface = new EventTarget() as EventTarget & { getContext(): typeof gl | null; ownerDocument: unknown; clientHeight: number; width: number; height: number };
-  Object.assign(surface, { width: 1, height: 1, clientHeight: 520, getContext: () => failure === 'unavailable' ? null : gl, ownerDocument: { defaultView: { devicePixelRatio: 1 }, createElement: () => ({ width: 0, height: 0, getContext: () => context }) } });
+  Object.assign(surface, { width: 1, height: 1, clientHeight: 520, cloneNode: () => ({ width: 0, height: 0, getContext: () => context }), getContext: () => failure === 'unavailable' ? null : gl, ownerDocument: { defaultView: { devicePixelRatio: 1, getComputedStyle: (node: Element) => getComputedStyle(node) }, createElement: () => ({ width: 0, height: 0, getContext: () => context }) } });
   const modes: string[] = [];
   let wakes = 0;
   const renderer = createScrollBend(surface as unknown as HTMLCanvasElement, mode => modes.push(mode), () => wakes++);

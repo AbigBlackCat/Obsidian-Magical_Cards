@@ -61,7 +61,7 @@ export function coverPath(value: unknown): string {
   return path;
 }
 export function entityFromFields(fm: Record<string, unknown>, path: string, text: string): Work | null {
-  if (typeof fm.bw_id !== 'string' || !['book','film'].includes(String(fm.bw_type))) return null;
+  if (typeof fm.bw_id !== 'string' || !['book','film'].includes(yamlText(fm.bw_type))) return null;
   if (!fm.bw_data || typeof fm.bw_data !== 'object' || Array.isArray(fm.bw_data)) throw new Error('实体属性不完整');
   const data={...fm.bw_data as Record<string,unknown>};
   if(fm.bw_type==='book'||fm.bw_type==='film'){
@@ -80,16 +80,23 @@ export function entityFromFields(fm: Record<string, unknown>, path: string, text
   }
   return {...data,
     ...((fm.bw_type==='book'||fm.bw_type==='film')?{cover:coverPath(Object.hasOwn(fm,'bw_cover')?fm.bw_cover:(fm.bw_data as Record<string,unknown>).cover)}:{}),
-    id:fm.bw_id,type:fm.bw_type,title:String(fm.bw_title || '未命名'),path,
-    createdAt:String(fm.bw_created || ''),updatedAt:String(fm.bw_updated || ''),body:managedContent(text,'details'),revision:contentRevision(text)} as Work;
+    id:fm.bw_id,type:fm.bw_type,title:yamlText(fm.bw_title || '未命名'),path,
+    createdAt:yamlText(fm.bw_created || ''),updatedAt:yamlText(fm.bw_updated || ''),body:managedContent(text,'details'),revision:contentRevision(text)} as Work;
+}
+// Historical metadata uses native String coercion, including YAML aliases and custom scalar values.
+// Keep that behavior at one checked boundary rather than rejecting previously readable notes.
+function yamlText(value: unknown): string {
+  const text: unknown = Reflect.apply(String, undefined, [value]);
+  if (typeof text !== 'string') throw new Error('笔记属性文字转换失败。');
+  return text;
 }
 export function contentRevision(text:string):string { let a=2166136261,b=5381;for(let i=0;i<text.length;i++){a=Math.imul(a^text.charCodeAt(i),16777619);b=Math.imul(b,33)^text.charCodeAt(i);}return `${text.length}:${a>>>0}:${b>>>0}`; }
 export function validFolder(path: string): boolean {
   const deviceName=/^(?:CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|$)/i;
-  return Boolean(path.trim()) && !path.startsWith('/') && !/[\\:*?"<>|\x00-\x1f]/.test(path)
+  return Boolean(path.trim()) && !path.startsWith('/') && !/[\\:*?"<>|]/.test(path) && !Array.from(path).some(char => char.charCodeAt(0) < 32)
     && path.split('/').every(s => s && s !== '.' && s !== '..' && !s.startsWith('.') && !/[. ]$/.test(s) && !deviceName.test(s));
 }
-export function safeFilePart(value: string): string { return value.replace(/[\\/:*?"<>|#\[\]\x00-\x1f]/g, '-').replace(/\s+/g, ' ').trim().slice(0,70) || '未命名'; }
+export function safeFilePart(value: string): string { return Array.from(value, char => char.charCodeAt(0) < 32 || '\\/:*?"<>|#[]'.includes(char) ? '-' : char).join('').replace(/\s+/g, ' ').trim().slice(0,70) || '未命名'; }
 
 export async function prepareNativeWrite(app: App, file: TFile, active: () => void = () => {}): Promise<(text: string) => void> {
   const views = () => app.workspace.getLeavesOfType('markdown').map(leaf => leaf.view as MarkdownView).filter(view => view.file?.path === file.path);
@@ -99,7 +106,7 @@ export async function prepareNativeWrite(app: App, file: TFile, active: () => vo
     const buffers = views().map(view => view.getViewData());
     if (new Set(buffers).size > 1) throw new Error('同一笔记的编辑窗口内容不一致，请先统一各窗口草稿后重试。');
     if (buffers.every(buffer => buffer === disk)) return assertCurrent;
-    if (attempt < 14) await new Promise(resolve => setTimeout(resolve, 250));
+    if (attempt < 14) await new Promise(resolve => app.workspace.containerEl.win.setTimeout(resolve, 250));
   }
   throw new Error('等待原生正文保存超时，草稿与磁盘内容均已保留，请先完成原生保存或协调外部修改后重试。');
 }

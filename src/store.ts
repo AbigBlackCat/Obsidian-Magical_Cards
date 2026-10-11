@@ -1,5 +1,6 @@
 import { App,TFile,normalizePath,parseYaml,stringifyYaml } from 'obsidian';
 import { createCoverSvg,sanitizeSvg } from './covers';
+import { readCoverSvg } from './cover-reader';
 import { validateWork } from './domain';
 import { entityFields,entityFromFields,replaceManaged,sourceMarkdown,validFolder,safeFilePart,contentRevision,coverPath,prepareNativeWrite } from './persistence';
 import { orderedWorks,readWorkOrder,reconcileWorkOrder,moveWorkOrder } from './work-order';
@@ -9,11 +10,13 @@ const FOLDERS={book:'书籍',film:'观影'};
 const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 export class CardsStore implements CardsAPI {
  private snapshot:CardsSnapshot;
- private listeners=new Set<()=>void>(); private queue:Promise<unknown>=Promise.resolve(); private timer:ReturnType<typeof setTimeout>|undefined;
+ private listeners=new Set<()=>void>(); private queue:Promise<unknown>=Promise.resolve(); private timer:number|undefined;
  private destroyed=false; private refreshRevision=0; private orderPath=''; private initialization?:Promise<void>;
+ private readonly timerWindow:Window;
  private initializationInfo={hadExistingFiles:false,hadConfig:false,usedLegacySettings:false};
  getInitializationInfo=()=>({...this.initializationInfo});
  constructor(private app:App,readonly rootFolder:string,private migrationSettings?:Partial<CardsSettings>){
+  this.timerWindow=app.workspace.containerEl.win;
   if(!validFolder(rootFolder))throw new Error('卡片目录无效，请使用笔记库内的普通目录。');
   this.rootFolder=normalizePath(rootFolder);
   this.snapshot={entities:[],workOrder:null,settings:readCardsSettings(migrationSettings),loading:true,error:''};
@@ -24,14 +27,14 @@ export class CardsStore implements CardsAPI {
  private active(){if(this.destroyed)throw new Error('插件已停用，操作已取消。');}
  private serial<T>(fn:()=>Promise<T>):Promise<T>{const next=this.queue.catch(()=>{}).then(()=>{this.active();return fn();});this.queue=next;return next;}
  settle=async()=>{await this.queue.catch(()=>{});};
- invalidate=()=>{clearTimeout(this.timer);this.timer=setTimeout(()=>{void this.refresh().catch(error=>this.emit({error:this.message(error)}));},100);};
- destroy(){this.destroyed=true;clearTimeout(this.timer);this.listeners.clear();}
+ invalidate=()=>{this.timerWindow.clearTimeout(this.timer);this.timer=this.timerWindow.setTimeout(()=>{void this.refresh().catch(error=>this.emit({error:this.message(error)}));},100);};
+ destroy(){this.destroyed=true;this.timerWindow.clearTimeout(this.timer);this.listeners.clear();}
  private message(error:unknown){return error instanceof Error?error.message:'操作没有完成，请重试。';}
  private root(){return this.rootFolder;}
  private metaPath(){return `${this.root()}/_数据/同步状态.md`;}
  private configPath(){return `${this.root()}/_数据/卡片配置.md`;}
  private noteParts(text:string){
-  const match=text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);const fields=match?(parseYaml(match[1])??{}):{};
+  const match=text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);const fields:unknown=match?(parseYaml(match[1])??{}):{};
   if(!record(fields))throw new Error('笔记属性格式无效。');
   return {fields,body:match?text.slice(match[0].length):text};
  }
@@ -40,7 +43,8 @@ export class CardsStore implements CardsAPI {
  private settingsFrom(text:string){
   const fields=this.frontmatter(text);
   if(fields.bw_view!=='cards-config'||!record(fields.bw_card_settings))throw new Error('卡片配置笔记格式无效，原内容已保留，请先检查。');
-  const known=Object.fromEntries(CARD_SETTING_KEYS.filter(key=>Object.hasOwn(fields.bw_card_settings as object,key)).map(key=>[key,(fields.bw_card_settings as Record<string,unknown>)[key]]));
+  const saved=fields.bw_card_settings;
+  const known=Object.fromEntries(CARD_SETTING_KEYS.filter(key=>Object.hasOwn(saved,key)).map(key=>[key,saved[key]]));
   validateCardsPatch(known);
   return readCardsSettings(fields.bw_card_settings);
  }
@@ -258,14 +262,15 @@ export class CardsStore implements CardsAPI {
   let meta:TFile|undefined;let added=false;
   if(sourceId){
    meta=await this.metaFile();
-   await this.app.fileManager.processFrontMatter(meta,fm=>{
+   await this.app.fileManager.processFrontMatter(meta,(fm:unknown)=>{
+    if(!record(fm))throw new Error('同步状态属性格式无效。');
     const sources=this.bookDeletionSources(fm);
     if(!sources.includes(sourceId)){fm.bw_deleted_book_sources=[...sources,sourceId];added=true;}
    });
   }
   try{await this.app.fileManager.trashFile(file);}
   catch(error){
-   if(meta&&added)try{await this.app.fileManager.processFrontMatter(meta,fm=>{fm.bw_deleted_book_sources=this.bookDeletionSources(fm).filter(source=>source!==sourceId);});}
+   if(meta&&added)try{await this.app.fileManager.processFrontMatter(meta,(fm:unknown)=>{if(!record(fm))throw new Error('同步状态属性格式无效。');fm.bw_deleted_book_sources=this.bookDeletionSources(fm).filter(source=>source!==sourceId);});}
    catch{throw new Error('笔记未能移入回收站，删除标记回滚也失败；请检查同步状态中的 bw_deleted_book_sources。');}
    throw error;
   }
@@ -301,16 +306,17 @@ export class CardsStore implements CardsAPI {
   if(entity?.type==='book'||entity?.type==='film'){
    const fields=this.frontmatter(await this.app.vault.cachedRead(file));
    if(!Object.hasOwn(fields,'bw_cover')){
-    await this.app.fileManager.processFrontMatter(file,fm=>{
+    await this.app.fileManager.processFrontMatter(file,(fm:unknown)=>{
+     if(!record(fm))throw new Error('作品笔记属性格式无效。');
      if(Object.hasOwn(fm,'bw_cover'))return;
-     const data=fm.bw_data as Record<string,unknown>|undefined;
+     const data=record(fm.bw_data)?fm.bw_data:undefined;
      if(fm.bw_type==='book'&&Object.hasOwn(fm,'bw_source_cover')){
       fm.bw_cover=coverPath(fm.bw_source_cover);fm.bw_cover_custom=false;
       fm.bw_data={...data,cover:fm.bw_cover};
      }else fm.bw_cover=coverPath(data?.cover);
      if(fm.bw_type==='book'&&data?.sourceId&&!Object.hasOwn(fm,'bw_source_cover')){
       fm.bw_source_cover=coverPath(data.cover);
-      if(fm.bw_cover&&!/^https:\/\//i.test(String(fm.bw_cover)))fm.bw_cover_custom=true;
+      if(fm.bw_cover&&!/^https:\/\//i.test(coverPath(fm.bw_cover)))fm.bw_cover_custom=true;
      }
     });await this.refresh();
    }
@@ -329,6 +335,7 @@ export class CardsStore implements CardsAPI {
   const file=this.app.metadataCache.getFirstLinkpathDest(path,sourcePath)||this.app.vault.getAbstractFileByPath(normalizePath(path));
   return file instanceof TFile&&/^(png|jpe?g|webp|gif|svg)$/i.test(file.extension)?this.app.vault.getResourcePath(file):'';
  };
+ readCoverSvg=(path:string,sourcePath='')=>readCoverSvg(this.app,path,sourcePath);
 
  private async metaFile(){
   const path=this.metaPath();await this.folder(`${this.root()}/_数据`);let file=this.app.vault.getAbstractFileByPath(path);

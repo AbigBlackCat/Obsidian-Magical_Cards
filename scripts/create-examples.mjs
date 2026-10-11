@@ -1,6 +1,7 @@
 import {readFile,writeFile,mkdir,rm} from 'node:fs/promises';
 import {stringify} from 'yaml';
 const root=new URL('../examples/vault/',import.meta.url);
+const demoConfigDir='.obsidian';
 const covers=JSON.parse(await readFile(new URL('../examples/covers.json',import.meta.url),'utf8'));
 for(const item of covers){
  const folder=item.type==='book'?'书籍':'观影';await mkdir(new URL(`示例/${folder}/`,root),{recursive:true});
@@ -16,9 +17,9 @@ await rm(new URL('卡片布局示例.md',root),{force:true});
 const appearance={material:'paper',style:'cover',layout:'cylinder',ratio:'2:3',imageFit:'cover'};
 await mkdir(new URL('示例/_数据/',root),{recursive:true});
 await writeFile(new URL('示例/_数据/卡片配置.md',root),`---\n${stringify({bw_view:'cards-config',bw_card_settings:{bookCardAppearance:appearance,filmCardAppearance:appearance,customModules:[],threeCardView:true,workbenchText:{'book.title':'阅读','film.title':'影视'},standaloneOrder:[],workbenchCards:[]}})}---\n\n# 卡片配置\n`);
-await mkdir(new URL('.obsidian/plugins/magical-cards/',root),{recursive:true});
-await writeFile(new URL('.obsidian/plugins/magical-cards/data.json',root),JSON.stringify({rootFolder:'示例',installationOrigin:'legacy'},null,2)+'\n');
-await rm(new URL('.obsidian/plugins/barry-cards/',root),{recursive:true,force:true});
-await writeFile(new URL('.obsidian/community-plugins.json',root),'["magical-cards"]\n');
-await writeFile(new URL('.obsidian/app.json',root),JSON.stringify({livePreview:true},null,2)+'\n');
-console.log('8 isolated Magical Cards example notes generated');
+await mkdir(new URL(`${demoConfigDir}/plugins/magical-cards/`,root),{recursive:true});
+await writeFile(new URL(`${demoConfigDir}/plugins/magical-cards/data.json`,root),JSON.stringify({rootFolder:'示例',installationOrigin:'legacy'},null,2)+'\n');
+await rm(new URL(`${demoConfigDir}/plugins/barry-cards/`,root),{recursive:true,force:true});
+await writeFile(new URL(`${demoConfigDir}/community-plugins.json`,root),'["magical-cards"]\n');
+await writeFile(new URL(`${demoConfigDir}/app.json`,root),JSON.stringify({livePreview:true},null,2)+'\n');
+process.stdout.write(`${covers.length} isolated Magical Cards example notes generated\n`);

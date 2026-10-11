@@ -1,35 +1,50 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { Plugin, ItemView, WorkspaceLeaf, PluginSettingTab, Setting, Notice, Platform } from 'obsidian';
+import { Plugin, ItemView, PluginSettingTab, Notice, Platform, requireApiVersion } from 'obsidian';
+import type { SettingDefinitionItem, WorkspaceLeaf } from 'obsidian';
 import { acquireCards, type CardsLease } from './runtime';
 import CardsSurface from './CardsSurface';
 import { newCardsBlock } from './embed-source';
 import { chooseCardsModules } from './module-choice';
-import { addCardsSettings } from './settings-tab';
+import { CardsSettingsController } from './settings-tab';
 import { validFolder } from './persistence';
 import { CardsOnboarding, loadCardsPluginData, prepareFirstRunIntent, type CardsPluginData } from './onboarding';
 const VIEW = 'barry-cards';
 class CardsView extends ItemView {
   private root?: Root;
   private lease: CardsLease;
-  constructor(leaf: WorkspaceLeaf, plugin: MagicalCardsPlugin) { super(leaf); this.lease = plugin.cardsLease; }
+  constructor(leaf: WorkspaceLeaf, plugin: MagicalCardsPlugin, private closed: () => void) { super(leaf); this.lease = plugin.cardsLease; }
   getViewType() { return VIEW; }
   getDisplayText() { return 'Magical Cards'; }
   getIcon() { return 'gallery-horizontal'; }
   async onOpen() { this.contentEl.empty(); this.root = createRoot(this.contentEl); this.root.render(<CardsSurface api={this.lease.api} manager={this.lease.propertiesManager} />); }
-  async onClose() { try { await this.lease.propertiesManager.flushAll(); } catch (error) { new Notice(`卡片草稿已保留：${(error as Error).message}`); } this.root?.unmount(); this.root = undefined; }
+  async onClose() { if (this.root) { try { await this.lease.propertiesManager.flushAll(); } catch (error) { new Notice(`卡片草稿已保留：${(error as Error).message}`); } this.dispose(); } this.closed(); }
+  dispose() { this.root?.unmount(); this.root = undefined; }
 }
-class CardsSettingsTab extends PluginSettingTab {
-  private dispose?: () => void;
+export class CardsSettingsTab extends PluginSettingTab {
+  private controller?: CardsSettingsController;
   constructor(private plugin: MagicalCardsPlugin) { super(plugin.app, plugin); }
-  display() {
-    this.dispose?.(); this.dispose = undefined;
-    const el = this.containerEl; el.empty();
-    let draft = this.plugin.rootFolder;
-    new Setting(el).setName('卡片目录').setDesc('填写当前笔记库内的相对目录，例如 卡片库。作品保存在其下的书籍／观影目录，配置保存在 _数据/卡片配置.md。切换目录不会搬运原有作品。').addText(control => control.setValue(draft).onChange(value => { draft = value; })).addButton(control => control.setButtonText('应用').onClick(async () => { control.setDisabled(true); try { await this.plugin.changeRoot(draft); this.display(); } catch (error) { new Notice((error as Error).message); control.setDisabled(false); } }));
-    this.dispose = addCardsSettings(el, this.plugin.cardsLease.api, () => this.display(), this.plugin.cardsLease.propertiesManager);
+  private getController() {
+    this.controller ??= new CardsSettingsController(this.plugin.cardsLease.api, this.plugin.cardsLease.propertiesManager, {
+      directory: { get: () => this.plugin.rootFolder, apply: async folder => {
+        await this.plugin.changeRoot(folder); this.controller?.dispose(); this.controller = undefined;
+        this.refreshSettings();
+      } },
+      structureChanged: () => { this.refreshSettings(); },
+      domStateChanged: () => { if (requireApiVersion('1.13.0')) this.refreshDomState(); },
+    });
+    return this.controller;
   }
-  hide() { this.dispose?.(); this.dispose = undefined; }
+  private refreshSettings() {
+    if (requireApiVersion('1.13.0')) this.update();
+    else this.getController().renderFallback(this.containerEl);
+  }
+  getSettingDefinitions(): SettingDefinitionItem[] { return this.getController().getDefinitions(); }
+  display() {
+    this.getController().renderFallback(this.containerEl);
+  }
+  hide() { this.controller?.hide(); }
+  dispose() { this.controller?.dispose(); this.controller = undefined; }
 }
 export default class MagicalCardsPlugin extends Plugin {
   cardsLease!: CardsLease;
@@ -38,6 +53,8 @@ export default class MagicalCardsPlugin extends Plugin {
   private localData: CardsPluginData = { rootFolder: '卡片库' };
   private dataQueue: Promise<unknown> = Promise.resolve();
   private onboarding?: CardsOnboarding;
+  private settingsTab?: CardsSettingsTab;
+  private cardViews = new Set<CardsView>();
   private assertActive = () => { if (this.unloaded) throw new Error('插件已停用，操作已取消。'); };
   private updateData = (patch: Partial<CardsPluginData>): Promise<void> => {
     const next = this.dataQueue.catch(() => {}).then(async () => {
@@ -54,8 +71,8 @@ export default class MagicalCardsPlugin extends Plugin {
     });
   }
   async onload() {
-    if (!Platform.isDesktopApp) { new Notice('Magical Cards 仅支持 Obsidian 桌面版。'); return; }
-    const saved = await this.loadData(); this.assertActive();
+    if (!Platform.isDesktopApp) { new Notice('Magical Cards 仅支持桌面版。'); return; }
+    const saved: unknown = await this.loadData(); this.assertActive();
     const loaded = await loadCardsPluginData(this.app, saved); this.assertActive();
     this.localData = loaded.data; this.rootFolder = loaded.data.rootFolder;
     if (loaded.needsSave) await this.updateData({});
@@ -65,7 +82,7 @@ export default class MagicalCardsPlugin extends Plugin {
     this.cardsLease = await acquireCards(this.app, this.rootFolder, this.manifest.dir ?? `${this.app.vault.configDir}/plugins/${this.manifest.id}`);
     if (this.unloaded) { await this.cardsLease.release(); return; }
     this.onboarding = this.bindOnboarding(this.cardsLease, this.rootFolder);
-    this.registerView(VIEW, leaf => new CardsView(leaf, this));
+    this.registerView(VIEW, leaf => { const view = new CardsView(leaf, this, () => { this.cardViews.delete(view); }); this.cardViews.add(view); this.register(() => { view.dispose(); this.cardViews.delete(view); }); return view; });
     this.addRibbonIcon('gallery-horizontal', '打开 Magical Cards', () => { void this.openCards(); });
     this.addCommand({ id: 'open', name: '打开卡片视图', callback: () => { void this.openCards(); } });
     this.addCommand({ id: 'help', name: '查看示例及用法说明', callback: () => { void this.openHelp().catch(error => new Notice((error as Error).message)); } });
@@ -80,7 +97,7 @@ export default class MagicalCardsPlugin extends Plugin {
       }
       catch (error) { new Notice((error as Error).message); }
     } });
-    this.addSettingTab(new CardsSettingsTab(this));
+    this.settingsTab = new CardsSettingsTab(this); this.addSettingTab(this.settingsTab);
     this.app.workspace.onLayoutReady(() => {
       if (!this.unloaded) void this.onboarding?.run().catch(error => { if (!this.unloaded) new Notice(`首次展示尚未完成，可通过「查看示例及用法说明」重试：${(error as Error).message}`); });
     });
@@ -96,5 +113,5 @@ export default class MagicalCardsPlugin extends Plugin {
     const old = this.cardsLease; this.cardsLease = next; this.rootFolder = next.api.rootFolder;
     this.onboarding = this.bindOnboarding(next, this.rootFolder); await old.release();
   }
-  onunload() { this.unloaded = true; for (const leaf of this.app.workspace.getLeavesOfType(VIEW)) leaf.detach(); void this.cardsLease?.release(); }
+  onunload() { this.unloaded = true; this.settingsTab?.dispose(); for (const view of this.cardViews) view.dispose(); this.cardViews.clear(); void this.cardsLease?.release(); }
 }

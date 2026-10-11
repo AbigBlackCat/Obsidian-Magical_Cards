@@ -44,7 +44,7 @@ export function registerCardsEmbeds(registrar: Plugin, resolveRuntime: (sourcePa
       if (!runtime) throw new Error('没有可用的卡片库。请启用 Magical Cards 并检查卡片目录。');
       context.addChild(new CardsEmbedChild(element, registrar.app, runtime, source, context.sourcePath, drafts));
     } catch (failure) {
-      const message = element.ownerDocument.createElement('p'); message.className = 'bw-sync-note is-error'; message.setAttribute('role', 'alert'); message.textContent = failure instanceof Error ? failure.message : String(failure); element.replaceChildren(message);
+      const message = element.createEl('p'); message.className = 'bw-sync-note is-error'; message.setAttribute('role', 'alert'); message.textContent = failure instanceof Error ? failure.message : String(failure); element.replaceChildren(message);
     }
   });
 }

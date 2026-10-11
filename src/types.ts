@@ -23,13 +23,14 @@ export interface WorkbenchCardPlacement { module: string; before: WorkbenchAncho
 export interface CardsSettings { bookCardAppearance: WorkCardAppearance; filmCardAppearance: WorkCardAppearance; customModules: CustomCardModule[]; threeCardView: boolean; workbenchText: Record<string, string>; workbenchCards: WorkbenchCardPlacement[]; standaloneOrder: string[]; }
 export interface CardsSnapshot { entities: Work[]; workOrder: WorkOrder | null; settings: CardsSettings; loading: boolean; error: string; }
 export interface CardsAPI {
-  getSnapshot(): CardsSnapshot; subscribe(listener: () => void): () => void;
+  getSnapshot: () => CardsSnapshot; subscribe: (listener: () => void) => () => void;
   save(work: Work): Promise<void>; deleteWork(id: string): Promise<void>;
   readWorkProperties(id: string): Promise<WorkProperties>; patchWorkProperties(id: string, patch: Partial<WorkPropertyValues>, expected: WorkProperties): Promise<WorkProperties>;
   applyCardLayout(patch: CardLayoutPatch): Promise<CardLayoutResult>;
   openWorkOrder(kind: WorkKind): Promise<void>; moveWork(kind: WorkKind, id: string, beforeId: string | null): Promise<void>;
   listNoteCandidates(query: string): Promise<Array<{ path: string; title: string }>>; openNote(path: string): Promise<void>;
   attachCover(file: File): Promise<string>; makeCover(template: CoverTemplate, title: string, color: string): Promise<string>; coverUrl(path: string, sourcePath?: string): string;
+  readCoverSvg?: (path: string, sourcePath?: string) => Promise<string>;
   saveSettings(patch: Partial<CardsSettings>): Promise<void>;
 }
 export const DEFAULT_CARD_SETTINGS: CardsSettings = { bookCardAppearance: { material: 'foil', style: 'minimal' }, filmCardAppearance: { material: 'foil', style: 'minimal' }, customModules: [], threeCardView: false, workbenchText: {}, workbenchCards: [], standaloneOrder: [] };

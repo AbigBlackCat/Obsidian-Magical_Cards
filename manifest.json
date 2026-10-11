@@ -1,7 +1,7 @@
 {
   "id": "magical-cards",
   "name": "Magical Cards",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "minAppVersion": "1.11.4",
   "description": "Turn book and film collections into interactive cover cards with draggable modules and note embeds.",
   "author": "AbigBlackCat",

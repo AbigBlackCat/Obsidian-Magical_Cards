@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import type { App as ObsidianApp, TFile as ObsidianFile } from 'obsidian';
 import type * as Mock from './obsidian-mock';
-import type { CardsPluginData } from '../src/onboarding';
+import type { CardsPluginData, StarterItem } from '../src/onboarding';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const bundled = await build({ stdin: { contents: "export * from '../src/store'; export * from '../src/onboarding'; export * from '../src/starter-assets'; export * from '../src/domain'; export * from './obsidian-mock';", resolveDir: directory, loader: 'ts' }, alias: { obsidian: resolve(directory, 'obsidian-mock.ts') }, bundle: true, platform: 'node', format: 'cjs', write: false });
@@ -42,6 +42,17 @@ async function fixture(rootFolder = '卡片库', initial?: CardsPluginData, seed
   return { app, api, options, board: new runtime.CardsOnboarding(options), data: () => data, writes, stop: () => { active = false; } };
 }
 
+function retiredItems(): StarterItem[] {
+  return [
+    { asset: 'demo-book-crime', title: '罪与罚' },
+    { asset: 'demo-book-gone', title: '飘（四十年荣誉珍藏版）' },
+  ].map(asset => {
+    const id=crypto.randomUUID();
+    return { ...asset, id, kind:'book', createdAt:'2026-10-11T00:00:00.000Z', assetDone:false, workDone:false,
+      coverPath:`卡片库/附件/示例-${id}.jpg`, notePath:`卡片库/书籍/书籍-${asset.title}-${id.slice(-16)}.md` };
+  });
+}
+
 test('new installations default to 卡片库; legacy local settings merge once without touching recovery drafts', async () => {
   const app = new runtime.App(); app.vault.configDir = 'custom-config';
   const fresh = await runtime.loadCardsPluginData(asApp(app), null);
@@ -66,16 +77,16 @@ test('workbench settings migrate only when their normalized root folder matches'
   const old = { rootFolder: '工作台', threeCardView: true, bookCardAppearance: { material: 'paper', style: 'cover', imageFit: 'contain' }, workbenchText: { 'book.title': '旧书架' } };
   const unrelated = await fixture('卡片库', undefined, async app => { await app.vault.create('.obsidian/plugins/barry-workbench/data.json', JSON.stringify(old)); });
   assert.equal(unrelated.api.getSnapshot().settings.threeCardView, false); assert.deepEqual(unrelated.api.getSnapshot().settings.workbenchText, {}); assert.equal(unrelated.api.getInitializationInfo().usedLegacySettings, false);
-  await unrelated.board.run(); assert.equal(unrelated.api.getSnapshot().entities.length, 8); unrelated.api.destroy();
+  await unrelated.board.run(); assert.equal(unrelated.api.getSnapshot().entities.length, 6); unrelated.api.destroy();
   const matched = await fixture('工作台', { rootFolder: '工作台', installationOrigin: 'fresh' }, async app => { await app.vault.create('.obsidian/plugins/barry-workbench/data.json', JSON.stringify(old)); });
   const before = matched.app.vault.text('工作台/_数据/卡片配置.md'); await matched.board.run();
   assert.equal(matched.api.getSnapshot().entities.length, 0); assert.equal(matched.api.getSnapshot().settings.workbenchText['book.title'], '旧书架'); assert.equal(matched.api.getSnapshot().settings.bookCardAppearance.imageFit, 'contain'); assert.equal(matched.app.vault.text('工作台/_数据/卡片配置.md'), before); matched.api.destroy();
 });
 
-test('fresh onboarding creates eight ordinary works with fresh UUIDs, byte-exact offline covers and usable guide', async () => {
+test('fresh onboarding creates six ordinary works with fresh UUIDs, byte-exact offline covers and usable guide', async () => {
   const { board, api, app, data } = await fixture(); await Promise.all([board.run(), board.run()]);
-  const snapshot = api.getSnapshot(); assert.equal(snapshot.entities.length, 8); assert.equal(snapshot.entities.filter(work => work.type === 'book').length, 5); assert.equal(snapshot.entities.filter(work => work.type === 'film').length, 3);
-  assert.equal(new Set(snapshot.entities.map(work => work.id)).size, 8);
+  const snapshot = api.getSnapshot(); assert.equal(snapshot.entities.length, 6); assert.equal(snapshot.entities.filter(work => work.type === 'book').length, 3); assert.equal(snapshot.entities.filter(work => work.type === 'film').length, 3);
+  assert.equal(new Set(snapshot.entities.map(work => work.id)).size, 6);
   for (const work of snapshot.entities) { assert.match(work.id, /^[a-f0-9-]{36}$/); assert.equal(work.moduleId, undefined); assert.equal(work.summary, ''); assert.equal(work.rating, null); if (work.type === 'book') { assert.equal(work.sourceId, ''); assert.deepEqual(work.notes, []); } }
   assert.equal(snapshot.settings.threeCardView, true); assert.equal(snapshot.settings.workbenchText['book.title'], '阅读'); assert.equal(snapshot.settings.workbenchText['film.title'], '影视');
   assert.deepEqual(snapshot.settings.bookCardAppearance, { material: 'paper', style: 'cover', layout: 'cylinder', ratio: '2:3', imageFit: 'cover' });
@@ -88,6 +99,95 @@ test('fresh onboarding creates eight ordinary works with fresh UUIDs, byte-exact
   assert.equal((guide.match(/```magical-cards\n/g) ?? []).length, 1); assert.doesNotMatch(guide,/\n\s+layout:/); assert.match(guide, /卡片库\/_数据\/卡片配置.md/); assert.doesNotMatch(guide, /\{\{|\/Users\//);
   assert.equal(data().onboarding!.status, 'complete'); assert.equal(data().onboarding!.helpOpened, true); assert.equal(app.opened.length, 1); assert.deepEqual(data().keep, { value: 1 });
   const before = app.vault.dump(); await board.run(); assert.deepEqual(app.vault.dump(), before); assert.equal(app.opened.length, 1); api.destroy();
+});
+
+test('completed eight-item legacy journals preserve all existing works, edited covers and progress without reseeding',async()=>{
+  const f=await fixture();await f.board.run();
+  for(const item of retiredItems()){
+    await f.app.vault.create(item.coverPath,`original retired cover ${item.asset}`);
+    await f.api.saveStarterWork(runtime.starterWork(item),()=>{});
+    await f.api.patchWorkProperties(item.id,{summary:'原有用户摘要'},await f.api.readWorkProperties(item.id));
+    f.data().onboarding!.items.push({...item,assetDone:true,workDone:true});
+  }
+  const files=f.app.vault.dump(),data=structuredClone(f.data()),writes=f.writes.length;
+  await new runtime.CardsOnboarding(f.options).run();
+  assert.equal(f.api.getSnapshot().entities.length,8);assert.deepEqual(f.app.vault.dump(),files);assert.deepEqual(f.data(),data);assert.equal(f.writes.length,writes);assert.equal(f.app.opened.length,1);f.api.destroy();
+});
+
+test('pending eight-item legacy journals preserve retired works and covers, skip only unavailable retired images, and resume stable IDs',async()=>{
+  for(const mode of ['absent','cover-only','work-only','work-and-cover'] as const){
+    const f=await fixture(),save=f.api.saveStarterWork;f.api.saveStarterWork=async()=>{throw new Error('旧导入中断');};
+    await assert.rejects(f.board.run(),/旧导入中断/);f.api.saveStarterWork=save;
+    const retired=retiredItems(),item=retired[0];f.data().onboarding!.items.push(...retired);
+    if(mode==='cover-only'||mode==='work-and-cover')await f.app.vault.create(item.coverPath,'用户保留的退休封面字节');
+    if(mode==='work-only'||mode==='work-and-cover'){
+      await f.api.saveStarterWork(runtime.starterWork(item),()=>{});
+      await f.api.patchWorkProperties(item.id,{title:'用户修改的旧作品',summary:'旧摘要'},await f.api.readWorkProperties(item.id));
+    }
+    const oldNote=f.app.vault.getAbstractFileByPath(item.notePath) instanceof runtime.TFile?f.app.vault.text(item.notePath):undefined;
+    const ids=f.data().onboarding!.items.map(item=>item.id);
+    await new runtime.CardsOnboarding(f.options).run();
+    const journal=f.data().onboarding!;assert.equal(journal.status,'complete');assert.deepEqual(journal.items.map(item=>item.id),ids);assert.equal(journal.items.length,8);
+    assert.equal(f.api.getSnapshot().entities.length,mode==='absent'?6:7);
+    const saved=journal.items.find(value=>value.id===item.id)!;
+    if(mode==='cover-only'||mode==='work-and-cover'){
+      assert.equal(saved.retiredSkipped,undefined);assert.equal(saved.assetDone,true);assert.equal(saved.workDone,true);assert.equal(f.app.vault.text(item.coverPath),'用户保留的退休封面字节');
+    }else{
+      assert.equal(saved.retiredSkipped,true);assert.equal(saved.assetDone,false);assert.equal(saved.workDone,false);assert.equal(f.app.vault.getAbstractFileByPath(item.coverPath),null);
+    }
+    if(oldNote!==undefined)assert.equal(f.app.vault.text(item.notePath),oldNote);
+    const notWritten=journal.items.find(value=>value.id===retired[1].id)!;
+    assert.equal(notWritten.retiredSkipped,true);assert.equal(f.app.vault.getAbstractFileByPath(notWritten.notePath),null);
+    const before=f.app.vault.dump();await new runtime.CardsOnboarding(f.options).run();assert.deepEqual(f.app.vault.dump(),before);f.api.destroy();
+  }
+});
+
+test('retired skips survive a progress-write failure and cannot bypass complete-set, identity or path validation',async()=>{
+  const f=await fixture(),save=f.api.saveStarterWork;f.api.saveStarterWork=async()=>{throw new Error('中断');};await assert.rejects(f.board.run(),/中断/);f.api.saveStarterWork=save;
+  f.data().onboarding!.items.push(...retiredItems());
+  const original=structuredClone(f.data().onboarding!);
+  for(const mutation of [
+    () => { f.data().onboarding!.items[0].retiredSkipped=true; },
+    () => { Reflect.set(f.data().onboarding!.items[6],'retiredSkipped',false); },
+    () => { f.data().onboarding!.items[6].coverPath='卡片库/附件/其他.jpg'; },
+    () => { f.data().onboarding!.items[6].notePath='卡片库/书籍/../其他.md'; },
+    () => { f.data().onboarding!.items[6].title='未知旧作品'; },
+    () => { f.data().onboarding!.items[6].asset='other-retired'; },
+    () => { f.data().onboarding!.items.pop(); },
+  ]){
+    f.data().onboarding=structuredClone(original);mutation();const files=f.app.vault.dump();
+    await assert.rejects(new runtime.CardsOnboarding(f.options).run(),/进度格式无效/);assert.deepEqual(f.app.vault.dump(),files);
+  }
+  f.data().onboarding=structuredClone(original);const update=f.options.update;let failed=false;
+  f.options.update=async patch=>{if(!failed&&patch.onboarding?.items.some(item=>item.retiredSkipped)){failed=true;throw new Error('退休进度保存失败');}await update(patch);};
+  await assert.rejects(new runtime.CardsOnboarding(f.options).run(),/退休进度保存失败/);assert.equal(f.data().onboarding!.status,'pending');assert.equal(f.api.getSnapshot().entities.length,6);
+  await new runtime.CardsOnboarding(f.options).run();assert.equal(f.data().onboarding!.status,'complete');assert.equal(f.api.getSnapshot().entities.length,6);assert.equal(f.data().onboarding!.items.filter(item=>item.retiredSkipped).length,2);f.api.destroy();
+});
+
+test('each compressed starter asset decodes to its byte-exact recorded original',async()=>{
+  for(const asset of runtime.STARTER_ASSETS){
+    const bytes=await runtime.decodeStarterAsset(asset),original=await import('node:fs/promises').then(fs=>fs.readFile(resolve(directory,'../examples/vault/示例/附件',asset.cover)));
+    assert.deepEqual(Buffer.from(bytes),original,asset.title);
+    assert.equal(bytes.byteLength,asset.byteLength);
+  }
+  const asset=runtime.STARTER_ASSETS[0];
+  await assert.rejects(runtime.decodeStarterAsset({...asset,data:'broken'}),/解压失败/);
+  await assert.rejects(runtime.decodeStarterAsset({...asset,byteLength:1}),/解压失败/);
+  await assert.rejects(runtime.decodeStarterAsset({...asset,sha256:'0'.repeat(64)}),/校验失败/);
+});
+
+test('corrupt compressed covers pause before writing files and the same journal resumes after repair',async()=>{
+  const f=await fixture(),assets=runtime.STARTER_ASSETS as unknown as Array<import('../src/starter-assets').StarterAsset>,original=assets[0];
+  try{
+    assets[0]={...original,sha256:'0'.repeat(64)};
+    await assert.rejects(f.board.run(),/校验失败/);
+    const journal=f.data().onboarding!;
+    assert.equal(journal.status,'pending');assert.equal(journal.items[0].assetDone,false);assert.equal(journal.items[0].workDone,false);
+    assert.equal(f.app.vault.getAbstractFileByPath(journal.items[0].coverPath),null);assert.equal(f.api.getSnapshot().entities.length,0);
+    const ids=journal.items.map(item=>item.id);assets[0]=original;
+    await new runtime.CardsOnboarding(f.options).run();
+    assert.deepEqual(f.data().onboarding!.items.map(item=>item.id),ids);assert.equal(f.api.getSnapshot().entities.length,6);assert.equal(f.data().onboarding!.status,'complete');
+  }finally{assets[0]=original;f.api.destroy();}
 });
 
 test('an empty-root intent survives the first journal write failure and resumes after restart without replacing edited settings', async () => {
@@ -105,7 +205,7 @@ test('an empty-root intent survives the first journal write failure and resumes 
   api = new runtime.CardsStore(asApp(app), data.rootFolder); await api.initialize();
   assert.equal(api.getInitializationInfo().hadConfig, true);
   await new runtime.CardsOnboarding(options()).run();
-  assert.equal(data.onboarding?.status, 'complete'); assert.equal(api.getSnapshot().entities.length, 8);
+  assert.equal(data.onboarding?.status, 'complete'); assert.equal(api.getSnapshot().entities.length, 6);
   assert.deepEqual(api.getSnapshot().settings.bookCardAppearance, { material: 'foil', style: 'cover', imageFit: 'contain' }); api.destroy();
 });
 
@@ -143,7 +243,7 @@ test('partial import resumes stable IDs and preserves edited works, covers and s
   (f.app.vault.getAbstractFileByPath(first.cover) as Mock.TFile).contents = 'user cover bytes';
   await f.api.saveSettings({ threeCardView: false });
   f.api.saveStarterWork = save; await new runtime.CardsOnboarding(f.options).run();
-  assert.equal(f.api.getSnapshot().entities.length, 8); assert.deepEqual(f.data().onboarding!.items.map(item => item.id), plannedIds);
+  assert.equal(f.api.getSnapshot().entities.length, 6); assert.deepEqual(f.data().onboarding!.items.map(item => item.id), plannedIds);
   assert.equal(f.api.getSnapshot().entities.find(work => work.id === first.id)!.summary, '自己写的摘要'); assert.equal(f.api.getSnapshot().entities.find(work => work.id === first.id)!.title, '自己改过的作品'); assert.equal(f.app.vault.text(first.cover), 'user cover bytes'); assert.equal(f.api.getSnapshot().settings.threeCardView, false); f.api.destroy();
 });
 
@@ -153,7 +253,7 @@ test('failure saving progress after a note write does not duplicate or overwrite
   await assert.rejects(new runtime.CardsOnboarding(f.options).run(), /本地进度保存失败/);
   assert.equal(f.api.getSnapshot().entities.length, 1); const work = f.api.getSnapshot().entities[0];
   await f.api.patchWorkProperties(work.id, { summary: '中断后编辑' }, await f.api.readWorkProperties(work.id));
-  await new runtime.CardsOnboarding(f.options).run(); assert.equal(f.api.getSnapshot().entities.length, 8); assert.equal(f.api.getSnapshot().entities.find(item => item.id === work.id)!.summary, '中断后编辑'); f.api.destroy();
+  await new runtime.CardsOnboarding(f.options).run(); assert.equal(f.api.getSnapshot().entities.length, 6); assert.equal(f.api.getSnapshot().entities.find(item => item.id === work.id)!.summary, '中断后编辑'); f.api.destroy();
 });
 
 test('first-open success is recorded only after opening; edited guide survives retry and deletion never reseeds', async () => {
@@ -163,7 +263,7 @@ test('first-open success is recorded only after opening; edited guide survives r
   const guidePath = f.data().onboarding!.guidePath, guide = f.app.vault.getAbstractFileByPath(guidePath) as Mock.TFile; guide.contents += '\n用户说明\n';
   fail = false; await new runtime.CardsOnboarding(f.options).run(); assert.equal(f.data().onboarding!.helpOpened, true); assert.ok(guide.contents.endsWith('用户说明\n'));
   f.app.vault.files.delete(guidePath); const work = f.api.getSnapshot().entities[0]; await f.api.deleteWork(work.id);
-  const before = f.app.vault.dump(); await new runtime.CardsOnboarding(f.options).run(); assert.deepEqual(f.app.vault.dump(), before); assert.equal(f.api.getSnapshot().entities.length, 7); assert.equal(f.app.opened.length, 1); f.api.destroy();
+  const before = f.app.vault.dump(); await new runtime.CardsOnboarding(f.options).run(); assert.deepEqual(f.app.vault.dump(), before); assert.equal(f.api.getSnapshot().entities.length, 5); assert.equal(f.app.opened.length, 1); f.api.destroy();
 });
 
 test('an unrelated guide filename is preserved and the welcome page gets its own path', async () => {

@@ -3,6 +3,7 @@ import type { Book, CardRatio, Film, WorkCardAppearance } from './types';
 import { advanceCarousel, carouselIndex, carouselLimit, carouselOffset, carouselOpacity, carouselSlots, constrainPosition, type CarouselMotion } from './carousel-motion';
 import { cardGeometry, cardTransform } from './layouts/geometry';
 import { createScrollBend } from './layouts/scroll-bend';
+import { useOwnerWindow } from './owner-window';
 
 type Work = Book | Film;
 type Press = { id: number; x: number; y: number; position: number; moved: boolean; samples: { time: number; position: number }[] };
@@ -13,6 +14,8 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
   const [ratioWidth, ratioHeight] = ratio.split(':').map(Number);
   const heightFactor = ratioHeight / ratioWidth;
   const root = useRef<HTMLDivElement>(null);
+  const owner = useOwnerWindow(root);
+  const timerWindow = useRef<Window | undefined>(undefined);
   const cards = useRef(new Map<string, HTMLElement>());
   const worksRef = useRef(works);
   worksRef.current = works;
@@ -21,7 +24,7 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
   const openRef = useRef(open);
   openRef.current = open;
   const motion = useRef<CarouselMotion>({ position: 0, velocity: 0, target: null });
-  const interaction = useRef<{ press: Press | null; suppressClick: boolean; wheelTimer?: ReturnType<typeof setTimeout> }>({ press: null, suppressClick: false });
+  const interaction = useRef<{ press: Press | null; suppressClick: boolean; wheelTimer?: number }>({ press: null, suppressClick: false });
   const geometry = useRef(cardGeometry(800, heightFactor, layout, vertical));
   const canvas = useRef<HTMLCanvasElement>(null);
   const bend = useRef<ReturnType<typeof createScrollBend> | null>(null);
@@ -48,7 +51,7 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
     state.target = null;
     bend.current?.reset();
     interaction.current.press = null;
-    clearTimeout(interaction.current.wheelTimer);
+    timerWindow.current?.clearTimeout(interaction.current.wheelTimer);
     interaction.current.wheelTimer = undefined;
     if (worksRef.current.length) selectedId.current = worksRef.current[state.position].id;
     anchorRef.current = state.position;
@@ -58,10 +61,12 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
 
   useLayoutEffect(() => {
     const element = root.current;
-    if (!element) return;
+    if (!element || !owner) return;
+    timerWindow.current = owner;
+    const doc = element.ownerDocument;
     const state = motion.current;
     const input = interaction.current;
-    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const preference = owner.matchMedia('(prefers-reduced-motion: reduce)');
     reducedRef.current = preference.matches;
     let raf = 0;
     let last = 0;
@@ -75,7 +80,7 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
     };
     const paint = () => {
       const g = geometry.current;
-      const now = performance.now();
+      const now = (owner?.performance ?? performance).now();
       const progress = intro.current.start ? Math.min(1, (now - intro.current.start) / 520) : 1;
       const lift = 28 * Math.pow(1 - progress, 4);
       if (progress === 1) intro.current.start = 0;
@@ -94,7 +99,7 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
         node.style.transform = `translate(-50%, -50%) translate3d(${transform.x.toFixed(2)}px, ${(transform.y + lift).toFixed(2)}px, ${transform.z.toFixed(2)}px) rotateY(${transform.rotateY.toFixed(2)}deg) rotateZ(${transform.rotateZ.toFixed(2)}deg) scale(${transform.scale})`;
         node.style.opacity = String(opacity * (layout === 'coverflow-carousel' ? Math.max(0, 1 - distance * 0.1) : 1) * (0.8 + 0.2 * progress));
         node.style.visibility = shown ? 'visible' : 'hidden';
-        if (!shown && node.contains(document.activeElement)) element.focus({ preventScroll: true });
+        if (!shown && node.contains(doc.activeElement)) element.focus({ preventScroll: true });
         node.inert = !shown;
         node.setAttribute('aria-hidden', String(!shown));
         node.style.zIndex = String(100 - Math.round(distance * 10));
@@ -119,13 +124,13 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
       last = now;
       const busy = input.press?.moved || input.wheelTimer ? false : advanceCarousel(state, dt);
       const bending = paint();
-      if ((busy || bending || intro.current.start) && visible && !document.hidden) raf = requestAnimationFrame(frame);
+      if ((busy || bending || intro.current.start) && visible && !doc.hidden) raf = owner.requestAnimationFrame(frame);
       else last = 0;
     };
-    const wake = () => { if (!raf && visible && !document.hidden) raf = requestAnimationFrame(frame); };
+    const wake = () => { if (!raf && visible && !doc.hidden) raf = owner.requestAnimationFrame(frame); };
     wakeRef.current = wake;
     const focus = (position: number) => {
-      clearTimeout(input.wheelTimer);
+      timerWindow.current?.clearTimeout(input.wheelTimer);
       input.wheelTimer = undefined;
       intro.current.start = 0;
       state.target = constrainPosition(position, worksRef.current.length);
@@ -146,7 +151,7 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
     };
     const settle = () => {
       input.press = null;
-      clearTimeout(input.wheelTimer);
+      timerWindow.current?.clearTimeout(input.wheelTimer);
       input.wheelTimer = undefined;
       state.position = constrainPosition(Math.round(state.position), worksRef.current.length);
       state.velocity = 0;
@@ -167,15 +172,15 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
       state.position = constrainPosition(state.position + delta * scale / geometry.current.pitch, worksRef.current.length);
       state.target = null;
       state.velocity = 0;
-      clearTimeout(input.wheelTimer);
+      timerWindow.current?.clearTimeout(input.wheelTimer);
       // macOS already supplies trackpad momentum; adding another fling here doubles it.
-      input.wheelTimer = setTimeout(() => { input.wheelTimer = undefined; focus(Math.round(state.position)); }, 140);
+      input.wheelTimer = owner.setTimeout(() => { input.wheelTimer = undefined; focus(Math.round(state.position)); }, 140);
       paint();
       wake();
     };
     const onPreference = () => { reducedRef.current = preference.matches; if (preference.matches) settle(); };
     const onVisibility = () => {
-      if (document.hidden) { cancelAnimationFrame(raf); raf = 0; last = 0; settle(); }
+      if (doc.hidden) { owner.cancelAnimationFrame(raf); raf = 0; last = 0; settle(); }
       else wake();
     };
     const resize = new ResizeObserver(measure);
@@ -183,25 +188,25 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
     const intersection = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
       if (visible) {
-        if (!intro.current.seen) { intro.current.seen = true; if (!reducedRef.current) intro.current.start = performance.now(); }
+        if (!intro.current.seen) { intro.current.seen = true; if (!reducedRef.current) intro.current.start = (owner?.performance ?? performance).now(); }
         wake();
-      } else { cancelAnimationFrame(raf); raf = 0; last = 0; settle(); }
+      } else { owner.cancelAnimationFrame(raf); raf = 0; last = 0; settle(); }
     });
     intersection.observe(element);
     element.addEventListener('wheel', wheel, { passive: false });
-    document.addEventListener('visibilitychange', onVisibility);
+    doc.addEventListener('visibilitychange', onVisibility);
     preference.addEventListener('change', onPreference);
     if (layout === 'scroll-bend' && canvas.current) bend.current = createScrollBend(canvas.current, mode => { element.dataset.scrollRenderer = mode; paint(); }, wake);
     measure();
     return () => {
-      cancelAnimationFrame(raf);
-      clearTimeout(input.wheelTimer);
+      owner.cancelAnimationFrame(raf);
+      timerWindow.current?.clearTimeout(input.wheelTimer);
       input.wheelTimer = undefined;
       input.press = null;
       resize.disconnect();
       intersection.disconnect();
       element.removeEventListener('wheel', wheel);
-      document.removeEventListener('visibilitychange', onVisibility);
+      doc.removeEventListener('visibilitychange', onVisibility);
       preference.removeEventListener('change', onPreference);
       bend.current?.dispose();
       bend.current = null;
@@ -209,17 +214,18 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
       wakeRef.current = () => {};
       focusRef.current = () => {};
     };
-  }, [hasWorks, heightFactor, layout, vertical]);
+  }, [hasWorks, heightFactor, layout, vertical, owner]);
 
   useLayoutEffect(() => { paintRef.current(); });
   useLayoutEffect(() => {
     const id = flippedId ?? previousFlip.current;
     const node = id ? cards.current.get(id) : undefined;
+    const doc = root.current?.ownerDocument;
     // Front hover tilt can put the flipped face behind its article's hit-testing plane.
     node?.style.removeProperty('--bw-tilt-x');
     node?.style.removeProperty('--bw-tilt-y');
     if (flippedId) node?.querySelector<HTMLButtonElement>('.bw-card-back button')?.focus({ preventScroll: true });
-    else if (document.activeElement === document.body || node?.contains(document.activeElement)) node?.querySelector<HTMLButtonElement>('.bw-card-front > .bw-card-flip')?.focus({ preventScroll: true });
+    else if (doc && (doc.activeElement === doc.body || node?.contains(doc.activeElement))) node?.querySelector<HTMLButtonElement>('.bw-card-front > .bw-card-flip')?.focus({ preventScroll: true });
     previousFlip.current = flippedId;
   }, [flippedId]);
 
@@ -228,7 +234,7 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
     input.suppressClick = false;
     if ((event.target as Element).closest('textarea, input, select, [data-card-control]')) return;
     if (event.button !== 0 || !event.isPrimary || works.length < 2) return;
-    input.press = { id: event.pointerId, x: event.clientX, y: event.clientY, position: motion.current.position, moved: false, samples: [{ time: performance.now(), position: motion.current.position }] };
+    input.press = { id: event.pointerId, x: event.clientX, y: event.clientY, position: motion.current.position, moved: false, samples: [{ time: (owner?.performance ?? performance).now(), position: motion.current.position }] };
   };
   const pointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const input = interaction.current;
@@ -240,17 +246,17 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
       if (Math.abs(dy) > Math.abs(dx) * 1.2) { input.press = null; return; }
       press.moved = true;
       press.position = motion.current.position;
-      press.samples = [{ time: performance.now(), position: press.position }];
+      press.samples = [{ time: (owner?.performance ?? performance).now(), position: press.position }];
       intro.current.start = 0;
       motion.current.target = null;
       motion.current.velocity = 0;
-      clearTimeout(input.wheelTimer);
+      timerWindow.current?.clearTimeout(input.wheelTimer);
       input.wheelTimer = undefined;
       event.currentTarget.setPointerCapture(event.pointerId);
       event.currentTarget.setAttribute('data-dragging', '');
     }
     motion.current.position = constrainPosition(press.position - dx / geometry.current.pitch, works.length);
-    const now = performance.now();
+    const now = (owner?.performance ?? performance).now();
     press.samples.push({ time: now, position: motion.current.position });
     while (press.samples.length > 2 && now - press.samples[0].time > 110) press.samples.shift();
     paintRef.current();
@@ -267,7 +273,7 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
     input.suppressClick = true;
     const first = press.samples[0], last = press.samples[press.samples.length - 1];
     const span = (last.time - first.time) / 1000;
-    const velocity = !cancelled && !reducedRef.current && performance.now() - last.time < 110 && span > 0.008 ? Math.max(-12, Math.min(12, (last.position - first.position) / span)) : 0;
+    const velocity = !cancelled && !reducedRef.current && (owner?.performance ?? performance).now() - last.time < 110 && span > 0.008 ? Math.max(-12, Math.min(12, (last.position - first.position) / span)) : 0;
     motion.current.velocity = velocity;
     focusRef.current(Math.round(motion.current.position + velocity * 0.16));
   };

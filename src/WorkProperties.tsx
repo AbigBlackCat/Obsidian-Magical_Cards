@@ -4,7 +4,7 @@ import type { CardsAPI, CustomCardModule, WorkPropertyValues } from './types';
 import type { WorkPropertiesSession } from './WorkPropertiesSessions';
 import NotePicker from './NotePicker';
 
-export interface WorkPropertiesPanelAPI extends Pick<CardsAPI, 'subscribe' | 'coverUrl' | 'listNoteCandidates'> { getSnapshot(): { entities: Array<{id: string; type: string; moduleId?: string}>; settings: {customModules: CustomCardModule[]}; }; }
+export interface WorkPropertiesPanelAPI extends Pick<CardsAPI, 'subscribe' | 'coverUrl' | 'readCoverSvg' | 'listNoteCandidates'> { getSnapshot: () => { entities: Array<{id: string; type: string; moduleId?: string}>; settings: {customModules: CustomCardModule[]}; }; }
 
 export { WorkPropertiesManager } from './WorkPropertiesSessions';
 function Field({ label, children, wide = false }: { label: string; children: React.ReactNode; wide?: boolean }) { return <label className={`bw-property-field${wide ? ' is-wide' : ''}`}><span>{label}</span>{children}</label>; }
@@ -32,7 +32,7 @@ export function WorkPropertiesPanel({ api, session, onRawChange, onReady }: { ap
   if (!ready) return <section className="bw-work-properties" aria-label={informationTitle}>{state.loading && <p className="bw-properties-state" role="status">正在读取{informationTitle}…</p>}{error}</section>;
   const work = state.properties!, values = state.values!, book = work.kind === 'book';
   return <section className="bw-work-properties" aria-label={informationTitle} onBlur={event => {
-    if ((event.relatedTarget as Element | null)?.closest?.('[data-bw-discard]')) return;
+    if (event.relatedTarget?.closest?.('[data-bw-discard]')) return;
     flush();
   }} onKeyDown={event => {
     if (event.metaKey || event.ctrlKey) {
@@ -49,7 +49,7 @@ export function WorkPropertiesPanel({ api, session, onRawChange, onReady }: { ap
         <Field label={book ? '阅读状态' : '观看状态'}><select value={values.status} onChange={event => update({ status: event.target.value as WorkPropertyValues['status'] })}><option value="want">{book ? '想读' : '想看'}</option><option value={book ? 'reading' : 'watching'}>{book ? '在读' : '在看'}</option><option value="finished">{book ? '已读' : '已看'}</option></select></Field>
         {book ? <Field label="阅读进度（%）"><input type="number" min="0" max="100" step="1" value={values.progress ?? 0} onChange={event => update({ progress: Number(event.target.value) })}/></Field> : <><Field label="年份"><input {...composition} value={values.year ?? ''} onChange={event => update({ year: event.target.value })}/></Field><Field label="观看日期"><input type="date" value={values.date ?? ''} onChange={event => update({ date: event.target.value })}/></Field></>}
       </>}
-      <Field label={custom ? '图片链接' : '封面'} wide><div className="bw-properties-cover"><input {...composition} value={values.cover} aria-label={custom ? '图片链接' : '封面图片或 SVG 的 Markdown 链接'} placeholder={custom ? 'URL、Markdown 图片、Wiki 嵌入或库内路径' : undefined} onChange={event => update({ cover: event.target.value })}/>{values.cover && <><CoverImage key={coverRetry} className="bw-properties-cover-preview" src={api.coverUrl(values.cover, work.path)} title={values.title} alt="封面预览" showFailure={custom}/>{custom && <button type="button" onClick={() => setCoverRetry(value => value + 1)}>重试图片</button>}</>}</div></Field>
+      <Field label={custom ? '图片链接' : '封面'} wide><div className="bw-properties-cover"><input {...composition} value={values.cover} aria-label={custom ? '图片链接' : '封面图片或 SVG 的 Markdown 链接'} placeholder={custom ? 'URL、Markdown 图片、Wiki 嵌入或库内路径' : undefined} onChange={event => update({ cover: event.target.value })}/>{values.cover && <><CoverImage key={coverRetry} className="bw-properties-cover-preview" src={api.coverUrl(values.cover, work.path)} source={values.cover} sourcePath={work.path} readSvg={api.readCoverSvg} title={values.title} alt="封面预览" showFailure={custom}/>{custom && <button type="button" onClick={() => setCoverRetry(value => value + 1)}>重试图片</button>}</>}</div></Field>
       <Field label="摘要" wide><textarea {...composition} rows={3} maxLength={400} value={values.summary} onChange={event => update({ summary: event.target.value })}/></Field>
       {custom && <Field label="关联笔记" wide><NotePicker {...composition} api={api} value={values.linkedNote ?? ''} onChange={linkedNote => update({ linkedNote })}/></Field>}
     </div>

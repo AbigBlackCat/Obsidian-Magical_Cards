@@ -19,10 +19,10 @@ async function files(directory:string):Promise<string[]>{
   return (await Promise.all(entries.map(entry=>entry.isDirectory()?files(resolve(directory,entry.name)):Promise.resolve([resolve(directory,entry.name)])))).flat();
 }
 
-test('eight offline examples contain fresh demo identities and no personal summaries, source records or original paths',async()=>{
-  assert.equal(covers.length,8);assert.equal(new Set(covers.map(cover=>cover.id)).size,8);
-  assert.equal(covers.filter(cover=>cover.type==='book').length,5);assert.equal(covers.filter(cover=>cover.type==='film').length,3);
-  const noteFiles=(await files(resolve(vault,'示例'))).filter(file=>file.endsWith('.md')&&!file.includes('/_数据/'));assert.equal(noteFiles.length,8);
+test('six offline examples contain fresh demo identities and no personal summaries, source records or original paths',async()=>{
+  assert.equal(covers.length,6);assert.equal(new Set(covers.map(cover=>cover.id)).size,6);
+  assert.equal(covers.filter(cover=>cover.type==='book').length,3);assert.equal(covers.filter(cover=>cover.type==='film').length,3);
+  const noteFiles=(await files(resolve(vault,'示例'))).filter(file=>file.endsWith('.md')&&!file.includes('/_数据/'));assert.equal(noteFiles.length,6);
   for(const cover of covers){
     assert.match(cover.id,/^demo-(?:book|film)-[a-z]+$/);
     const text=await readFile(resolve(vault,'示例',cover.type==='book'?'书籍':'观影',`${cover.id}.md`),'utf8'),fields=frontmatter(text);
@@ -45,7 +45,7 @@ test('eight offline examples contain fresh demo identities and no personal summa
   }
 });
 
-test('all eight bundled cover bytes match recorded SHA-256 fingerprints and the animated SVG loads offline',async()=>{
+test('all six bundled cover bytes match recorded SHA-256 fingerprints and the animated SVG loads offline',async()=>{
   const assets=await readdir(resolve(vault,'示例/附件'));assert.deepEqual(assets.sort(),covers.map(cover=>cover.cover).sort());
   for(const cover of covers){
     const bytes=await readFile(resolve(vault,'示例/附件',cover.cover));assert.match(cover.sha256,/^[a-f0-9]{64}$/);

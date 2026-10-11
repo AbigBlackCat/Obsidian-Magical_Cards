@@ -16,11 +16,11 @@ export class WorkPropertiesSession {
   private composing = 0;
   private blocked = false;
   private disposed = false;
-  private timer?: ReturnType<typeof setTimeout>;
+  private timer?: number;
   private reading?: Promise<void>;
   private writing?: Promise<void>;
 
-  constructor(private api: PropertiesAPI, readonly id: string) { void this.refresh(); }
+  constructor(private api: PropertiesAPI, readonly id: string, private timerWindow?: Window) { void this.refresh(); }
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private emit(patch: Partial<WorkPropertiesState>) { this.state = { ...this.state, ...patch }; if (!this.disposed) for (const listener of [...this.listeners]) listener(); }
@@ -32,9 +32,10 @@ export class WorkPropertiesSession {
     return patch;
   }
   private schedule() {
-    clearTimeout(this.timer);
-    if (!this.disposed && !this.composing && !this.blocked && this.state.dirty) this.timer = setTimeout(() => { void this.flush().catch(() => {}); }, 500);
+    this.clearTimer();
+    if (!this.disposed && !this.composing && !this.blocked && this.state.dirty) this.timer = (this.timerWindow ?? window).setTimeout(() => { this.timer = undefined; void this.flush().catch(() => {}); }, 500);
   }
+  private clearTimer() { if (this.timer !== undefined) { (this.timerWindow ?? window).clearTimeout(this.timer); this.timer = undefined; } }
   update(patch: Partial<WorkPropertyValues>) {
     if (this.disposed || !this.state.values) return;
     const values = { ...this.state.values };
@@ -49,7 +50,7 @@ export class WorkPropertiesSession {
     this.emit({ dirty: keys(this.patch()).length > 0 });
     this.schedule();
   }
-  startComposition() { this.composing++; clearTimeout(this.timer); }
+  startComposition() { this.composing++; this.clearTimer(); }
   endComposition() { this.composing = Math.max(0, this.composing - 1); this.schedule(); }
 
   refresh = (): Promise<void> => {
@@ -80,7 +81,7 @@ export class WorkPropertiesSession {
   };
 
   flush = (): Promise<void> => {
-    clearTimeout(this.timer);
+    this.clearTimer();
     if (this.writing) return this.writing;
     if (this.disposed) return Promise.resolve();
     const write = async () => {
@@ -90,7 +91,7 @@ export class WorkPropertiesSession {
       let attempted: Field[] = [], attemptedVersions = new Map<Field, number>();
       try {
         for (let patch = this.patch(); keys(patch).length; patch = this.patch()) {
-          const expected = clone(this.state.properties!), versions = new Map(this.versions);
+          const expected = clone(this.state.properties), versions = new Map(this.versions);
           attempted = keys(patch); attemptedVersions = versions;
           this.epoch++;
           this.emit({ saving: true, error: '' });
@@ -116,23 +117,23 @@ export class WorkPropertiesSession {
 
   reload = async () => {
     if (this.writing) return;
-    clearTimeout(this.timer);
+    this.clearTimer();
     this.blocked = false;
     this.versions.clear();
     this.retained.clear();
     this.emit({ properties: null, values: null, loading: true, dirty: false, error: '' });
     await this.refresh();
   };
-  dispose() { this.disposed = true; clearTimeout(this.timer); this.listeners.clear(); }
+  dispose() { this.disposed = true; this.clearTimer(); this.listeners.clear(); }
 }
 
 export class WorkPropertiesManager {
   private sessions = new Map<string, WorkPropertiesSession>();
   private unsubscribe: () => void;
-  constructor(private api: PropertiesAPI) { this.unsubscribe = api.subscribe(() => { for (const session of this.sessions.values()) void session.refresh(); }); }
+  constructor(private api: PropertiesAPI, private timerWindow?: Window) { this.unsubscribe = api.subscribe(() => { for (const session of this.sessions.values()) void session.refresh(); }); }
   getSession(id: string) {
     let session = this.sessions.get(id);
-    if (!session) { session = new WorkPropertiesSession(this.api, id); this.sessions.set(id, session); }
+    if (!session) { session = new WorkPropertiesSession(this.api, id, this.timerWindow); this.sessions.set(id, session); }
     return session;
   }
   flush(id: string) { return this.sessions.get(id)?.flush() ?? Promise.resolve(); }

@@ -1,6 +1,11 @@
 import { parse, stringify } from 'yaml';
 import { posix } from 'node:path';
 
+if (typeof window === 'undefined') Object.defineProperty(globalThis, 'window', { configurable: true, value: globalThis });
+// A mock main window owns lifecycle frames without executing DOM-dependent host updates.
+if (typeof requestAnimationFrame === 'undefined') Object.defineProperty(globalThis, 'requestAnimationFrame', { configurable: true, value: () => 1 });
+if (typeof cancelAnimationFrame === 'undefined') Object.defineProperty(globalThis, 'cancelAnimationFrame', { configurable: true, value: () => {} });
+
 export function normalizePath(path: string): string {
   return path.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\.\//, '').replace(/\/$/, '');
 }
@@ -62,7 +67,7 @@ export class App {
   markdownViews: Array<{ file: TFile; getViewData(): string; save(clear?: boolean): Promise<void> }> = [];
   secretStorage = { getSecret: (id: string) => this.secrets.get(id) ?? null, setSecret: (id: string, value: string) => this.secrets.set(id, value) };
   layoutReadyCallbacks:Array<()=>void>=[];
-  workspace = { layoutReady:true, onLayoutReady:(callback:()=>void)=>{if(this.workspace.layoutReady)callback();else this.layoutReadyCallbacks.push(callback);}, on: (..._args: any[]) => ({ e: { offref() {} } }), trigger: (..._args: any[]) => {}, getLeavesOfType: (type: string) => type === 'markdown' ? this.markdownViews.map(view => ({ view })) : [], getLeaf: (_kind?: unknown) => ({ openFile: async (file: TFile, options?: unknown) => { this.opened.push(file.path); this.openedStates.push(options); } }) };
+  workspace = { containerEl: { win: globalThis as unknown as Window, ownerDocument: { get defaultView() { return window; } } }, layoutReady:true, onLayoutReady:(callback:()=>void)=>{if(this.workspace.layoutReady)callback();else this.layoutReadyCallbacks.push(callback);}, on: (..._args: any[]) => ({ e: { offref() {} } }), trigger: (..._args: any[]) => {}, getLeavesOfType: (type: string) => type === 'markdown' ? this.markdownViews.map(view => ({ view })) : [], getLeaf: (_kind?: unknown) => ({ openFile: async (file: TFile, options?: unknown) => { this.opened.push(file.path); this.openedStates.push(options); } }) };
   metadataCache = { getFirstLinkpathDest: (target: string, sourcePath: string) => {
     const exact = this.vault.getAbstractFileByPath(target);
     if (exact instanceof TFile) return exact;
@@ -84,7 +89,7 @@ export class App {
 }
 
 export interface RequestOptions { url: string; method?: string; headers?: Record<string, string>; body?: string; throw?: boolean; }
-export interface Response { status: number; json: unknown; }
+export interface Response { status: number; json: unknown; text?: string; }
 export type RequestHandler = (options: RequestOptions) => Promise<Response>;
 let requestHandler: RequestHandler = async () => { throw new Error('Tests must configure network responses'); };
 export function setRequestHandler(handler: RequestHandler) { requestHandler = handler; }

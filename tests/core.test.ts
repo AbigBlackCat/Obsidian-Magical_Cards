@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import { readFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
 import { createWork } from '../src/domain';
 import { cardsSourceBlocks, parseCardsEmbed } from '../src/embed-source';
 import type { App as ObsidianApp } from 'obsidian';
@@ -46,6 +47,12 @@ const legacyBundle = await build({ stdin: { contents: legacySource.replace(', ca
 const legacyModule = { exports: {} }, require = createRequire(import.meta.url);
 new Function('require', 'module', 'exports', legacyBundle.outputFiles[0].text)((name: string) => name === 'obsidian' ? runtime : name === 'react-dom/client' ? { createRoot: runtime.createRoot } : require(name), legacyModule, legacyModule.exports);
 const legacyRuntime = legacyModule.exports as Pick<typeof runtime, 'acquireCards'>;
+const popoutBundle = await build({ stdin: { contents: currentSource, resolveDir: resolve(directory, '../src'), loader: 'ts' }, bundle: true, platform: 'node', format: 'cjs', write: false, external: ['obsidian', 'react', 'react-dom/client'] });
+function popoutRuntime() {
+  const module = { exports: {} }, globals = { module, exports: module.exports, require: (name: string) => name === 'obsidian' ? runtime : name === 'react-dom/client' ? { createRoot: runtime.createRoot } : require(name), window: { requestAnimationFrame: () => 2, cancelAnimationFrame() {} } };
+  runInNewContext(popoutBundle.outputFiles[0].text, globals);
+  return { api: module.exports as Pick<typeof runtime, 'acquireCards'>, globals };
+}
 type CardsProcessor = (source: string, element: HTMLElement, context: { sourcePath: string; addChild(child: Mock.MarkdownRenderChild): void }) => void;
 function mountEmbed(language: string, source: string, path: string) {
   const processor = runtime.Plugin.languages.get(language) as CardsProcessor;
@@ -124,6 +131,29 @@ test('two plugin leases share migration, queue and sessions, and either can rele
   } finally { if (previous) Object.defineProperty(globalThis, 'window', previous); else Reflect.deleteProperty(globalThis, 'window'); }
 });
 
+test('bundles evaluated in main and popout realms share the fixed main-window runtime in either load order', async () => {
+  for (const mainFirst of [true, false]) {
+    const app = new runtime.App(), popout = popoutRuntime(), constructions = runtime.Plugin.constructions;
+    const first = await (mainFirst ? runtime : popout.api).acquireCards(asApp(app), '工作台', '.obsidian/plugins/first');
+    let second: import('../src/runtime').CardsLease | undefined;
+    try {
+      const work = createWork('film'); await first.api.save(work);
+      const session = first.propertiesManager.getSession(work.id); await session.refresh(); session.startComposition(); session.update({ summary: '不同窗口之间保留的草稿' });
+      Reflect.deleteProperty(first.api, 'readCoverSvg');
+      second = await (mainFirst ? popout.api : runtime).acquireCards(asApp(app), '工作台/', '.obsidian/plugins/second');
+      assert.equal(first.api, second.api); assert.equal(first.propertiesManager, second.propertiesManager); assert.equal(second.propertiesManager.getSession(work.id), session);
+      assert.equal(runtime.Plugin.constructions, constructions + 1); assert.equal(runtime.Plugin.languages.size, 3);
+      assert.equal(Reflect.get(popout.globals, Symbol.for('barry-cards.runtime.v1')), undefined);
+      assert.equal(Reflect.get(popout.globals.window, Symbol.for('barry-cards.runtime.v1')), undefined);
+      await app.vault.create('工作台/封面.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>');
+      assert.equal(await second.api.readCoverSvg!('工作台/封面.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+      await first.release(); assert.equal(session.getSnapshot().dirty, true); assert.equal(runtime.Plugin.languages.size, 3);
+      await second.propertiesManager.flush(work.id); assert.equal(second.api.getSnapshot().entities[0].summary, '不同窗口之间保留的草稿');
+      await second.release(); assert.equal(runtime.Plugin.languages.size, 0);
+    } finally { await first.release(); await second?.release(); }
+  }
+});
+
 test('old and new bundles load in either order without replacing roots, sessions, draft maps or the registrar', async () => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'window'); Object.defineProperty(globalThis, 'window', { configurable: true, value: { requestAnimationFrame: () => 1, cancelAnimationFrame() {} } });
   try {
@@ -137,6 +167,7 @@ test('old and new bundles load in either order without replacing roots, sessions
           // A deployed old Store lacks newer onboarding methods as well as the language marker.
           Reflect.deleteProperty(first.api, 'getInitializationInfo');
           Reflect.deleteProperty(first.api, 'saveStarterWork');
+          Reflect.deleteProperty(first.api, 'readCoverSvg');
         }
         const source = 'id: shared-draft\nmodules:\n  - id: books\n    collection: book\n  - id: films\n    collection: film';
         const oldProcessor = runtime.Plugin.languages.get('barry-cards');
@@ -149,6 +180,7 @@ test('old and new bundles load in either order without replacing roots, sessions
         if (oldFirst) { assert.equal(registry.get(asApp(app))?.registered, true); assert.equal(registry.get(asApp(app))?.cardLanguages, undefined); assert.equal(runtime.Plugin.languages.size, 2); }
         second = await secondBundle.acquireCards(asApp(app), '工作台/', '.obsidian/plugins/second');
         assert.equal(second.api, first.api); assert.equal(second.propertiesManager, first.propertiesManager);
+        assert.equal(typeof second.api.readCoverSvg, 'function');
         if (oldFirst) { assert.equal(typeof second.api.getInitializationInfo, 'undefined'); assert.equal(typeof second.api.saveStarterWork, 'undefined'); }
         assert.equal(runtime.Plugin.constructions, constructions + 1); assert.equal(runtime.Plugin.languages.size, 3);
         assert.equal(runtime.Plugin.languages.get('barry-cards'), oldProcessor);

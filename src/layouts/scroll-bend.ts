@@ -91,13 +91,15 @@ export function createScrollBend(canvas: HTMLCanvasElement, changed: (mode: 'web
     const max = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number, ratio = geometry.cardWidth / geometry.cardHeight;
     const pixels = geometry.cardWidth * Math.min(canvas.ownerDocument.defaultView?.devicePixelRatio || 1, 2);
     const cellWidth = Math.max(1, Math.floor(Math.min(768, pixels, max / 3, max * ratio / 3))), cellHeight = Math.max(1, Math.floor(cellWidth / ratio));
-    const atlas = canvas.ownerDocument.createElement('canvas');
+    const atlas = canvas.cloneNode(false) as HTMLCanvasElement;
     atlas.width = cellWidth * 3; atlas.height = cellHeight * 3;
     const context = atlas.getContext('2d');
     if (!context) throw new Error('Canvas unavailable');
+    const owner = canvas.ownerDocument.defaultView;
+    if (!owner) throw new Error('Canvas window unavailable');
     tiles.forEach((tile, index) => {
       if (!tile?.node) return;
-      const style = getComputedStyle(tile.node), coverStyle = tile.node.closest('[data-card-style]')?.getAttribute('data-card-style') === 'cover';
+      const style = owner.getComputedStyle(tile.node), coverStyle = tile.node.closest('[data-card-style]')?.getAttribute('data-card-style') === 'cover';
       const image = tile.node.querySelector<HTMLImageElement>('.bw-card-front img');
       const region = tile.node.querySelector<HTMLElement>('.bw-paper-image'), copy = tile.node.querySelector<HTMLElement>('.bw-paper-copy');
       const titleElement = copy?.querySelector<HTMLElement>('h3'), summaryElement = copy?.querySelector<HTMLElement>('p');
@@ -107,7 +109,7 @@ export function createScrollBend(canvas: HTMLCanvasElement, changed: (mode: 'web
       context.fillStyle = surface; context.fillRect(0, 0, cellWidth, cellHeight);
       const imageHeight = coverStyle ? cellHeight : region?.offsetHeight ? cellHeight * region.offsetHeight / geometry.cardHeight : cellHeight * 0.58;
       if (image?.complete && image.naturalWidth > 0) {
-        const contain = getComputedStyle(image).objectFit === 'contain';
+        const contain = owner.getComputedStyle(image).objectFit === 'contain';
         const factor = (contain ? Math.min : Math.max)(cellWidth / image.naturalWidth, imageHeight / image.naturalHeight);
         const width = image.naturalWidth * factor, height = image.naturalHeight * factor;
         context.save(); context.beginPath(); context.rect(0, 0, cellWidth, imageHeight); context.clip();
@@ -126,7 +128,7 @@ export function createScrollBend(canvas: HTMLCanvasElement, changed: (mode: 'web
         foil.addColorStop(0, 'rgba(211,245,249,.16)'); foil.addColorStop(.4, 'transparent'); foil.addColorStop(.65, 'rgba(215,172,205,.10)'); foil.addColorStop(1, 'rgba(170,223,206,.07)');
         context.fillStyle = foil; context.fillRect(0, 0, cellWidth, cellHeight);
       }
-      const titleStyle = titleElement ? getComputedStyle(titleElement) : null, summaryStyle = summaryElement ? getComputedStyle(summaryElement) : null, copyStyle = copy ? getComputedStyle(copy) : null;
+      const titleStyle = titleElement ? owner.getComputedStyle(titleElement) : null, summaryStyle = summaryElement ? owner.getComputedStyle(summaryElement) : null, copyStyle = copy ? owner.getComputedStyle(copy) : null;
       const titleSize = parseFloat(titleStyle?.fontSize ?? '') || 22, titleLineHeight = parseFloat(titleStyle?.lineHeight ?? '') || titleSize * 1.35;
       const inset = (parseFloat(copyStyle?.paddingLeft ?? '') || 23) * scale;
       const titleY = coverStyle ? Math.max(imageHeight * 0.68, cellHeight - 118 * scale) : imageHeight + ((parseFloat(copyStyle?.paddingTop ?? '') || 19) + titleSize) * scale;
@@ -168,7 +170,7 @@ export function createScrollBend(canvas: HTMLCanvasElement, changed: (mode: 'web
       const resolution = Math.min(canvas.ownerDocument.defaultView?.devicePixelRatio || 1, 2);
       const images = frame.tiles.flatMap(tile => { const image = tile?.node?.querySelector<HTMLImageElement>('.bw-card-front img'); return image ? [image] : []; });
       watchImages(images);
-      const key = `${g.cardWidth}:${g.cardHeight}:${resolution}:${frame.tiles.map(tile => tile ? `${tile.id}:${tile.title}:${tile.summary}:${tile.node?.textContent}:${tile.node?.querySelector('.bw-paper-copy h3')?.getAttribute('style')}:${tile.node?.querySelector('.bw-paper-copy p')?.getAttribute('style')}:${tile.node?.closest('[data-material]')?.getAttribute('data-material')}:${tile.node?.closest('[data-card-style]')?.getAttribute('data-card-style')}` : '').join('|')}:${images.map(image => `${image.currentSrc || image.src}:${image.complete}:${image.naturalWidth}:${getComputedStyle(image).objectFit}`).join('|')}`;
+      const key = `${g.cardWidth}:${g.cardHeight}:${resolution}:${frame.tiles.map(tile => tile ? `${tile.id}:${tile.title}:${tile.summary}:${tile.node?.textContent}:${tile.node?.querySelector('.bw-paper-copy h3')?.getAttribute('style')}:${tile.node?.querySelector('.bw-paper-copy p')?.getAttribute('style')}:${tile.node?.closest('[data-material]')?.getAttribute('data-material')}:${tile.node?.closest('[data-card-style]')?.getAttribute('data-card-style')}` : '').join('|')}:${images.map(image => `${image.currentSrc || image.src}:${image.complete}:${image.naturalWidth}:${canvas.ownerDocument.defaultView!.getComputedStyle(image).objectFit}`).join('|')}`;
       if (key !== atlasKey) { rebuild(frame.tiles, g); atlasKey = key; }
       const height = canvas.clientHeight || g.cardHeight + 64;
       const widthPixels = Math.max(1, Math.round(g.width * resolution)), heightPixels = Math.max(1, Math.round(height * resolution));

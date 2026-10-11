@@ -86,7 +86,7 @@ test('external changes to the edited module block overwrites while other module 
 
 class Element extends EventTarget {
   children:Element[]=[];parentElement:Element|null=null;dataset:Record<string,string>={};attributes=new Map<string,string>();
-  textContent='';className='';open=false;hidden=false;disabled=false;readOnly=false;rows=0;value='';checked=false;connected=false;
+  textContent='';className='';open=false;hidden=false;disabled=false;readOnly=false;rows=0;value='';checked=false;connected=false;scrolls=0;
   control?:Control;
   constructor(public tagName:string,public ownerDocument:DocumentStub){super();}
   get isConnected():boolean{return this.connected||!!this.parentElement?.isConnected;}
@@ -95,17 +95,30 @@ class Element extends EventTarget {
   remove(){if(this.parentElement)this.parentElement.children=this.parentElement.children.filter(child=>child!==this);this.parentElement=null;}
   replaceChildren(...nodes:Element[]){for(const child of [...this.children])child.remove();this.append(...nodes);}
   setAttribute(name:string,value:string){this.attributes.set(name,value);}
+  get classList(){return {contains:(name:string)=>this.className.split(' ').includes(name),add:(name:string)=>{this.className+=' '+name;this.ownerDocument.mutate(this);}};}
+  contains(node:Element){return node===this||this.all().includes(node);}
+  closest(tag:string):Element|null{for(let el:Element|null=this;el;el=el.parentElement)if(el.tagName===tag.toUpperCase())return el;return null;}
+  createEl(tag:string,attributes?:{cls?:string}){const child=this.ownerDocument.createElement(tag);if(attributes?.cls)child.className=attributes.cls;this.append(child);return child;}
+  createDiv(attributes?:{cls?:string}){return this.createEl('div',attributes);}
+  scrollIntoView(){this.scrolls++;}
   focus(){this.ownerDocument.activeElement=this;}
   select(){}
   querySelector(selector:string):Element|null{
     const match=selector.match(/^\[data-card-collection="([^"]+)"\]$/);
-    return this.all().find(element=>match&&element.dataset.cardCollection===match[1])??null;
+    return this.all().find(element=>match?element.dataset.cardCollection===match[1]:selector.split(',').some(tag=>element.tagName===tag.toUpperCase()))??null;
   }
   all():Element[]{return this.children.flatMap(child=>[child,...child.all()]);}
 }
 class DocumentStub extends EventTarget {
   hidden=false;activeElement:Element|null=null;clipboard='';
-  defaultView={navigator:{clipboard:{writeText:async(value:string)=>{this.clipboard=value;}}}};
+  observers=new Map<Element,()=>void>();
+  defaultView={navigator:{clipboard:{writeText:async(value:string)=>{this.clipboard=value;}}},MutationObserver:class {
+    element?:Element;
+    constructor(private callback:()=>void){}
+    observe(element:Element){this.element=element;element.ownerDocument.observers.set(element,this.callback);}
+    disconnect(){if(this.element)this.element.ownerDocument.observers.delete(this.element);}
+  }};
+  mutate(element:Element){this.observers.get(element)?.();}
   createElement(tag:string){return new Element(tag.toUpperCase(),this);}
 }
 class Control {
@@ -134,18 +147,25 @@ class SettingStub {
   addToggle(callback:(control:Control)=>unknown){return this.add('input',callback);}
   addButton(callback:(control:Control)=>unknown){return this.add('button',callback);}
 }
+class SettingTabStub {
+  containerEl!:Element;updates=0;domRefreshes=0;
+  constructor(_app:unknown,_plugin:unknown){}
+  update(){this.updates++;}
+  refreshDomState(){this.domRefreshes++;}
+}
 const directory=dirname(fileURLToPath(import.meta.url));
-const uiBundle=await build({stdin:{contents:"export {addCardsSettings} from '../src/settings-tab';export {renderedRoots} from 'react-dom/client';",resolveDir:directory,loader:'ts'},bundle:true,platform:'node',format:'cjs',write:false,external:['react'],plugins:[{
+const uiBundle=await build({stdin:{contents:"export {addCardsSettings,CardsSettingsController} from '../src/settings-tab';export {CardsSettingsTab,default as MagicalCardsPlugin} from '../src/main';export {renderedRoots} from 'react-dom/client';",resolveDir:directory,loader:'ts'},bundle:true,platform:'node',format:'cjs',write:false,external:['react'],plugins:[{
   name:'settings-platform',setup(builder){
     builder.onResolve({filter:/^obsidian$/},()=>({path:'platform',namespace:'settings-platform'}));
-    builder.onLoad({filter:/.*/,namespace:'settings-platform'},()=>({contents:`export * from ${JSON.stringify(resolve(directory,'obsidian-mock.ts'))};export const Setting=globalThis.__settingsSetting;export class Modal {}`,resolveDir:directory,loader:'js'}));
+    builder.onLoad({filter:/.*/,namespace:'settings-platform'},()=>({contents:`export * from ${JSON.stringify(resolve(directory,'obsidian-mock.ts'))};export const Setting=globalThis.__settingsSetting;export const PluginSettingTab=globalThis.__settingsTab;export const Platform={isDesktopApp:true};export const requireApiVersion=()=>Boolean(globalThis.__settingsModern);export class ItemView {} export class Modal {}`,resolveDir:directory,loader:'js'}));
     builder.onResolve({filter:/^react-dom\/client$/},()=>({path:'client',namespace:'settings-roots'}));
     builder.onLoad({filter:/.*/,namespace:'settings-roots'},()=>({contents:'export const renderedRoots=[];export function createRoot(){const root={element:null,unmounted:false,render(element){this.element=element;},unmount(){this.unmounted=true;}};renderedRoots.push(root);return root;}',loader:'js'}));
   },
 }]});
 (globalThis as any).__settingsSetting=SettingStub;
+(globalThis as any).__settingsTab=SettingTabStub;
 const bundledModule={exports:{}};new Function('require','module','exports',uiBundle.outputFiles[0].text)(createRequire(import.meta.url),bundledModule,bundledModule.exports);
-const ui=bundledModule.exports as {addCardsSettings:typeof import('../src/settings-tab').addCardsSettings;renderedRoots:Array<{element:{props:{draft:import('../src/settings').CardModuleDraft}};unmounted:boolean}>};
+const ui=bundledModule.exports as {addCardsSettings:typeof import('../src/settings-tab').addCardsSettings;CardsSettingsController:typeof import('../src/settings-controller').CardsSettingsController;CardsSettingsTab:typeof import('../src/main').CardsSettingsTab;MagicalCardsPlugin:typeof import('../src/main').default;renderedRoots:Array<{element:{props:{draft:import('../src/settings').CardModuleDraft}};unmounted:boolean}>};
 const button=(element:Element,text:string)=>element.all().find(child=>child.tagName==='BUTTON'&&child.textContent===text)!.control!;
 const row=(element:Element,name:string)=>element.all().find(child=>child.dataset.settingName===name)!;
 
@@ -157,7 +177,7 @@ test('settings groups preserve requested order and mount previews only while ope
   const add=el.all().find(child=>child.dataset.settingsGroup==='add-module')!;
   assert.equal(examples.open,false);assert.equal(reading.open,true);assert.equal(ui.renderedRoots.length,start);
   assert.deepEqual(reading.all().filter(child=>child.dataset.settingName?.match(/^\d\./)).map(child=>child.dataset.settingName),['1. 卡片样式','2. 显示方式','3. 卡片材质','4. 比例','5. 动效布局']);
-  assert.equal(el.children[el.children.indexOf(add)-1].dataset.settingName,'仅显示三张卡片');assert.ok(el.children[el.children.indexOf(add)-1].dataset.description.includes('全部作品'));
+  const previous=el.children[el.children.indexOf(add.parentElement!)-1];assert.equal(previous.all()[0].dataset.settingName,'仅显示三张卡片');assert.ok(previous.all()[0].dataset.description.includes('全部作品'));
   examples.open=true;examples.dispatchEvent(new Event('toggle'));assert.equal(ui.renderedRoots.length,start+2);
   await row(reading,'5. 动效布局').children[0].control!.choose('scroll-bend');assert.equal(row(reading,'画廊方向').hidden,false);
   assert.equal(ui.renderedRoots[start].element.props.draft.appearance.layout,'scroll-bend');assert.equal(api.getSnapshot().settings.bookCardAppearance.layout,'cylinder');
@@ -198,4 +218,78 @@ test('an external module change preserves dirty settings controls and blocks sav
     await row(reading,'4. 比例').children[0].control!.choose('1:1');await button(reading,'保存并收起').click!();
     assert.equal(reading.open,false);assert.equal(api.getSnapshot().settings.bookCardAppearance.ratio,'1:1');assert.equal(api.getSnapshot().settings.bookCardAppearance.material,'foil');
   }finally{cleanup();}
+});
+
+/** Exercise the host's declared rows, then its post-render child ordering, rather than the fallback renderer. */
+async function renderDeclared(controller:InstanceType<typeof ui.CardsSettingsController>,el:Element,oldCleanup:Array<()=>void>=[]) {
+  for(const cleanup of oldCleanup)cleanup();el.replaceChildren();const cleanup:Array<()=>void>=[];
+  for(const definition of controller.getDefinitions()){
+    const list=el.createDiv(),rows='type' in definition?definition.items:[definition],nativeRows:Element[]=[];
+    for(const definition of rows){
+      const setting=new SettingStub(list);nativeRows.push(setting.settingEl);
+      const dispose=definition.render(setting as unknown as import('obsidian').Setting,{listEl:list as unknown as HTMLElement});if(dispose)cleanup.push(dispose);
+    }
+    list.replaceChildren(...nativeRows);
+  }
+  await Promise.resolve();return cleanup;
+}
+
+test('modern definitions index real scoped fields without mounting any preview during search indexing',async()=>{
+  const {api,listeners}=fixture(freshCardsSettings()),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const start=ui.renderedRoots.length,controller=new ui.CardsSettingsController(api,{} as WorkPropertiesManager,{directory:{get:()=> '卡片库',apply:async()=>{}}});
+  const defs=controller.getDefinitions(),rows=defs.flatMap(def=>'type' in def?def.items:[def]);
+  assert.equal(rows[0].name,'卡片目录');assert.ok(rows.every(def=>typeof def.render==='function'));
+  assert.ok(rows.some(def=>def.name==='阅读 · 2. 显示方式'&&def.aliases?.includes('贴满卡片')));
+  assert.ok(rows.some(def=>def.name==='影视 · 5. 动效布局'&&def.aliases?.includes('滚动弯曲画廊')));
+  const direction=rows.find(def=>def.name==='阅读 · 画廊方向')!;assert.equal(typeof direction.visible==='function'&&direction.visible(),false);
+  assert.equal(ui.renderedRoots.length,start);assert.equal(doc.observers.size,0);
+  const cleanup=await renderDeclared(controller,el),examples=el.all().find(child=>child.dataset.settingsGroup==='examples')!;
+  const reading=el.all().find(child=>child.dataset.cardCollection==='book')!,target=row(reading,'2. 显示方式');
+  assert.equal(examples.open,false);assert.equal(ui.renderedRoots.length,start);
+  target.classList.add('is-flashing');
+  assert.equal(examples.open,true);assert.equal(reading.open,true);assert.equal(target.scrolls,1);assert.equal(doc.activeElement,target.children[0]);assert.equal(ui.renderedRoots.length,start+2);
+  for(const dispose of cleanup)dispose();controller.hide();assert.ok(ui.renderedRoots.slice(start).every(root=>root.unmounted));assert.equal(doc.observers.size,0);
+  controller.dispose();assert.equal(listeners.size,0);
+});
+
+test('modern row updates retain failed draft and reveal state, commit choices once, and release roots',async()=>{
+  const {api,patches,fail}=fixture(freshCardsSettings()),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const controller=new ui.CardsSettingsController(api);let cleanup=await renderDeclared(controller,el);
+  try{
+    let reading=el.all().find(child=>child.dataset.cardCollection==='book')!;row(reading,'1. 卡片样式').classList.add('is-flashing');
+    await row(reading,'1. 卡片样式').children[0].control!.choose('minimal');await row(reading,'4. 比例').children[0].control!.choose('4:3');
+    fail('磁盘暂不可写');await button(reading,'保存并收起').click!();assert.equal(reading.open,true);assert.equal(patches.length,1);
+    cleanup=await renderDeclared(controller,el,cleanup);reading=el.all().find(child=>child.dataset.cardCollection==='book')!;
+    assert.equal(el.all().find(child=>child.dataset.settingsGroup==='examples')!.open,true);assert.equal(reading.open,true);
+    assert.equal(row(reading,'1. 卡片样式').children[0].value,'minimal');assert.equal(row(reading,'4. 比例').children[0].value,'4:3');
+    assert.ok(reading.all().some(child=>child.attributes.get('role')==='alert'&&child.textContent==='磁盘暂不可写'&&!child.hidden));
+    await button(reading,'保存并收起').click!();assert.equal(reading.open,false);assert.equal(patches.length,2);
+    assert.equal(api.getSnapshot().settings.bookCardAppearance.style,'minimal');assert.equal(api.getSnapshot().settings.bookCardAppearance.ratio,'4:3');
+  }finally{for(const dispose of cleanup)dispose();controller.dispose();}
+  assert.equal(doc.observers.size,0);
+});
+
+test('1.11.4 tab fallback renders the same rows without runtime SettingGroup and uses only version-supported refresh APIs',async()=>{
+  const {api,listeners}=fixture(freshCardsSettings()),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const plugin={app:{},rootFolder:'卡片库',cardsLease:{api},changeRoot:async(folder:string)=>{plugin.rootFolder=folder;}} as unknown as import('../src/main').default;
+  const tab=new ui.CardsSettingsTab(plugin);tab.containerEl=el as unknown as HTMLElement;
+  const observed=tab as unknown as SettingTabStub;
+  try{
+    (globalThis as any).__settingsModern=false;tab.display();
+    assert.equal(row(el,'卡片目录').children[0].value,'卡片库');assert.ok(el.all().some(child=>child.dataset.settingsGroup==='examples'));
+    await row(el,'卡片目录').children[0].control!.choose('收藏库');await button(el,'应用').click!();
+    assert.equal(plugin.rootFolder,'收藏库');assert.equal(row(el,'卡片目录').children[0].value,'收藏库');assert.equal(observed.updates,0);
+    (globalThis as any).__settingsModern=true;await row(el,'卡片目录').children[0].control!.choose('影像库');await button(el,'应用').click!();
+    assert.equal(observed.updates,1);assert.ok(tab.getSettingDefinitions().length>0);
+  }finally{tab.dispose();delete (globalThis as any).__settingsModern;}
+  assert.equal(listeners.size,0);assert.equal(doc.observers.size,0);
+});
+
+test('plugin unload disposes cards UI and releases its lease without detaching or replacing the open leaf',()=>{
+  let detached=0,disposed=0,released=0;
+  const state={type:'barry-cards',pinned:true,position:{parent:'right',index:2}},leaf={state,detach(){detached++;}};
+  const app={workspace:{getLeavesOfType:()=>[leaf]}};
+  const plugin=new ui.MagicalCardsPlugin(app as unknown as import('obsidian').App,{id:'magical-cards'} as import('obsidian').PluginManifest);
+  Object.assign(plugin,{cardsLease:{release:()=>{released++;return Promise.resolve();}},cardViews:new Set([{dispose(){disposed++;}}])});
+  plugin.onunload();assert.equal(disposed,1);assert.equal(released,1);assert.equal(detached,0);assert.equal(leaf.state,state);assert.deepEqual(leaf.state.position,{parent:'right',index:2});
 });

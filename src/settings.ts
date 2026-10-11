@@ -2,6 +2,14 @@ import { DEFAULT_CARD_SETTINGS, type CardLayout, type CardRatio, type CardsAPI, 
 
 export const CARD_RATIOS: Record<CardRatio, string> = { '1:1': '1:1 方图', '4:3': '4:3 横向照片', '3:4': '3:4 竖向照片', '2:3': '2:3 番剧／海报', '16:9': '16:9 横向画面' };
 export const CARD_LAYOUTS: Record<CardLayout, string> = { cylinder: '圆柱弧面', 'coverflow-carousel': '封面流轮播', 'album-rail': '黑胶专辑架', 'scroll-bend': '滚动弯曲画廊', 'skewed-carousel': '倾斜轮播' };
+export const CARD_APPEARANCE_FIELDS = [
+  { field: 'style', name: '1. 卡片样式', options: { cover: '整幅封面', minimal: '简约' }, fallback: 'cover' },
+  { field: 'imageFit', name: '2. 显示方式', options: { contain: '完整显示', cover: '填满裁切' }, fallback: 'cover' },
+  { field: 'material', name: '3. 卡片材质', options: { paper: '纸感', matte: '磨砂', foil: '全息' }, fallback: 'paper' },
+  { field: 'ratio', name: '4. 比例', options: CARD_RATIOS, fallback: '2:3' },
+  { field: 'layout', name: '5. 动效布局', options: CARD_LAYOUTS, fallback: 'cylinder' },
+  { field: 'orientation', name: '画廊方向', options: { horizontal: '横向', vertical: '竖向' }, fallback: 'horizontal' },
+] as const;
 export const CARD_SETTING_KEYS = ['bookCardAppearance', 'filmCardAppearance', 'customModules', 'threeCardView', 'workbenchText', 'workbenchCards', 'standaloneOrder'] as const;
 export const FRESH_CARD_APPEARANCE: Readonly<WorkCardAppearance> = { material: 'paper', style: 'cover', layout: 'cylinder', ratio: '2:3', imageFit: 'cover' };
 export function freshCardsSettings(): CardsSettings {
@@ -73,7 +81,8 @@ export async function saveModuleDraft(api: CardsAPI, draft: CardModuleDraft, bas
   });
 }
 export function validWorkbenchCards(value: unknown): value is WorkbenchCardPlacement[] {
-  return Array.isArray(value) && value.every(item => record(item) && typeof item.module === 'string' && !!item.module.trim() && ['reflection', 'actions', 'gantt', 'quadrants', 'collections', 'end', 'inside-collections'].includes(String(item.before))) && new Set(value.map(item => item.module)).size === value.length;
+  const placement = (item: unknown): item is WorkbenchCardPlacement => record(item) && typeof item.module === 'string' && !!item.module.trim() && ['reflection', 'actions', 'gantt', 'quadrants', 'collections', 'end', 'inside-collections'].includes(String(item.before));
+  return Array.isArray(value) && value.every(placement) && new Set(value.map(item => item.module)).size === value.length;
 }
 export function readCardsSettings(value: unknown): CardsSettings {
   const saved = record(value) ? value : {};

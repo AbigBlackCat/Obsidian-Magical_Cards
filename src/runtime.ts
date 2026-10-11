@@ -7,14 +7,18 @@ import { WorkPropertiesHost } from './WorkPropertiesHost';
 import { WorkOrderList } from './WorkOrder';
 import { registerCardsEmbeds, type EmbeddedRuntime } from './embeds';
 import { CARD_LANGUAGES } from './embed-source';
+import { readCoverSvg } from './cover-reader';
 import type { CardsSettings, WorkKind } from './types';
 
 export interface CardsLease { api: CardsStore; propertiesManager: WorkPropertiesManager; ready: Promise<void>; release(): Promise<void>; }
 interface Library { api: CardsStore; component: Component; manager?: WorkPropertiesManager; host?: WorkPropertiesHost; references: number; ready: Promise<void>; closing?: Promise<void>; children: Set<MarkdownRenderChild>; }
 interface AppRuntime { app: App; registrar: Plugin; libraries: Map<string, Library>; ready: Promise<void>; registered: boolean; cardLanguages?: Set<string>; processorError?: unknown; }
 const key = Symbol.for('barry-cards.runtime.v1');
-const globals = globalThis as typeof globalThis & { [key: symbol]: unknown };
-const registry = (globals[key] ??= new WeakMap<App, AppRuntime>()) as WeakMap<App, AppRuntime>;
+declare global { interface Window { [key]?: WeakMap<App, AppRuntime>; } }
+function appRegistry(app: App): WeakMap<App, AppRuntime> {
+  const mainWindow = app.workspace.containerEl.win;
+  return mainWindow[key] ??= new WeakMap<App, AppRuntime>();
+}
 const runtimeManifest: PluginManifest = { id: 'barry-cards-runtime', name: 'Barry Cards runtime', version: '1.0.0', minAppVersion: '1.11.4', author: 'AbigBlackCat', description: 'Shared card rendering lifecycle', isDesktopOnly: true };
 class CardsRegistrar extends Plugin {}
 
@@ -30,7 +34,7 @@ function chooseLibrary(runtime: AppRuntime, sourcePath: string): Library | undef
   return matching[0]?.[1] ?? (libraries.length === 1 ? libraries[0][1] : undefined);
 }
 function registerProcessors(runtime: AppRuntime) {
-  if (runtime.processorError) throw runtime.processorError;
+  if (runtime.processorError) throw runtime.processorError instanceof Error ? runtime.processorError : new Error(typeof runtime.processorError === 'string' ? runtime.processorError : '卡片处理器注册失败。');
   const languages = runtime.cardLanguages ??= new Set(runtime.registered ? ['barry-cards'] : []);
   const missing = CARD_LANGUAGES.filter(language => !languages.has(language));
   if (runtime.registered && !missing.length) return;
@@ -42,7 +46,8 @@ function registerProcessors(runtime: AppRuntime) {
     missing.forEach(language => languages.add(language));
     if (!runtime.registered) runtime.registrar.registerMarkdownCodeBlockProcessor('barry-work-order', (source, element, context) => {
       const kind = source.trim(), library = chooseLibrary(runtime, context.sourcePath);
-      if (context.frontmatter?.bw_view !== 'work-order' || (kind !== 'book' && kind !== 'film') || !library) { element.createEl('p', { text: '请在作品排序笔记中使用 book 或 film 分组。' }); return; }
+      const frontmatter: unknown = context.frontmatter;
+      if (!frontmatter || typeof frontmatter !== 'object' || !('bw_view' in frontmatter) || frontmatter.bw_view !== 'work-order' || (kind !== 'book' && kind !== 'film') || !library) { element.createEl('p', { text: '请在作品排序笔记中使用 book 或 film 分组。' }); return; }
       const child = new WorkOrderChild(element, library, kind); library.children.add(child); context.addChild(child);
     });
     runtime.registered = true;
@@ -58,6 +63,7 @@ async function backupDrafts(app: App, manager: WorkPropertiesManager, directory:
 
 export async function acquireCards(app: App, rootFolder: string, recoveryDir: string, migrationSettings?: Partial<CardsSettings>): Promise<CardsLease> {
   const folder = normalizePath(rootFolder);
+  const registry = appRegistry(app);
   let runtime = registry.get(app);
   if (!runtime) {
     const registrar = new CardsRegistrar(app, runtimeManifest);
@@ -71,10 +77,13 @@ export async function acquireCards(app: App, rootFolder: string, recoveryDir: st
     library = { api, component, references: 0, ready: Promise.resolve(), children: new Set() };
     const created = library;
     runtime.libraries.set(folder, created);
-    created.manager = new WorkPropertiesManager(api);
+    created.manager = new WorkPropertiesManager(api, app.workspace.containerEl.win);
     created.host = new WorkPropertiesHost(app, api, component, created.manager);
     created.ready = api.initialize().then(() => {
-      for (const event of ['create', 'modify', 'delete'] as const) component.registerEvent(app.vault.on(event as 'modify', api.invalidate));
+      const invalidate = () => api.invalidate();
+      component.registerEvent(app.vault.on('create', invalidate));
+      component.registerEvent(app.vault.on('modify', invalidate));
+      component.registerEvent(app.vault.on('delete', invalidate));
       component.registerEvent(app.vault.on('rename', (file, oldPath) => {
         api.invalidate(); void api.followLinkedNoteRename(() => file.path, oldPath).catch(error => new Notice(`关联笔记路径未能更新：${error instanceof Error ? error.message : String(error)}`));
       }));
@@ -82,6 +91,9 @@ export async function acquireCards(app: App, rootFolder: string, recoveryDir: st
     if(app.workspace.layoutReady===false)void created.ready.catch(error=>{if(created.references&&!created.closing)new Notice(`卡片库启动未完成：${error instanceof Error?error.message:String(error)}`);});
   }
   const current = library, owner = runtime;
+  current.api.readCoverSvg ??= (path, sourcePath = '') => readCoverSvg(app, path, sourcePath);
+  const manager = current.manager;
+  if (!manager) throw new Error('共享卡片库尚未准备完成。');
   current.references++;
   try { await owner.ready; if(app.workspace.layoutReady!==false)await current.ready; registerProcessors(owner); }
   catch (error) {
@@ -91,16 +103,16 @@ export async function acquireCards(app: App, rootFolder: string, recoveryDir: st
     throw error;
   }
   let released = false;
-  return { api: current.api, propertiesManager: current.manager!, ready: current.ready, release: async () => {
+  return { api: current.api, propertiesManager: manager, ready: current.ready, release: async () => {
     if (released) return;
     released = true;
     if (--current.references) return;
     current.closing = (async () => {
-      try { await current.host?.stop(); await current.manager!.flushAll(); }
-      catch (error) { await backupDrafts(app, current.manager!, recoveryDir, error); }
+      try { await current.host?.stop(); await manager.flushAll(); }
+      catch (error) { await backupDrafts(app, manager, recoveryDir, error); }
       await current.api.settle();
       for (const child of [...current.children]) child.unload(); current.children.clear();
-      current.component.unload(); current.manager!.dispose(); current.api.destroy(); owner.libraries.delete(folder);
+      current.component.unload(); manager.dispose(); current.api.destroy(); owner.libraries.delete(folder);
       if (!owner.libraries.size) { owner.registrar.unload(); registry.delete(app); }
       else app.workspace.trigger('post-processor-change');
     })();

@@ -1,5 +1,14 @@
 import type { CoverTemplate } from './types';
 
+export function decodeSvgDataUrl(source: string): string {
+  const comma = source.indexOf(',');
+  if (comma < 0 || !/^data:image\/svg\+xml(?:;[^,]*)?$/i.test(source.slice(0, comma))) throw new Error('SVG 数据地址无效。');
+  const content = source.slice(comma + 1);
+  return /;base64$/i.test(source.slice(0, comma))
+    ? new TextDecoder().decode(Uint8Array.from(atob(content), char => char.charCodeAt(0)))
+    : decodeURIComponent(content);
+}
+
 const escapeXml = (value: string) => value.replace(/[<>&"']/g, char => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[char]!);
 
 /** Imported SVGs are a small declarative drawing format, never a document with executable content. */

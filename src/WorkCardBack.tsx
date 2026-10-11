@@ -18,7 +18,7 @@ export function WorkCardBack({ work, session, active, flip, open }: { work: Book
     event.stopPropagation();
     if (!event.nativeEvent.isComposing && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') { event.preventDefault(); flush(); }
   }} onBlur={event => {
-    if ((event.relatedTarget as Element | null)?.closest?.('[data-bw-discard]')) return;
+    if (event.relatedTarget?.closest?.('[data-bw-discard]')) return;
     flush();
   }}>
     <header className="bw-card-back-header"><h3 style={{textAlign:state.values?.cardTitleAlign??work.cardTitleAlign??'left'}}>{state.values?.title ?? work.title}</h3><button type="button" data-card-control className="bw-card-flip" aria-label="返回正面" title="返回正面" onClick={() => { flush(); flip(); }}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M8 7H5V4M5 7a8 8 0 1 1-1 8"/><path d="M9 12h6"/></svg><span className="bw-sr-only">返回正面</span></button></header>

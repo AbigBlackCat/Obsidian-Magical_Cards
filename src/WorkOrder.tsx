@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { CoverImage } from './CoverImage';
 import type { Book, Film, CardsAPI, CustomCardModule, WorkOrder, WorkKind } from './types';
 import { orderedWorks } from './work-order';
+import { useOwnerWindow } from './owner-window';
 
-export interface WorkOrderAPI extends Pick<CardsAPI, 'subscribe' | 'moveWork' | 'coverUrl' | 'openNote'> { getSnapshot(): { entities: Array<{id: string; type: string; moduleId?: string}>; workOrder: WorkOrder | null; settings: { customModules: CustomCardModule[] }; }; }
+export interface WorkOrderAPI extends Pick<CardsAPI, 'subscribe' | 'moveWork' | 'coverUrl' | 'readCoverSvg' | 'openNote'> { getSnapshot: () => { entities: Array<{id: string; type: string; moduleId?: string}>; workOrder: WorkOrder | null; settings: { customModules: CustomCardModule[] }; }; }
 
 type DragSession = { id: string; phase: 'dragging' | 'saving'; initial: string[]; before: string | null };
 type Press = { id: number; x: number; y: number; startX: number; startY: number; moved: boolean; handle: HTMLButtonElement };
@@ -21,13 +22,14 @@ export function WorkOrderList({ api, kind, moduleId }: { api: WorkOrderAPI; kind
   const idsRef = useRef<string[]>([]);
   idsRef.current = sorted.map(work => work.id);
   const list = useRef<HTMLOListElement>(null);
+  const owner = useOwnerWindow(list);
   const session = useRef<DragSession | null>(null);
   const press = useRef<Press | null>(null);
   const scroll = useRef({ frame: 0, speed: 0 });
   const mounted = useRef(true);
   const label = moduleId !== undefined ? module?.title ?? '卡片' : kind === 'book' ? '书籍' : '影视';
 
-  const stopScroll = () => { cancelAnimationFrame(scroll.current.frame); scroll.current = { frame: 0, speed: 0 }; };
+  const stopScroll = () => { owner?.cancelAnimationFrame(scroll.current.frame); scroll.current = { frame: 0, speed: 0 }; };
   const release = () => {
     const pointer = press.current;
     press.current = null;
@@ -43,10 +45,13 @@ export function WorkOrderList({ api, kind, moduleId }: { api: WorkOrderAPI; kind
   };
   useEffect(() => {
     mounted.current = true;
-    const hidden = () => { if (document.hidden) cancel(); };
-    document.addEventListener('visibilitychange', hidden);
-    return () => { mounted.current = false; stopScroll(); release(); document.removeEventListener('visibilitychange', hidden); };
-  }, []);
+    if (!owner) return;
+    if (session.current?.phase === 'dragging') cancel();
+    const doc = owner.document;
+    const hidden = () => { if (doc.hidden) cancel(); };
+    doc.addEventListener('visibilitychange', hidden);
+    return () => { mounted.current = false; stopScroll(); release(); doc.removeEventListener('visibilitychange', hidden); };
+  }, [owner]);
 
   const chooseDrop = (before: string | null) => {
     const drag = session.current;
@@ -58,7 +63,7 @@ export function WorkOrderList({ api, kind, moduleId }: { api: WorkOrderAPI; kind
     const element = list.current;
     if (!element) return false;
     const rect = element.getBoundingClientRect();
-    if (x < rect.left || x > rect.right || y < Math.max(0, rect.top) || y > Math.min(window.innerHeight, rect.bottom)) return false;
+    if (x < rect.left || x > rect.right || y < Math.max(0, rect.top) || y > Math.min((owner?.innerHeight ?? 0), rect.bottom)) return false;
     for (const row of element.querySelectorAll<HTMLLIElement>('[data-work-id]')) {
       const rowRect = row.getBoundingClientRect();
       if (y <= rowRect.bottom) {
@@ -81,9 +86,9 @@ export function WorkOrderList({ api, kind, moduleId }: { api: WorkOrderAPI; kind
       if (!list.current || !press.current || session.current?.phase !== 'dragging') { stopScroll(); return; }
       list.current.scrollTop += scroll.current.speed;
       chooseAt(press.current.x, press.current.y);
-      scroll.current.frame = requestAnimationFrame(frame);
+      scroll.current.frame = owner?.requestAnimationFrame(frame) ?? 0;
     };
-    scroll.current.frame = requestAnimationFrame(frame);
+    scroll.current.frame = owner?.requestAnimationFrame(frame) ?? 0;
   };
   const placeBefore = (moving: string, before: string | null) => {
     const next = idsRef.current.filter(id => id !== moving);
@@ -160,7 +165,7 @@ export function WorkOrderList({ api, kind, moduleId }: { api: WorkOrderAPI; kind
           <svg width="18" height="20" viewBox="0 0 18 20" fill="currentColor" aria-hidden="true"><circle cx="6" cy="5" r="1.3"/><circle cx="12" cy="5" r="1.3"/><circle cx="6" cy="10" r="1.3"/><circle cx="12" cy="10" r="1.3"/><circle cx="6" cy="15" r="1.3"/><circle cx="12" cy="15" r="1.3"/></svg>
         </button>
         <span className="bw-order-position" aria-hidden="true">{index + 1}</span>
-        <CoverImage className="bw-order-cover" src={api.coverUrl(work.cover, work.path)} title={work.title}/>
+        <CoverImage className="bw-order-cover" src={api.coverUrl(work.cover, work.path)} source={work.cover} sourcePath={work.path} readSvg={api.readCoverSvg} title={work.title}/>
         <button type="button" className="bw-order-title" onClick={() => { void api.openNote(work.path).catch(failure => setError((failure as Error).message)); }}><span>{work.title}</span><small>{moduleId !== undefined ? work.summary : work.type === 'book' ? work.author : [work.director, work.year].filter(Boolean).join(' · ')}</small></button>
       </li>)}
     </ol> : <p className="bw-order-empty">暂无{label}。</p>}

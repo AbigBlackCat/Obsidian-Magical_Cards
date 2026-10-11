@@ -5,18 +5,20 @@ export interface EmbeddedModule { id: string; collection: string; layout?: CardL
 export interface CardsEmbed { id: string; modules: EmbeddedModule[]; }
 export const CARD_LANGUAGES = ['magical-cards', 'barry-cards'] as const;
 const layouts = ['cylinder', 'coverflow-carousel', 'album-rail', 'scroll-bend', 'skewed-carousel'];
-const identifier = (value: unknown) => typeof value === 'string' && value.length <= 180 && Boolean(value.trim()) && !/[\r\n\x00-\x1f]/.test(value);
+const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
+const identifier = (value: unknown): value is string => typeof value === 'string' && value.length <= 180 && Boolean(value.trim()) && !Array.from(value).some(char => char.charCodeAt(0) < 32);
+const cardLayout = (value: unknown): value is CardLayout => typeof value === 'string' && layouts.includes(value);
 const canonical = (source: string) => source.replace(/\r\n/g, '\n').replace(/\n$/, '');
 
 export function parseCardsEmbed(source: string): CardsEmbed {
   const document = parseDocument(source);
   if (document.errors.length) throw new Error(`卡片模块配置无效：${document.errors[0].message}`);
-  const value = document.toJS({ maxAliasCount: 20 });
-  if (!value || typeof value !== 'object' || Array.isArray(value) || !identifier(value.id) || !Array.isArray(value.modules)) throw new Error('卡片代码块需要稳定的 id 和 modules 数组。');
-  const modules: EmbeddedModule[] = value.modules.map((module: any) => {
-    if (!module || typeof module !== 'object' || Array.isArray(module) || !identifier(module.id) || !identifier(module.collection)) throw new Error('每个模块需要稳定的 id 和 collection。');
-    if (module.layout !== undefined && !layouts.includes(module.layout)) throw new Error(`未知卡片布局：${module.layout}`);
-    if (module.orientation !== undefined && !['horizontal', 'vertical'].includes(module.orientation)) throw new Error('弯曲画廊方向应为 horizontal 或 vertical。');
+  const value: unknown = document.toJS({ maxAliasCount: 20 });
+  if (!record(value) || !identifier(value.id) || !Array.isArray(value.modules)) throw new Error('卡片代码块需要稳定的 id 和 modules 数组。');
+  const modules: EmbeddedModule[] = value.modules.map((module: unknown) => {
+    if (!record(module) || !identifier(module.id) || !identifier(module.collection)) throw new Error('每个模块需要稳定的 id 和 collection。');
+    if (module.layout !== undefined && !cardLayout(module.layout)) throw new Error(`未知卡片布局：${typeof module.layout === 'string' ? module.layout : '无效值'}`);
+    if (module.orientation !== undefined && module.orientation !== 'horizontal' && module.orientation !== 'vertical') throw new Error('弯曲画廊方向应为 horizontal 或 vertical。');
     return { id: module.id, collection: module.collection, ...(module.layout ? { layout: module.layout } : {}), ...(module.orientation ? { orientation: module.orientation } : {}) };
   });
   if (new Set(modules.map(module => module.id)).size !== modules.length) throw new Error('同一代码块中模块 id 重复，无法安全排序。');
@@ -34,14 +36,14 @@ export function cardsSourceBlocks(text: string): SourceBlock[] {
     if (fence) {
       const closing = value.match(/^ {0,3}(`{3,}|~{3,})\s*$/);
       if (closing && closing[1][0] === fence.character && closing[1].length >= fence.length) {
-        if (fence.card) blocks.push({ source: text.slice(fence.from, line.index), from: fence.from, to: line.index! });
+        if (fence.card) blocks.push({ source: text.slice(fence.from, line.index), from: fence.from, to: line.index });
         fence = null;
       }
       continue;
     }
     const opening = value.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
     if (!opening || opening[1][0] === '`' && opening[2].includes('`')) continue;
-    fence = { character: opening[1][0], length: opening[1].length, card: CARD_LANGUAGES.some(language => language === opening[2].trim()), from: line.index! + line[0].length };
+    fence = { character: opening[1][0], length: opening[1].length, card: CARD_LANGUAGES.some(language => language === opening[2].trim()), from: line.index + line[0].length };
   }
   return blocks;
 }

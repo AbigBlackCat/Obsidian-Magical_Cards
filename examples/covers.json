@@ -40,19 +40,5 @@
     "title": "模仿欲望",
     "cover": "demo-book-mimetic.jpg",
     "sha256": "8dad2679a64f448ad87894092fd79708913a156d230aa5500b94ee9f6032e096"
-  },
-  {
-    "id": "demo-book-crime",
-    "type": "book",
-    "title": "罪与罚",
-    "cover": "demo-book-crime.jpg",
-    "sha256": "db3b6d8f0a91bd14bfda60b5771d785ec9186beca2ebd633b07a71f35893eb3b"
-  },
-  {
-    "id": "demo-book-gone",
-    "type": "book",
-    "title": "飘（四十年荣誉珍藏版）",
-    "cover": "demo-book-gone.jpg",
-    "sha256": "a4779cb162934b7b52df98496f01a93833da51dc81bd28964c7b7f2cedd9705a"
   }
 ]

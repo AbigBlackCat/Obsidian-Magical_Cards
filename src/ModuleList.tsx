@@ -58,7 +58,7 @@ export default function ModuleList({ ids, save, children, initialDraft, retainDr
     const current = pointer.current; if (!current || event.pointerId !== current.id) return;
     if (!current.moved && Math.abs(event.clientY - current.y) < 6) return;
     current.moved = true; event.preventDefault(); event.stopPropagation();
-    const rows = Array.from(list.current?.children ?? []).filter((el): el is HTMLElement => el instanceof HTMLElement && !!el.dataset.cardsModule);
+    const rows = Array.from(list.current?.children ?? []).filter((el): el is HTMLElement => el.instanceOf(HTMLElement) && !!el.dataset.cardsModule);
     const next = rows.find(row => event.clientY < row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2)?.dataset.cardsModule ?? null;
     target.current = next; setBefore(next);
     const owner = list.current?.closest<HTMLElement>('.view-content, .workspace-leaf-content, .markdown-preview-view, .cm-scroller');

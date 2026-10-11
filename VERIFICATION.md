@@ -1,3 +1,36 @@
+# Magical Cards 0.2.1 verification
+
+Checked on 2026-10-11 with macOS and Obsidian 1.14.4. New installations include three books and three films; existing eight-item installations retain their works and import progress.
+
+| Check | Result |
+| --- | --- |
+| Standalone TypeScript | Pass |
+| Standalone automated tests | 93 / 93 pass |
+| Compatible host 0.1.32, clean release export | 249 / 249 tests; TypeScript and build pass; npm ci reports 0 vulnerabilities |
+| Compatible host development working tree | 253 / 253 tests; work in progress is excluded from the release export |
+| Compatible host release bundle | 655,809 bytes; SHA-256 `148ab772ea11486ae8f380dc71693a7a898bd71e0c8f75a6e26d06ce09e32fb6` |
+| Official type-aware lint | 0 errors; 3 documented compatibility/fixture warnings |
+| Production package | 4,667,641-byte main.js; exactly three installation files |
+| Lossless cover packing | Six original SHA-256 hashes verified after asynchronous Brotli decompression |
+| Script-resource policy | All three React DOM script-creation paths throw; version, source and match-count mismatches stop the build |
+| Reproducible build | Two separate production builds are byte-identical |
+| Native fresh install and actual process restart | Earlier run: 31 / 31 pass; latest repeat: 30 pass, 1 visibility check awaiting retry |
+| Actual settings search | “贴满卡片” finds reading/film fields, expands the reading module and focuses its display dropdown |
+| Final clean clone, release CI and attestations | Pending recorded runs |
+
+Native checks cover five layouts, full-cover geometry, horizontal/vertical WebGL and fallback, summary editing, settings drafts and failed saves, code generation, reading/Live Preview, both block languages, atomic reorder/source protection, shared runtime loading order, popout cleanup and open-view restoration. Screenshots contain only the six public examples. The helper runs only in a separate acceptance vault and is excluded from the public plugin.
+
+The local-cover check verifies decoding of bundled images without remote image dependencies. It does not establish system-level disconnected-network testing.
+
+The earlier run observed at 2026-10-11T14:28:42Z completed all 31 native checks; that historical result is not included in the final sanitized summary below. The latest repeat at 2026-10-11T14:41:40Z reports 30 passes and one failed visible-embed check during cold restart. Its diagnostic recorded `document.visibilityState = hidden` and zero-size embed rectangles. The native UI bridge also failed to provide a current visible window; that final visibility check is pending a retry after the environment recovers. The earlier success is historical evidence, not the final result of this repeat.
+
+The three lint warnings retain keyCode 229 for IME compatibility, execCommand insertText for native undo, and the conventional .obsidian folder in the offline fixture generator. They do not disable lint rules. Windows has not been tested on physical hardware; no mobile support is claimed. Community entry remains a draft; its latest review is recorded in [COMMUNITY.md](COMMUNITY.md).
+
+Final native summary: [verification/native-0.2.1.json](verification/native-0.2.1.json). Clean-clone, GitHub Actions and release-attestation evidence will be added after their runs.
+
+<details>
+<summary>Previous 0.2.0 verification</summary>
+
 # Magical Cards 0.2.0 verification
 
 Candidate verified on 2026-10-11. Native checks use macOS and Obsidian 1.14.4.
@@ -19,3 +52,5 @@ The final native results are recorded in [verification/native-0.2.0.json](verifi
 The native acceptance helper runs in a separate empty vault with startup synchronization disabled for the compatible host. It is not bundled in the public plugin or the example vault. No personal vault records, account settings or recovery drafts are published.
 
 Windows has not been verified on a physical machine. No mobile support is claimed. Community submission materials are prepared, but the plugin has not been submitted or listed.
+
+</details>

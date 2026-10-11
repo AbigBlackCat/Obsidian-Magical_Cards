@@ -33,8 +33,9 @@ export default function EditableText(props: EditableTextProps) {
   const context = useContext(WorkbenchTextContext);
   const {as = 'span', className, kind = 'title', ariaLabel} = props;
   const value = props.textKey !== undefined ? context?.values[props.textKey] ?? props.defaultText : props.value;
-  const save = props.textKey !== undefined
-    ? (next: string) => context?.save(props.textKey!, next) ?? Promise.resolve(false)
+  const textKey = props.textKey;
+  const save = textKey !== undefined
+    ? (next: string) => context?.save(textKey, next) ?? Promise.resolve(false)
     : props.onSave;
   const element = useRef<HTMLElement | null>(null);
   const initial = useRef(value);
@@ -115,10 +116,11 @@ export default function EditableText(props: EditableTextProps) {
     'aria-busy': status === 'saving' || undefined,
     title: status === 'error' ? '未保存。点击文字重新编辑，离开后重试。' : '点击编辑，离开或按 Enter 保存，Esc 取消',
     onFocus: () => { focused.current = true; skipBlur.current = false; },
-    onInput: (event: React.FormEvent<HTMLElement>) => { if (!composing.current && !(event.nativeEvent as InputEvent).isComposing) readDraft(event.currentTarget); },
+    onInput: (event: React.SyntheticEvent<HTMLElement, InputEvent>) => { if (!composing.current && !event.nativeEvent.isComposing) readDraft(event.currentTarget); },
     onCompositionStart: () => { composing.current = true; dirty.current = true; },
     onCompositionEnd: (event: React.CompositionEvent<HTMLElement>) => { composing.current = false; readDraft(event.currentTarget); },
     onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
+      // Legacy composition key 229 is still emitted by some IMEs before isComposing.
       if (event.nativeEvent.isComposing || composing.current || event.keyCode === 229) return;
       if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); event.currentTarget.blur(); }
       if (event.key === 'Escape') {
@@ -127,8 +129,8 @@ export default function EditableText(props: EditableTextProps) {
         setStatus(pending.current ? 'saving' : 'idle'); event.currentTarget.blur();
       }
     },
-    onBeforeInput: (event: React.FormEvent<HTMLElement>) => {
-      const input = event.nativeEvent as InputEvent;
+    onBeforeInput: (event: React.SyntheticEvent<HTMLElement, InputEvent>) => {
+      const input = event.nativeEvent;
       if (!composing.current && !input.isComposing && (input.inputType === 'insertParagraph' || input.inputType === 'insertLineBreak')) {
         event.preventDefault(); event.currentTarget.blur();
       }

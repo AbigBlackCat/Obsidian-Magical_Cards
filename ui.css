@@ -1,0 +1,13 @@
+.bw-cards-surface { width:100%; max-width:1400px; padding:16px; box-sizing:border-box; }
+.bw-cards-modules { position:relative; display:grid; gap:20px; }
+.bw-cards-module-slot { position:relative; min-width:0; }
+.bw-cards-module-slot.is-drop-before::before,.bw-cards-modules.is-drop-end::after { content:""; position:absolute; top:-11px; left:0; right:0; height:3px; background:var(--interactive-accent); pointer-events:none; z-index:10; }
+.bw-cards-modules.is-drop-end::after { top:auto; bottom:-11px; }
+.bw-module-handle { flex-shrink:0; cursor:grab; touch-action:none; user-select:none; font-size:22px; }
+.bw-module-handle:active { cursor:grabbing; }
+.bw-cards-surface .bw-work-head { gap:8px; }
+.bw-module-sort-state:not(:empty) { margin-block:6px 14px; font-size:13px; }
+.bw-module-sort-state [role="alert"] { color:var(--text-error); }
+.bw-module-sort-state p { margin:0 0 6px; }
+.bw-module-sort-state button { margin-right:8px; }
+.markdown-rendered .bw-cards-surface .bw-work-stack { margin-block:0; }

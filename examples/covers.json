@@ -1,0 +1,58 @@
+[
+  {
+    "id": "demo-film-odyssey",
+    "type": "film",
+    "title": "奥德赛",
+    "cover": "demo-film-odyssey.png",
+    "sha256": "b8f84421015f84429a040ac4f9167d416c2428b95f281228a69e1a475560ecd4"
+  },
+  {
+    "id": "demo-film-lost",
+    "type": "film",
+    "title": "消失的她",
+    "cover": "demo-film-lost.svg",
+    "sha256": "feca6ee14e0727f5d73f0313ae496da28034e1c226ce7ffd245f9735731c1ba3"
+  },
+  {
+    "id": "demo-film-whitedeer",
+    "type": "film",
+    "title": "白鹿原",
+    "cover": "demo-film-whitedeer.png",
+    "sha256": "4ea1a60747622a5d730c80a022d9ff058f7499e29c1869447bf0534794f65efe"
+  },
+  {
+    "id": "demo-book-educated",
+    "type": "book",
+    "title": "你当像鸟飞往你的山",
+    "cover": "demo-book-educated.jpg",
+    "sha256": "0f2dac5a9a8a4b140e792d78a918c3dae177d70c585c830619940bf42e47ed06"
+  },
+  {
+    "id": "demo-book-thinking",
+    "type": "book",
+    "title": "思考，快与慢",
+    "cover": "demo-book-thinking.jpg",
+    "sha256": "b9daa9e42c1814a741ec061b8396d6e4c1c7a15a118bcc4da932930004e554f6"
+  },
+  {
+    "id": "demo-book-mimetic",
+    "type": "book",
+    "title": "模仿欲望",
+    "cover": "demo-book-mimetic.jpg",
+    "sha256": "8dad2679a64f448ad87894092fd79708913a156d230aa5500b94ee9f6032e096"
+  },
+  {
+    "id": "demo-book-crime",
+    "type": "book",
+    "title": "罪与罚",
+    "cover": "demo-book-crime.jpg",
+    "sha256": "db3b6d8f0a91bd14bfda60b5771d785ec9186beca2ebd633b07a71f35893eb3b"
+  },
+  {
+    "id": "demo-book-gone",
+    "type": "book",
+    "title": "飘（四十年荣誉珍藏版）",
+    "cover": "demo-book-gone.jpg",
+    "sha256": "a4779cb162934b7b52df98496f01a93833da51dc81bd28964c7b7f2cedd9705a"
+  }
+]

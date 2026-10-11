@@ -1,13 +1,13 @@
 {
   "date": "2026-10-11",
-  "at": "2026-10-11T14:41:40.224Z",
+  "at": "2026-10-11T14:51:01.071Z",
   "platform": "macOS",
   "obsidianVersion": "1.14.4",
   "pluginVersion": "0.2.1",
   "compatibleHostVersion": "0.1.32",
   "phase": "cold-restart-complete",
-  "passed": 30,
-  "failed": 1,
+  "passed": 31,
+  "failed": 0,
   "results": [
     {
       "name": "首次仅启用 Magical Cards，不读取工作台配置或旧独立插件数据",
@@ -131,7 +131,7 @@
     },
     {
       "name": "冷重启新旧代码块与独立视图仍可用且帮助页只保留一份",
-      "ok": false
+      "ok": true
     }
   ],
   "coverHashes": [

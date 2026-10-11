@@ -1,6 +1,6 @@
 # Community submission: Magical Cards 0.2.1
 
-The entry exists as a **draft**, not a published community listing. The automatic review of 0.2.0 failed on 2026-10-11. Version 0.2.1 is the remediation release; its review outcome will be recorded after the actual community scan.
+The entry remains a **draft**, not a published community listing. On 2026-10-11, the automatic scan of 0.2.1 at commit `1c33e9c2aa4787332f322813c2b694c8468d7bd1` completed with status **Completed**, no Failed/Error findings and four recommendations. This records the completed automatic scan, not approval by a community human reviewer. The earlier automatic review of 0.2.0 failed on the same date.
 
 | Field | Value |
 | --- | --- |
@@ -29,12 +29,36 @@ The interface is currently in Chinese; both Chinese and English guides are provi
 
 Vault enumeration is used for card notes and the user-invoked linked-note picker. Clipboard writes occur when the user clicks Copy for generated embed code. These existing functions are described in both guides; no background clipboard reading or note-content upload is performed.
 
+## Automatic scan of 0.2.1
+
+The status below was read from the existing [draft entry](https://community.obsidian.md/account/plugins/magical-cards) through native Chrome DOM on 2026-10-11.
+
+| Check | Result |
+| --- | --- |
+| Overall scan | Completed; no Failed/Error findings |
+| Release attestations | main.js and styles.css: Pass |
+| Network | Pass |
+| Dependencies | Pass |
+| Build verification | Pass; main.js reproduced byte for byte |
+| Listing | Draft; no publication action taken |
+
+Four recommendations remain visible and are retained with their functional reasons:
+
+| Recommendation | Functional reason |
+| --- | --- |
+| Vault Enumeration | Card discovery and user-invoked linked-note search |
+| Clipboard Access | Writing generated embed code when the user clicks Copy |
+| keyCode | Keeping keyCode 229 for IME composition compatibility |
+| execCommand | Inserting pasted text while preserving native undo |
+
+These recommendations are not reported as blocking failures by this scan. Completion of the scan does not establish community human-review approval or publication.
+
 ## Review and release checklist
 
 1. Verify the default branch manifest, package version and release tag match 0.2.1.
 2. Verify the release's three files, build size, artifact attestations and reproducible clean build.
 3. Inspect the latest automatic review in the existing [draft entry](https://community.obsidian.md/account/plugins/magical-cards).
-4. Resolve remaining blocking findings and record the actual outcome here. Keep the entry a draft until publication is requested.
+4. Retain the completed scan and recommendation record above. Keep the entry a draft until publication is requested.
 
 ## Verification and limits
 

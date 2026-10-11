@@ -16,7 +16,7 @@
 **作者惯用卡片风格（该插件提供多种样式供选择）：**
 <img width="1509" height="947" alt="image" src="https://github.com/user-attachments/assets/b4a68687-3389-4eb4-8da3-5a91ffc45ca9" />
 
-**已上传Obsidian社区，欢迎体验插件，我会不定时维护和更新**
+**已上传Obsidian社区，我会不定时维护和更新，欢迎体验插件，希望你喜欢～**
 https://community.obsidian.md/plugins/magical-cards
 <img width="688" height="761" alt="image" src="https://github.com/user-attachments/assets/e37d8e9a-3b02-46fe-8985-22c086d64986" />
 

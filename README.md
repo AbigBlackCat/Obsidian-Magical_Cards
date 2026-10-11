@@ -14,6 +14,8 @@
 </p>
 
 ![Obsidian 中的阅读与影视卡片，使用圆柱弧面、整幅封面和三卡显示](previews/cylinder.png)
+<img width="1509" height="947" alt="image" src="https://github.com/user-attachments/assets/b4a68687-3389-4eb4-8da3-5a91ffc45ca9" />
+
 
 **浏览封面，留下感想。** 独立卡片视图和笔记内嵌入共用作品数据；支持搜索、编辑、排序、关联笔记和翻面摘要。作品与外观配置保存在你的笔记库中。
 

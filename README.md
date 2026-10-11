@@ -76,8 +76,6 @@ On first use in an empty card directory, the plugin creates six offline examples
 
 ![原生笔记中的竖向滚动弯曲画廊](previews/scroll-bend-vertical.png)
 
-卡片不会自动轮播。黑胶专辑架只展示封套，没有播放按钮、唱片抽出或旋转。弯曲画廊提供「打开笔记」按钮，用于打开当前卡对应的作品笔记，并提供摘要编辑入口；WebGL 不可用或纹理加载失败时降级为普通卡片。系统开启减少动态效果时关闭弯曲与过渡。
-
 ## 外观与设置
 
 ![Magical Cards 原生设置页](previews/settings.png)

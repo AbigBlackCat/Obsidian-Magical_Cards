@@ -11,3 +11,12 @@
 .bw-module-sort-state p { margin:0 0 6px; }
 .bw-module-sort-state button { margin-right:8px; }
 .markdown-rendered .bw-cards-surface .bw-work-stack { margin-block:0; }
+.bw-cards-settings-group { margin-block:12px; border:1px solid var(--background-modifier-border); border-radius:8px; }
+.bw-cards-settings-group > summary { padding:12px 14px; cursor:pointer; font-weight:var(--font-semibold); }
+.bw-cards-settings-body { padding:0 14px 14px; }
+.bw-cards-settings-form { border:0; padding:0; margin:0; min-width:0; }
+.bw-cards-settings-preview-host { overflow:hidden; border-radius:8px; }
+.bw-cards-settings-preview { padding:8px; }
+.bw-cards-settings-preview .bw-work-stack { margin:0; }
+.bw-cards-settings-error { color:var(--text-error); font-size:var(--font-ui-small); }
+.bw-cards-settings-body textarea { width:100%; box-sizing:border-box; font-family:var(--font-monospace); resize:vertical; }

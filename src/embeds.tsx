@@ -4,7 +4,7 @@ import { MarkdownRenderChild, TFile, type App, type Plugin } from 'obsidian';
 import type { CardsAPI } from './types';
 import type { WorkPropertiesManager } from './WorkPropertiesSessions';
 import CardsSurface from './CardsSurface';
-import { parseCardsEmbed, reorderCardsBlock } from './embed-source';
+import { CARD_LANGUAGES, parseCardsEmbed, reorderCardsBlock } from './embed-source';
 import { prepareNativeWrite } from './persistence';
 
 export interface EmbeddedRuntime { api: CardsAPI; manager: WorkPropertiesManager; trackChild?: (child: MarkdownRenderChild) => (() => void); }
@@ -34,14 +34,14 @@ class CardsEmbedChild extends MarkdownRenderChild {
   onunload() { this.stopped = true; this.root?.unmount(); this.root = undefined; this.untrack?.(); this.untrack = undefined; }
 }
 
-export function registerCardsEmbeds(registrar: Plugin, resolveRuntime: (sourcePath: string) => EmbeddedRuntime | undefined): void {
+export function registerCardsEmbeds(registrar: Plugin, resolveRuntime: (sourcePath: string) => EmbeddedRuntime | undefined, languages: readonly string[] = CARD_LANGUAGES): void {
   const drafts = new Map<string, string[]>();
   registrar.register(() => drafts.clear());
-  registrar.registerMarkdownCodeBlockProcessor('barry-cards', (source, element, context) => {
+  for (const language of languages) registrar.registerMarkdownCodeBlockProcessor(language, (source, element, context) => {
     try {
       parseCardsEmbed(source);
       const runtime = resolveRuntime(context.sourcePath);
-      if (!runtime) throw new Error('没有可用的卡片库。请启用 Barry Cards 或 Barry 工作台。');
+      if (!runtime) throw new Error('没有可用的卡片库。请启用 Magical Cards 并检查卡片目录。');
       context.addChild(new CardsEmbedChild(element, registrar.app, runtime, source, context.sourcePath, drafts));
     } catch (failure) {
       const message = element.ownerDocument.createElement('p'); message.className = 'bw-sync-note is-error'; message.setAttribute('role', 'alert'); message.textContent = failure instanceof Error ? failure.message : String(failure); element.replaceChildren(message);

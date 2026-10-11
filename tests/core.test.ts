@@ -5,21 +5,57 @@ import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
+import { readFile } from 'node:fs/promises';
 import { createWork } from '../src/domain';
+import { cardsSourceBlocks, parseCardsEmbed } from '../src/embed-source';
 import type { App as ObsidianApp } from 'obsidian';
 import type { Book, CardsSettings } from '../src/types';
 import type * as Mock from './obsidian-mock';
 
 const directory = dirname(fileURLToPath(import.meta.url));
-const bundled = await build({ stdin: { contents: "export * from '../src/store'; export * from '../src/runtime'; export * from './obsidian-mock'; export { renderedRoots } from 'react-dom/client';", resolveDir: directory, loader: 'ts' }, alias: { obsidian: resolve(directory, 'obsidian-mock.ts') }, bundle: true, platform: 'node', format: 'cjs', write: false, external: ['react'], plugins:[{name:'render-lifecycle',setup(build){build.onResolve({filter:/^react-dom\/client$/},()=>({path:'client',namespace:'render-lifecycle'}));build.onLoad({filter:/.*/,namespace:'render-lifecycle'},()=>({contents:'export const renderedRoots=[];export function createRoot(){const root={element:null,unmounted:false,render(element){this.element=element;},unmount(){this.unmounted=true;}};renderedRoots.push(root);return root;}',loader:'js'}));}}] });
+const bundled = await build({ stdin: { contents: "export * from '../src/store'; export * from '../src/runtime'; export * from './obsidian-mock'; export { renderedRoots, createRoot } from 'react-dom/client';", resolveDir: directory, loader: 'ts' }, alias: { obsidian: resolve(directory, 'obsidian-mock.ts') }, bundle: true, platform: 'node', format: 'cjs', write: false, external: ['react'], plugins:[{name:'render-lifecycle',setup(build){build.onResolve({filter:/^react-dom\/client$/},()=>({path:'client',namespace:'render-lifecycle'}));build.onLoad({filter:/.*/,namespace:'render-lifecycle'},()=>({contents:'export const renderedRoots=[];export function createRoot(){const root={element:null,unmounted:false,render(element){this.element=element;},unmount(){this.unmounted=true;}};renderedRoots.push(root);return root;}',loader:'js'}));}}] });
 const module = { exports: {} }; new Function('require', 'module', 'exports', bundled.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
-const runtime = module.exports as typeof Mock & typeof import('../src/store') & typeof import('../src/runtime') & {renderedRoots:Array<{element:{props:{saveOrder(order:string[]):Promise<void>}};unmounted:boolean}>};
+interface RenderedRoot { element: { props: { saveOrder(order: string[]): Promise<void>; initialDraft?: string[]; retainDraft(draft: string[] | null): void; api: import('../src/store').CardsStore; manager: import('../src/WorkPropertiesSessions').WorkPropertiesManager } }; unmounted: boolean; render(element: RenderedRoot['element']): void; unmount(): void; }
+const runtime = module.exports as typeof Mock & typeof import('../src/store') & typeof import('../src/runtime') & {renderedRoots:Array<RenderedRoot>;createRoot():RenderedRoot};
 const fields = (text: string) => parse(text.match(/^---\n([\s\S]*?)\n---/)![1]) as Record<string, any>;
 const asApp = (app: Mock.App) => app as unknown as ObsidianApp;
 async function fixture(settings?: Partial<CardsSettings>) { const app = new runtime.App(), store = new runtime.CardsStore(asApp(app), '工作台', settings); await store.initialize(); return { app, store }; }
 
+// Model the already installed bundle: registered=true with only the old card language,
+// no cardLanguages marker, and the same shared symbol and reference-counted lifetime.
+const currentSource = await readFile(resolve(directory, '../src/runtime.ts'), 'utf8');
+const legacyRegistration = `function registerProcessors(runtime: AppRuntime) {
+  if (runtime.processorError) throw runtime.processorError;
+  if (runtime.registered) return;
+  try {
+    registerCardsEmbeds(runtime.registrar, sourcePath => {
+      const library = chooseLibrary(runtime, sourcePath);
+      return library?.manager ? { api: library.api, manager: library.manager, trackChild: child => { library.children.add(child); return () => library.children.delete(child); } } : undefined;
+    }, ['barry-cards']);
+    runtime.registrar.registerMarkdownCodeBlockProcessor('barry-work-order', (source, element, context) => {
+      const kind = source.trim(), library = chooseLibrary(runtime, context.sourcePath);
+      if (context.frontmatter?.bw_view !== 'work-order' || (kind !== 'book' && kind !== 'film') || !library) return;
+      const child = new WorkOrderChild(element, library, kind); library.children.add(child); context.addChild(child);
+    });
+    runtime.registered = true;
+  } catch (error) { runtime.processorError = error; throw error; }
+}
+`;
+const legacySource = currentSource.slice(0, currentSource.indexOf('function registerProcessors(')) + legacyRegistration + currentSource.slice(currentSource.indexOf('async function backupDrafts('));
+const legacyBundle = await build({ stdin: { contents: legacySource.replace(', cardLanguages: new Set()', ''), resolveDir: resolve(directory, '../src'), loader: 'ts' }, bundle: true, platform: 'node', format: 'cjs', write: false, external: ['obsidian', 'react', 'react-dom/client'] });
+const legacyModule = { exports: {} }, require = createRequire(import.meta.url);
+new Function('require', 'module', 'exports', legacyBundle.outputFiles[0].text)((name: string) => name === 'obsidian' ? runtime : name === 'react-dom/client' ? { createRoot: runtime.createRoot } : require(name), legacyModule, legacyModule.exports);
+const legacyRuntime = legacyModule.exports as Pick<typeof runtime, 'acquireCards'>;
+type CardsProcessor = (source: string, element: HTMLElement, context: { sourcePath: string; addChild(child: Mock.MarkdownRenderChild): void }) => void;
+function mountEmbed(language: string, source: string, path: string) {
+  const processor = runtime.Plugin.languages.get(language) as CardsProcessor;
+  const children: Mock.MarkdownRenderChild[] = [], start = runtime.renderedRoots.length;
+  processor(source, {} as HTMLElement, { sourcePath: path, addChild(child) { children.push(child); child.load(); } });
+  return { child: children[0], root: runtime.renderedRoots[start] };
+}
+
 test('migration copies only card configuration and never edits legacy data or unrelated notes', async () => {
-  const app = new runtime.App(), legacy = JSON.stringify({ bookCardAppearance: { material: 'paper', style: 'cover' }, customModules: [{ id: 'photos', title: '照片', kind: 'film', appearance: { material: 'matte', style: 'minimal' } }], threeCardView: true, workbenchText: { 'book.title': '书架', 'header.title': '私人标题' }, wereadSecret: 'local-secret-id', categories: ['私人分类'] });
+  const app = new runtime.App(), legacy = JSON.stringify({ rootFolder: '工作台', bookCardAppearance: { material: 'paper', style: 'cover' }, customModules: [{ id: 'photos', title: '照片', kind: 'film', appearance: { material: 'matte', style: 'minimal' } }], threeCardView: true, workbenchText: { 'book.title': '书架', 'header.title': '私人标题' }, wereadSecret: 'local-secret-id', categories: ['私人分类'] });
   await app.vault.create('.obsidian/plugins/barry-workbench/data.json', legacy);
   const unrelated = await app.vault.create('工作台/任务/任务.md', '# 原有任务\n未触碰的正文\n');
   const store = new runtime.CardsStore(asApp(app), '工作台'); await store.initialize();
@@ -80,12 +116,132 @@ test('two plugin leases share migration, queue and sessions, and either can rele
     for (const reverse of [false, true]) {
       const app = new runtime.App(), constructions = runtime.Plugin.constructions;
       const leases = await Promise.all([runtime.acquireCards(asApp(app), '工作台', '.obsidian/plugins/workbench', { threeCardView: true }), runtime.acquireCards(asApp(app), '工作台/', '.obsidian/plugins/cards')]);
-      assert.equal(leases[0].api, leases[1].api); assert.equal(leases[0].propertiesManager, leases[1].propertiesManager); assert.equal(runtime.Plugin.constructions, constructions + 1); assert.equal(runtime.Plugin.languages.size, 2);
-      const [first, second] = reverse ? leases.reverse() : leases; await first.release(); await first.release(); assert.equal(runtime.Plugin.languages.size, 2);
+      assert.equal(leases[0].api, leases[1].api); assert.equal(leases[0].propertiesManager, leases[1].propertiesManager); assert.equal(runtime.Plugin.constructions, constructions + 1); assert.equal(runtime.Plugin.languages.size, 3);
+      const [first, second] = reverse ? leases.reverse() : leases; await first.release(); await first.release(); assert.equal(runtime.Plugin.languages.size, 3);
       const film = createWork('film'); await second.api.save(film); assert.equal(second.api.getSnapshot().entities.length, 1);
       await second.release(); assert.equal(runtime.Plugin.languages.size, 0); await assert.rejects(second.api.save(createWork('film')), /停用/);
     }
   } finally { if (previous) Object.defineProperty(globalThis, 'window', previous); else Reflect.deleteProperty(globalThis, 'window'); }
+});
+
+test('old and new bundles load in either order without replacing roots, sessions, draft maps or the registrar', async () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'window'); Object.defineProperty(globalThis, 'window', { configurable: true, value: { requestAnimationFrame: () => 1, cancelAnimationFrame() {} } });
+  try {
+    for (const oldFirst of [true, false]) {
+      const app = new runtime.App(), constructions = runtime.Plugin.constructions;
+      const firstBundle = oldFirst ? legacyRuntime : runtime, secondBundle = oldFirst ? runtime : legacyRuntime;
+      const first = await firstBundle.acquireCards(asApp(app), '工作台', '.obsidian/plugins/first');
+      let second: import('../src/runtime').CardsLease | undefined;
+      try {
+        if (oldFirst) {
+          // A deployed old Store lacks newer onboarding methods as well as the language marker.
+          Reflect.deleteProperty(first.api, 'getInitializationInfo');
+          Reflect.deleteProperty(first.api, 'saveStarterWork');
+        }
+        const source = 'id: shared-draft\nmodules:\n  - id: books\n    collection: book\n  - id: films\n    collection: film';
+        const oldProcessor = runtime.Plugin.languages.get('barry-cards');
+        const original = mountEmbed('barry-cards', source, '工作台/说明.md');
+        original.root.element.props.retainDraft(['films', 'books']);
+        const film = createWork('film'); await first.api.save(film);
+        const session = first.propertiesManager.getSession(film.id); await session.refresh(); session.startComposition(); session.update({ summary: '加载第二个插件前的未保存草稿' });
+        const before = app.vault.dump();
+        const registry = Reflect.get(globalThis, Symbol.for('barry-cards.runtime.v1')) as WeakMap<ObsidianApp, { registered: boolean; cardLanguages?: Set<string> }>;
+        if (oldFirst) { assert.equal(registry.get(asApp(app))?.registered, true); assert.equal(registry.get(asApp(app))?.cardLanguages, undefined); assert.equal(runtime.Plugin.languages.size, 2); }
+        second = await secondBundle.acquireCards(asApp(app), '工作台/', '.obsidian/plugins/second');
+        assert.equal(second.api, first.api); assert.equal(second.propertiesManager, first.propertiesManager);
+        if (oldFirst) { assert.equal(typeof second.api.getInitializationInfo, 'undefined'); assert.equal(typeof second.api.saveStarterWork, 'undefined'); }
+        assert.equal(runtime.Plugin.constructions, constructions + 1); assert.equal(runtime.Plugin.languages.size, 3);
+        assert.equal(runtime.Plugin.languages.get('barry-cards'), oldProcessor);
+        assert.equal(original.root.unmounted, false); assert.deepEqual(app.vault.dump(), before);
+        assert.deepEqual([...registry.get(asApp(app))!.cardLanguages!].sort(), ['barry-cards', 'magical-cards']);
+        const remounted = mountEmbed('barry-cards', source, '工作台/说明.md');
+        assert.deepEqual(remounted.root.element.props.initialDraft, ['films', 'books']);
+        const magical = mountEmbed('magical-cards', source, '工作台/新说明.md');
+        assert.equal(magical.root.element.props.api, first.api); assert.equal(magical.root.element.props.manager, first.propertiesManager);
+        await first.release(); await first.release();
+        assert.equal(original.root.unmounted, false); assert.equal(magical.root.unmounted, false); assert.equal(runtime.Plugin.languages.size, 3);
+        assert.equal(second.propertiesManager.getSession(film.id), session); assert.equal(session.getSnapshot().dirty, true); assert.equal(session.getSnapshot().values?.summary, '加载第二个插件前的未保存草稿');
+        await second.propertiesManager.flush(film.id); assert.equal(second.api.getSnapshot().entities[0].summary, '加载第二个插件前的未保存草稿');
+        await second.release();
+        assert.equal(original.root.unmounted, true); assert.equal(remounted.root.unmounted, true); assert.equal(magical.root.unmounted, true); assert.equal(runtime.Plugin.languages.size, 0);
+        await assert.rejects(second.api.save(createWork('film')), /停用/);
+      } finally { await first.release(); await second?.release(); }
+    }
+  } finally { if (previous) Object.defineProperty(globalThis, 'window', previous); else Reflect.deleteProperty(globalThis, 'window'); }
+});
+
+test('mixed old and new runtime leases back up failed final-save drafts without changing old recovery files', async () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'window'); Object.defineProperty(globalThis, 'window', { configurable: true, value: { requestAnimationFrame: () => 1, cancelAnimationFrame() {} } });
+  try {
+    for (const oldFirst of [true, false]) {
+      const app = new runtime.App(), oldRecovery = '.obsidian/plugins/barry-cards/card-drafts-recovery-existing.json';
+      const existing = '{"future":{"keep":true},"drafts":["旧的未保存文字"]}'; await app.vault.create(oldRecovery, existing);
+      const first = await (oldFirst ? legacyRuntime : runtime).acquireCards(asApp(app), '工作台', '.obsidian/plugins/first');
+      const second = await (oldFirst ? runtime : legacyRuntime).acquireCards(asApp(app), '工作台', '.obsidian/plugins/last');
+      try {
+        const work = createWork('film'); await first.api.save(work);
+        const file = app.vault.getAbstractFileByPath(first.api.getSnapshot().entities[0].path) as Mock.TFile, before = file.contents;
+        const session = first.propertiesManager.getSession(work.id); await session.refresh(); session.startComposition(); session.update({ summary: '最终停用时仍未保存的完整中文草稿' });
+        first.api.patchWorkProperties = async () => { throw new Error('模拟磁盘写入失败'); };
+        await first.release(); assert.equal(second.propertiesManager.getSession(work.id), session); assert.equal(session.getSnapshot().dirty, true);
+        assert.equal(Object.keys(app.vault.dump()).filter(path => path.startsWith('.obsidian/plugins/last/card-drafts-recovery-')).length, 0);
+        await second.release();
+        const backups = Object.keys(app.vault.dump()).filter(path => path.startsWith('.obsidian/plugins/last/card-drafts-recovery-'));
+        assert.equal(backups.length, 1);
+        const backup = JSON.parse(app.vault.text(backups[0]));
+        assert.equal(backup.drafts.length, 1); assert.equal(backup.drafts[0].id, work.id); assert.equal(backup.drafts[0].path, file.path); assert.equal(backup.drafts[0].values.summary, '最终停用时仍未保存的完整中文草稿');
+        assert.equal(file.contents, before); assert.equal(app.vault.text(oldRecovery), existing); assert.equal(runtime.Plugin.languages.size, 0);
+      } finally { await first.release(); await second.release(); }
+    }
+  } finally { if (previous) Object.defineProperty(globalThis, 'window', previous); else Reflect.deleteProperty(globalThis, 'window'); }
+});
+
+test('new-language embeds preserve mixed note body and enforce native buffer and duplicate-ID protection', async () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'window'); Object.defineProperty(globalThis, 'window', { configurable: true, value: { requestAnimationFrame: () => 1, cancelAnimationFrame() {} } });
+  const app = new runtime.App(); let lease: import('../src/runtime').CardsLease | undefined;
+  try {
+    lease = await runtime.acquireCards(asApp(app), '工作台', '.obsidian/plugins/cards');
+    const source = 'id: live-demo\nlabel: 保留选项\nmodules:\n  - id: books # 原有注释\n    collection: book\n  - id: films\n    collection: film';
+    const other = '```barry-cards\nid: another-demo\nmodules: []\n```\n';
+    const text = `# 任意正文\n${other}\n\`\`\`magical-cards\n${source}\n\`\`\`\n\n尾部正文\n`;
+    const file = await app.vault.create('工作台/混合.md', text), mounted = mountEmbed('magical-cards', source, file.path);
+    let nativeSaved = false;
+    app.markdownViews = [{ file, getViewData: () => file.contents + '窗口一草稿', save: async () => { nativeSaved = true; } }, { file, getViewData: () => file.contents + '窗口二草稿', save: async () => { nativeSaved = true; } }];
+    await assert.rejects(mounted.root.element.props.saveOrder(['films', 'books']), /窗口内容不一致/); assert.equal(file.contents, text); assert.equal(nativeSaved, false);
+    app.markdownViews = [];
+    file.contents += `\n\`\`\`barry-cards\n${source}\n\`\`\`\n`;
+    const duplicate = file.contents; await assert.rejects(mounted.root.element.props.saveOrder(['films', 'books']), /重复/); assert.equal(file.contents, duplicate);
+    file.contents = text;
+    await mounted.root.element.props.saveOrder(['films', 'books']);
+    assert.ok(file.contents.startsWith(`# 任意正文\n${other}\n\`\`\`magical-cards\n`)); assert.ok(file.contents.endsWith('```\n\n尾部正文\n'));
+    const ordered = cardsSourceBlocks(file.contents)[1].source;
+    assert.deepEqual(parseCardsEmbed(ordered).modules.map(item => item.id), ['films', 'books']); assert.ok(ordered.includes('label: 保留选项')); assert.ok(ordered.includes('# 原有注释'));
+    file.contents = file.contents.replace('label: 保留选项', 'label: 另一个编辑器已更新'); const changed = file.contents;
+    await assert.rejects(mounted.root.element.props.saveOrder(['books', 'films']), /其他窗口修改/); assert.equal(file.contents, changed);
+  } finally { await lease?.release(); if (previous) Object.defineProperty(globalThis, 'window', previous); else Reflect.deleteProperty(globalThis, 'window'); }
+});
+
+test('a conflicting new alias does not poison or unload an already registered legacy runtime', async () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'window'); Object.defineProperty(globalThis, 'window', { configurable: true, value: { requestAnimationFrame: () => 1, cancelAnimationFrame() {} } });
+  const app = new runtime.App(); let old: import('../src/runtime').CardsLease | undefined, next: import('../src/runtime').CardsLease | undefined;
+  const foreign = () => {};
+  try {
+    old = await legacyRuntime.acquireCards(asApp(app), '工作台', '.obsidian/plugins/old');
+    const source = 'id: kept-root\nmodules: []', mounted = mountEmbed('barry-cards', source, '工作台/原说明.md');
+    const processor = runtime.Plugin.languages.get('barry-cards');
+    runtime.Plugin.languages.set('magical-cards', foreign);
+    await assert.rejects(runtime.acquireCards(asApp(app), '工作台', '.obsidian/plugins/new'), /Language already registered/);
+    assert.equal(mounted.root.unmounted, false); assert.equal(runtime.Plugin.languages.get('barry-cards'), processor); assert.equal(runtime.Plugin.languages.get('magical-cards'), foreign);
+    await old.api.save(createWork('book')); assert.equal(old.api.getSnapshot().entities.length, 1);
+    runtime.Plugin.languages.delete('magical-cards');
+    next = await runtime.acquireCards(asApp(app), '工作台', '.obsidian/plugins/new');
+    assert.equal(next.api, old.api); assert.equal(runtime.Plugin.languages.size, 3); assert.equal(mounted.root.unmounted, false);
+    await old.release(); assert.equal(mounted.root.unmounted, false);
+    await next.release(); assert.equal(mounted.root.unmounted, true); assert.equal(runtime.Plugin.languages.size, 0);
+  } finally {
+    if (runtime.Plugin.languages.get('magical-cards') === foreign) runtime.Plugin.languages.delete('magical-cards');
+    await old?.release(); await next?.release(); if (previous) Object.defineProperty(globalThis, 'window', previous); else Reflect.deleteProperty(globalThis, 'window');
+  }
 });
 
 
@@ -99,7 +255,7 @@ test('last release of one root unmounts its reading and live-preview embeds whil
     const children:Mock.MarkdownRenderChild[]=[],start=runtime.renderedRoots.length;
     for(const path of ['一号库/阅读.md','一号库/实时预览.md','二号库/阅读.md'])processor(source,{} as HTMLElement,{sourcePath:path,addChild(child){children.push(child);child.load();}});
     const mounted=runtime.renderedRoots.slice(start);assert.equal(mounted.length,3);assert.equal(mounted.some(root=>root.unmounted),false);
-    await first.release();assert.deepEqual(mounted.map(root=>root.unmounted),[true,true,false]);assert.equal(runtime.Plugin.languages.size,2);
+    await first.release();assert.deepEqual(mounted.map(root=>root.unmounted),[true,true,false]);assert.equal(runtime.Plugin.languages.size,3);
     await assert.rejects(mounted[0].element.props.saveOrder(['films','books']),/笔记已关闭/);
     await second.api.save(createWork('film'));assert.equal(second.api.getSnapshot().entities.length,1);
     await second.release();assert.deepEqual(mounted.map(root=>root.unmounted),[true,true,true]);assert.equal(runtime.Plugin.languages.size,0);
@@ -114,7 +270,7 @@ test('concurrent acquisitions all reject a preexisting native language conflict 
   try{
     const app=new runtime.App();const result=await Promise.allSettled([runtime.acquireCards(asApp(app),'工作台','.obsidian/plugins/first'),runtime.acquireCards(asApp(app),'工作台','.obsidian/plugins/second')]);
     assert.deepEqual(result.map(item=>item.status),['rejected','rejected']);assert.equal(runtime.Plugin.languages.size,1);assert.equal(runtime.Plugin.languages.get('barry-work-order'),original);assert.equal(cancelled,scheduled,'失败加载必须取消共享属性宿主的待执行帧');
-    runtime.Plugin.languages.delete('barry-work-order');const retry=await runtime.acquireCards(asApp(app),'工作台','.obsidian/plugins/retry');assert.equal(runtime.Plugin.languages.size,2);await retry.release();assert.equal(runtime.Plugin.languages.size,0);
+    runtime.Plugin.languages.delete('barry-work-order');const retry=await runtime.acquireCards(asApp(app),'工作台','.obsidian/plugins/retry');assert.equal(runtime.Plugin.languages.size,3);await retry.release();assert.equal(runtime.Plugin.languages.size,0);
   }finally{runtime.Plugin.languages.delete('barry-work-order');if(previous)Object.defineProperty(globalThis,'window',previous);else Reflect.deleteProperty(globalThis,'window');}
 });
 
@@ -128,7 +284,7 @@ test('startup returns shared loading leases before the vault index is ready, the
     app.vault.getAbstractFileByPath=path=>app.workspace.layoutReady?lookup(path):null;app.vault.getMarkdownFiles=()=>app.workspace.layoutReady?list():[];
     const folder=app.vault.createFolder.bind(app.vault),create=app.vault.create.bind(app.vault);app.vault.createFolder=async path=>{writes++;return folder(path);};app.vault.create=async(path,text)=>{writes++;return create(path,text);};
     [first,second]=await Promise.race([Promise.all([runtime.acquireCards(asApp(app),'工作台','.obsidian/plugins/first'),runtime.acquireCards(asApp(app),'工作台','.obsidian/plugins/second')]),new Promise<never>((_,reject)=>setTimeout(()=>reject(new Error('plugin onload must not wait for layout boot')),100))]);
-    assert.equal(first.api,second.api);assert.equal(first.api.getSnapshot().loading,true);assert.equal(writes,0);assert.equal(runtime.Plugin.languages.size,2);
+    assert.equal(first.api,second.api);assert.equal(first.api.getSnapshot().loading,true);assert.equal(writes,0);assert.equal(runtime.Plugin.languages.size,3);
     const pending=first.api.initialize();assert.equal(pending,second.api.initialize());
     app.workspace.layoutReady=true;for(const callback of app.layoutReadyCallbacks.splice(0))callback();await Promise.all([first.ready,second.ready,pending]);
     assert.equal(first.api.getSnapshot().loading,false);assert.equal(first.api.getSnapshot().entities[0].title,'启动前已有作品');assert.equal(first.api.getSnapshot().settings.threeCardView,true);assert.equal(writes,0);assert.deepEqual(app.vault.dump(),before);

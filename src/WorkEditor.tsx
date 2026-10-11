@@ -68,7 +68,7 @@ export function DeleteWorkDialog({ work, genericCard = false, busy, error, remov
   useEffect(() => { const element = dialog.current; const trigger = element?.ownerDocument.activeElement as HTMLElement | null; element?.showModal(); return () => { element?.close(); if (trigger?.isConnected) trigger.focus(); }; }, []);
   return <dialog ref={dialog} className="bw-delete-dialog" aria-labelledby={titleId} aria-describedby={descriptionId} onKeyDown={event => event.stopPropagation()} onCancel={event => { event.preventDefault(); if (!busy) close(); }}>
     <h2 id={titleId}>删除《{work.title}》？</h2>
-    <p id={descriptionId}>{genericCard ? '卡片资料笔记将移入 Obsidian 设置的回收站，关联笔记会保留。' : '对应笔记及感想将移入 Obsidian 设置的回收站。'}{work.type === 'book' && work.sourceId && '后续同步会跳过这本书。'}恢复原笔记后可重新显示。</p>
+    <p id={descriptionId}>{genericCard ? '卡片资料笔记将移入 Obsidian 设置的回收站，关联笔记会保留。' : '对应笔记及感想将移入 Obsidian 设置的回收站。'}{work.type === 'book' && work.sourceId && '此来源记录不会自动重新添加。'}恢复原笔记后可重新显示。</p>
     {error && <p className="bw-sync-note is-error" role="alert">{error}</p>}
     <footer><button type="button" autoFocus disabled={busy} onClick={close}>取消</button><button className="bw-danger" type="button" disabled={busy} onClick={remove}>{busy ? '正在删除…' : genericCard ? '删除卡片' : work.type === 'book' ? '删除书籍' : '删除影片'}</button></footer>
   </dialog>;

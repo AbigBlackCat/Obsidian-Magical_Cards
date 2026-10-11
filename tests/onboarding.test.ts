@@ -1,0 +1,238 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { build } from 'esbuild';
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+import type { App as ObsidianApp, TFile as ObsidianFile } from 'obsidian';
+import type * as Mock from './obsidian-mock';
+import type { CardsPluginData } from '../src/onboarding';
+
+const directory = dirname(fileURLToPath(import.meta.url));
+const bundled = await build({ stdin: { contents: "export * from '../src/store'; export * from '../src/onboarding'; export * from '../src/starter-assets'; export * from '../src/domain'; export * from './obsidian-mock';", resolveDir: directory, loader: 'ts' }, alias: { obsidian: resolve(directory, 'obsidian-mock.ts') }, bundle: true, platform: 'node', format: 'cjs', write: false });
+const module = { exports: {} }; new Function('require', 'module', 'exports', bundled.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
+const runtime = module.exports as typeof Mock & typeof import('../src/store') & typeof import('../src/onboarding') & typeof import('../src/starter-assets') & typeof import('../src/domain');
+const asApp = (app: Mock.App) => app as unknown as ObsidianApp;
+function adapterListing(app: Mock.App) {
+  const exists = app.vault.adapter.exists;
+  Object.assign(app.vault.adapter, {
+    exists: async (path: string) => await exists(path) || [...app.vault.files.keys()].some(file => file.startsWith(`${path}/`)),
+    list: async (path: string) => {
+      const files: string[] = [], folders = new Set<string>();
+      for (const [file, value] of app.vault.files) {
+        if (!file.startsWith(`${path}/`)) continue;
+        const tail = file.slice(path.length + 1), child = `${path}/${tail.split('/')[0]}`;
+        if (tail.includes('/') || value instanceof runtime.TFolder) folders.add(child); else files.push(file);
+      }
+      return { files, folders: [...folders] };
+    }
+  });
+}
+async function fixture(rootFolder = '卡片库', initial?: CardsPluginData, seed?: (app: Mock.App) => Promise<void>) {
+  const app = new runtime.App(); await seed?.(app);
+  const api = new runtime.CardsStore(asApp(app), rootFolder); await api.initialize();
+  let data: CardsPluginData = initial ?? { rootFolder, installationOrigin: 'fresh', keep: { value: 1 } }, active = true;
+  const writes: CardsPluginData[] = [];
+  const options = { app: asApp(app), api, rootFolder, ready: Promise.resolve(), data: () => data,
+    update: async (patch: Partial<CardsPluginData>) => { data = structuredClone({ ...data, ...patch }); writes.push(structuredClone(data)); },
+    assertActive: () => { if (!active) throw new Error('停用'); },
+    open: async (file: ObsidianFile) => { app.opened.push(file.path); }
+  };
+  return { app, api, options, board: new runtime.CardsOnboarding(options), data: () => data, writes, stop: () => { active = false; } };
+}
+
+test('new installations default to 卡片库; legacy local settings merge once without touching recovery drafts', async () => {
+  const app = new runtime.App(); app.vault.configDir = 'custom-config';
+  const fresh = await runtime.loadCardsPluginData(asApp(app), null);
+  assert.equal(fresh.data.rootFolder, '卡片库'); assert.equal(fresh.data.installationOrigin, 'fresh');
+  const legacyPath = 'custom-config/plugins/barry-cards/data.json', recoveryPath = 'custom-config/plugins/barry-cards/card-drafts-recovery-1.json';
+  const old = JSON.stringify({ rootFolder: '老卡片', future: { keep: true }, same: 'old' });
+  await app.vault.create(legacyPath, old); await app.vault.create(recoveryPath, '{"drafts":["未保存摘要"]}');
+  const migrated = await runtime.loadCardsPluginData(asApp(app), { same: 'new', other: 3 });
+  assert.equal(migrated.data.rootFolder, '老卡片'); assert.equal(migrated.data.same, 'new'); assert.deepEqual(migrated.data.future, { keep: true }); assert.equal(migrated.data.other, 3); assert.equal(migrated.data.installationOrigin, 'legacy'); assert.equal(migrated.data.legacyCardsMigration, true);
+  assert.equal(app.vault.text(legacyPath), old); assert.equal(app.vault.text(recoveryPath), '{"drafts":["未保存摘要"]}');
+  (app.vault.getAbstractFileByPath(legacyPath) as Mock.TFile).contents = 'not json';
+  const again = await runtime.loadCardsPluginData(asApp(app), migrated.data); assert.equal(again.needsSave, false); assert.deepEqual(again.data, migrated.data);
+});
+
+test('invalid legacy settings stop migration instead of silently choosing a new library', async () => {
+  const app = new runtime.App(); await app.vault.create('.obsidian/plugins/barry-cards/data.json', '{broken');
+  await assert.rejects(runtime.loadCardsPluginData(asApp(app), null), /旧 Barry Cards 配置/);
+  assert.equal(app.vault.text('.obsidian/plugins/barry-cards/data.json'), '{broken');
+});
+
+test('workbench settings migrate only when their normalized root folder matches', async () => {
+  const old = { rootFolder: '工作台', threeCardView: true, bookCardAppearance: { material: 'paper', style: 'cover', imageFit: 'contain' }, workbenchText: { 'book.title': '旧书架' } };
+  const unrelated = await fixture('卡片库', undefined, async app => { await app.vault.create('.obsidian/plugins/barry-workbench/data.json', JSON.stringify(old)); });
+  assert.equal(unrelated.api.getSnapshot().settings.threeCardView, false); assert.deepEqual(unrelated.api.getSnapshot().settings.workbenchText, {}); assert.equal(unrelated.api.getInitializationInfo().usedLegacySettings, false);
+  await unrelated.board.run(); assert.equal(unrelated.api.getSnapshot().entities.length, 8); unrelated.api.destroy();
+  const matched = await fixture('工作台', { rootFolder: '工作台', installationOrigin: 'fresh' }, async app => { await app.vault.create('.obsidian/plugins/barry-workbench/data.json', JSON.stringify(old)); });
+  const before = matched.app.vault.text('工作台/_数据/卡片配置.md'); await matched.board.run();
+  assert.equal(matched.api.getSnapshot().entities.length, 0); assert.equal(matched.api.getSnapshot().settings.workbenchText['book.title'], '旧书架'); assert.equal(matched.api.getSnapshot().settings.bookCardAppearance.imageFit, 'contain'); assert.equal(matched.app.vault.text('工作台/_数据/卡片配置.md'), before); matched.api.destroy();
+});
+
+test('fresh onboarding creates eight ordinary works with fresh UUIDs, byte-exact offline covers and usable guide', async () => {
+  const { board, api, app, data } = await fixture(); await Promise.all([board.run(), board.run()]);
+  const snapshot = api.getSnapshot(); assert.equal(snapshot.entities.length, 8); assert.equal(snapshot.entities.filter(work => work.type === 'book').length, 5); assert.equal(snapshot.entities.filter(work => work.type === 'film').length, 3);
+  assert.equal(new Set(snapshot.entities.map(work => work.id)).size, 8);
+  for (const work of snapshot.entities) { assert.match(work.id, /^[a-f0-9-]{36}$/); assert.equal(work.moduleId, undefined); assert.equal(work.summary, ''); assert.equal(work.rating, null); if (work.type === 'book') { assert.equal(work.sourceId, ''); assert.deepEqual(work.notes, []); } }
+  assert.equal(snapshot.settings.threeCardView, true); assert.equal(snapshot.settings.workbenchText['book.title'], '阅读'); assert.equal(snapshot.settings.workbenchText['film.title'], '影视');
+  assert.deepEqual(snapshot.settings.bookCardAppearance, { material: 'paper', style: 'cover', layout: 'cylinder', ratio: '2:3', imageFit: 'cover' });
+  for (const item of data().onboarding!.items) {
+    const asset = runtime.STARTER_ASSETS.find(asset => asset.id === item.asset)!;
+    const bytes = Buffer.from(app.vault.text(item.coverPath), 'base64'); assert.equal(createHash('sha256').update(bytes).digest('hex'), asset.sha256);
+    assert.ok(snapshot.entities.some(work => work.id === item.id && work.path === item.notePath));
+  }
+  const guide = app.vault.text(data().onboarding!.guidePath);
+  assert.equal((guide.match(/```magical-cards\n/g) ?? []).length, 1); assert.doesNotMatch(guide,/\n\s+layout:/); assert.match(guide, /卡片库\/_数据\/卡片配置.md/); assert.doesNotMatch(guide, /\{\{|\/Users\//);
+  assert.equal(data().onboarding!.status, 'complete'); assert.equal(data().onboarding!.helpOpened, true); assert.equal(app.opened.length, 1); assert.deepEqual(data().keep, { value: 1 });
+  const before = app.vault.dump(); await board.run(); assert.deepEqual(app.vault.dump(), before); assert.equal(app.opened.length, 1); api.destroy();
+});
+
+test('an empty-root intent survives the first journal write failure and resumes after restart without replacing edited settings', async () => {
+  const app = new runtime.App(); adapterListing(app);
+  let data: CardsPluginData = { rootFolder: '卡片库', installationOrigin: 'fresh' };
+  const intent = await runtime.prepareFirstRunIntent(asApp(app), data, () => {}); assert.ok(intent);
+  assert.equal(app.vault.getAbstractFileByPath('卡片库/_数据/卡片配置.md'), null);
+  data = { ...data, firstRunIntent: intent };
+  let api = new runtime.CardsStore(asApp(app), data.rootFolder); await api.initialize();
+  const options = () => ({ app: asApp(app), api, rootFolder: data.rootFolder, ready: Promise.resolve(), data: () => data, assertActive: () => {}, open: async () => {}, update: async (patch: Partial<CardsPluginData>) => { data = structuredClone({ ...data, ...patch }); } });
+  await assert.rejects(new runtime.CardsOnboarding({ ...options(), update: async () => { throw new Error('首次进度写入失败'); } }).run(), /首次进度写入失败/);
+  assert.equal(data.onboarding, undefined); assert.equal(api.getSnapshot().entities.length, 0);
+  await api.saveSettings({ bookCardAppearance: { material: 'foil', style: 'cover', imageFit: 'contain' } }); api.destroy();
+  data = (await runtime.loadCardsPluginData(asApp(app), JSON.parse(JSON.stringify(data)))).data;
+  api = new runtime.CardsStore(asApp(app), data.rootFolder); await api.initialize();
+  assert.equal(api.getInitializationInfo().hadConfig, true);
+  await new runtime.CardsOnboarding(options()).run();
+  assert.equal(data.onboarding?.status, 'complete'); assert.equal(api.getSnapshot().entities.length, 8);
+  assert.deepEqual(api.getSnapshot().settings.bookCardAppearance, { material: 'foil', style: 'cover', imageFit: 'contain' }); api.destroy();
+});
+
+test('first-run intents require adapter-confirmed empty roots and never seed changed roots or newly added files', async () => {
+  const app = new runtime.App(); adapterListing(app); app.workspace.layoutReady = false;
+  await app.vault.create('卡片库/附件/自己的封面.png', 'existing bytes');
+  app.vault.getMarkdownFiles = () => [];
+  assert.equal(await runtime.prepareFirstRunIntent(asApp(app), { rootFolder: '卡片库', installationOrigin: 'fresh' }, () => {}), undefined);
+  assert.equal(await runtime.prepareFirstRunIntent(asApp(app), { rootFolder: '空库', installationOrigin: 'legacy' }, () => {}), undefined);
+  const intent = await runtime.prepareFirstRunIntent(asApp(app), { rootFolder: '空库', installationOrigin: 'fresh' }, () => {}); assert.ok(intent);
+  app.workspace.layoutReady = true;
+  for (const rootFolder of ['空库', '更换目录']) {
+    if (rootFolder === '空库') await app.vault.create('空库/用户新增.md', '# 新增内容');
+    const api = new runtime.CardsStore(asApp(app), rootFolder); await api.initialize();
+    let data: CardsPluginData = { rootFolder, installationOrigin: 'fresh', firstRunIntent: intent };
+    await new runtime.CardsOnboarding({ app: asApp(app), api, rootFolder, ready: Promise.resolve(), data: () => data, update: async patch => { data = { ...data, ...patch }; }, assertActive: () => {}, open: async () => {} }).run();
+    assert.equal(api.getSnapshot().entities.length, 0); assert.notEqual(data.onboarding?.status, 'pending'); api.destroy();
+  }
+});
+
+test('existing target files or a legacy installation keep settings and never receive starter cards', async () => {
+  for (const legacy of [false, true]) {
+    const f = await fixture('卡片库', { rootFolder: '卡片库', installationOrigin: legacy ? 'legacy' : 'fresh' }, legacy ? undefined : async app => { await app.vault.create('卡片库/我的笔记.md', '# 自有内容\n'); });
+    const config = f.app.vault.text('卡片库/_数据/卡片配置.md'); await f.board.run();
+    assert.equal(f.api.getSnapshot().entities.length, 0); assert.equal(f.app.vault.text('卡片库/_数据/卡片配置.md'), config); assert.equal(f.data().onboarding!.status, 'skipped'); assert.deepEqual(f.data().onboarding!.items, []); f.api.destroy();
+  }
+});
+
+test('partial import resumes stable IDs and preserves edited works, covers and settings', async () => {
+  const f = await fixture(); const save = f.api.saveStarterWork; let count = 0;
+  f.api.saveStarterWork = async (work, active) => { if (++count === 3) throw new Error('模拟中断'); await save(work, active); };
+  await assert.rejects(f.board.run(), /模拟中断/); assert.equal(f.api.getSnapshot().entities.length, 2); assert.equal(f.data().onboarding!.status, 'pending');
+  const plannedIds = f.data().onboarding!.items.map(item => item.id), first = f.api.getSnapshot().entities[0];
+  await f.api.patchWorkProperties(first.id, { title: '自己改过的作品', summary: '自己写的摘要' }, await f.api.readWorkProperties(first.id));
+  (f.app.vault.getAbstractFileByPath(first.cover) as Mock.TFile).contents = 'user cover bytes';
+  await f.api.saveSettings({ threeCardView: false });
+  f.api.saveStarterWork = save; await new runtime.CardsOnboarding(f.options).run();
+  assert.equal(f.api.getSnapshot().entities.length, 8); assert.deepEqual(f.data().onboarding!.items.map(item => item.id), plannedIds);
+  assert.equal(f.api.getSnapshot().entities.find(work => work.id === first.id)!.summary, '自己写的摘要'); assert.equal(f.api.getSnapshot().entities.find(work => work.id === first.id)!.title, '自己改过的作品'); assert.equal(f.app.vault.text(first.cover), 'user cover bytes'); assert.equal(f.api.getSnapshot().settings.threeCardView, false); f.api.destroy();
+});
+
+test('failure saving progress after a note write does not duplicate or overwrite that note on retry', async () => {
+  const f = await fixture(); const update = f.options.update; let failed = false;
+  f.options.update = async patch => { if (!failed && patch.onboarding?.items.some(item => item.workDone)) { failed = true; throw new Error('本地进度保存失败'); } await update(patch); };
+  await assert.rejects(new runtime.CardsOnboarding(f.options).run(), /本地进度保存失败/);
+  assert.equal(f.api.getSnapshot().entities.length, 1); const work = f.api.getSnapshot().entities[0];
+  await f.api.patchWorkProperties(work.id, { summary: '中断后编辑' }, await f.api.readWorkProperties(work.id));
+  await new runtime.CardsOnboarding(f.options).run(); assert.equal(f.api.getSnapshot().entities.length, 8); assert.equal(f.api.getSnapshot().entities.find(item => item.id === work.id)!.summary, '中断后编辑'); f.api.destroy();
+});
+
+test('first-open success is recorded only after opening; edited guide survives retry and deletion never reseeds', async () => {
+  const f = await fixture(); let fail = true;
+  f.options.open = async file => { if (fail) throw new Error('打开失败'); f.app.opened.push(file.path); };
+  await assert.rejects(new runtime.CardsOnboarding(f.options).run(), /打开失败/); assert.equal(f.data().onboarding!.helpOpened, false);
+  const guidePath = f.data().onboarding!.guidePath, guide = f.app.vault.getAbstractFileByPath(guidePath) as Mock.TFile; guide.contents += '\n用户说明\n';
+  fail = false; await new runtime.CardsOnboarding(f.options).run(); assert.equal(f.data().onboarding!.helpOpened, true); assert.ok(guide.contents.endsWith('用户说明\n'));
+  f.app.vault.files.delete(guidePath); const work = f.api.getSnapshot().entities[0]; await f.api.deleteWork(work.id);
+  const before = f.app.vault.dump(); await new runtime.CardsOnboarding(f.options).run(); assert.deepEqual(f.app.vault.dump(), before); assert.equal(f.api.getSnapshot().entities.length, 7); assert.equal(f.app.opened.length, 1); f.api.destroy();
+});
+
+test('an unrelated guide filename is preserved and the welcome page gets its own path', async () => {
+  const f = await fixture('卡片库', undefined, async app => { await app.vault.create('卡片库/Magical_Cards示例及用法说明.md', '# 我的同名笔记\n'); });
+  await f.board.run(); assert.equal(f.app.opened.length,0);await f.board.openGuide(); assert.equal(f.app.vault.text('卡片库/Magical_Cards示例及用法说明.md'), '# 我的同名笔记\n'); assert.notEqual(f.data().onboarding!.guidePath, '卡片库/Magical_Cards示例及用法说明.md'); f.api.destroy();
+});
+
+test('deactivation stops subsequent seed writes and keeps the pending journal resumable', async () => {
+  const f = await fixture(), create = f.app.vault.createBinary.bind(f.app.vault); let writes = 0;
+  f.app.vault.createBinary = async (path, bytes) => { writes++; const file = await create(path, bytes); f.stop(); return file; };
+  await assert.rejects(f.board.run(), /停用/); assert.equal(writes, 1); assert.equal(f.api.getSnapshot().entities.length, 0); assert.equal(f.data().onboarding!.status, 'pending'); assert.equal(f.app.opened.length, 0); f.api.destroy();
+});
+
+test('older shared stores without starter capabilities are preserved and do not receive automatic help or cards', async () => {
+  const f = await fixture(); Reflect.deleteProperty(f.api, 'getInitializationInfo'); Reflect.deleteProperty(f.api, 'saveStarterWork');
+  const before = f.app.vault.dump(); await f.board.run();
+  assert.equal(f.data().onboarding!.status, 'skipped'); assert.deepEqual(f.app.vault.dump(), before); assert.equal(f.app.opened.length, 0);
+  await f.board.openGuide(); assert.equal(f.app.opened.length, 1); assert.match(f.app.vault.text(f.data().onboarding!.guidePath), /Magical Cards 示例及用法说明/); f.api.destroy();
+});
+
+test('an incomplete journal pauses safely when an older workbench supplied the shared store', async () => {
+  const f = await fixture(), save = f.api.saveStarterWork; f.api.saveStarterWork = async () => { throw new Error('中断'); };
+  await assert.rejects(f.board.run(), /中断/); Reflect.deleteProperty(f.api, 'getInitializationInfo'); Reflect.deleteProperty(f.api, 'saveStarterWork');
+  const before = f.app.vault.dump(); await assert.rejects(new runtime.CardsOnboarding(f.options).run(), /更新提供此卡片库的插件/); assert.deepEqual(f.app.vault.dump(), before); assert.equal(f.data().onboarding!.status, 'pending'); f.api.saveStarterWork = save; f.api.destroy();
+});
+
+test('corrupted journal paths and asset identities cannot write outside the intended starter paths', async () => {
+  for (const mutation of [
+    (data: CardsPluginData) => { data.onboarding!.guidePath = '卡片库/../其他笔记.md'; },
+    (data: CardsPluginData) => { data.onboarding!.items[0].coverPath = '卡片库/附件/../其他封面.png'; },
+    (data: CardsPluginData) => { data.onboarding!.items[0].kind = 'book'; },
+    (data: CardsPluginData) => { data.onboarding!.items[1].id = data.onboarding!.items[0].id; },
+    (data: CardsPluginData) => { Reflect.deleteProperty(data.onboarding!, 'guideCreated'); }
+  ]) {
+    const f = await fixture(); f.api.saveStarterWork = async () => { throw new Error('中断'); }; await assert.rejects(f.board.run(), /中断/);
+    mutation(f.data()); const before = f.app.vault.dump(); await assert.rejects(new runtime.CardsOnboarding(f.options).run(), /进度格式无效/); assert.deepEqual(f.app.vault.dump(), before); f.api.destroy();
+  }
+});
+
+test('a guide-path collision after planning is never overwritten or treated as a created guide', async () => {
+  const f = await fixture(); const update = f.options.update; let collision = false;
+  f.options.update = async patch => { await update(patch); if (!collision && patch.onboarding) { collision = true; await f.app.vault.create(patch.onboarding.guidePath, '# 其他笔记\n'); } };
+  await assert.rejects(new runtime.CardsOnboarding(f.options).run(), /已有其他内容/);
+  assert.equal(f.app.vault.text(f.data().onboarding!.guidePath), '# 其他笔记\n'); assert.equal(f.data().onboarding!.guideCreated, false); assert.equal(f.app.opened.length, 0); f.api.destroy();
+});
+
+test('queued collection edits conflict instead of silently replacing the first edit with a stale array', async () => {
+  const f = await fixture(); const appearance = f.api.getSnapshot().settings.filmCardAppearance;
+  const modules = [{ id: 'left', title: '左集合', kind: 'film' as const, appearance }, { id: 'right', title: '右集合', kind: 'film' as const, appearance }];
+  await f.api.saveSettings({ customModules: modules });
+  const results = await Promise.allSettled([
+    f.api.saveSettings({ customModules: modules.map(module => module.id === 'left' ? { ...module, title: '修改左集合' } : module) }),
+    f.api.saveSettings({ customModules: modules.map(module => module.id === 'right' ? { ...module, title: '修改右集合' } : module) })
+  ]);
+  assert.deepEqual(results.map(result => result.status), ['fulfilled', 'rejected']);
+  assert.deepEqual(f.api.getSnapshot().settings.customModules.map(module => module.title), ['修改左集合', '右集合']); f.api.destroy();
+});
+
+test('explicit guide opens after changing roots reuse their saved path without starting a second import', async () => {
+  const f = await fixture(); await f.board.run();
+  const api = new runtime.CardsStore(asApp(f.app), '另一个目录'); await api.initialize();
+  const options = { ...f.options, api, rootFolder: '另一个目录' }, board = new runtime.CardsOnboarding(options);
+  await board.openGuide(); const first = f.app.opened.at(-1), count = f.app.vault.getMarkdownFiles().length;
+  await new runtime.CardsOnboarding(options).openGuide(); assert.equal(f.app.opened.at(-1), first); assert.equal(f.app.vault.getMarkdownFiles().length, count); assert.equal(api.getSnapshot().entities.length, 0); api.destroy(); f.api.destroy();
+});
+
+test('an installed old plugin without saved preferences retains its original implicit 工作台 root', async () => {
+  const app = new runtime.App(); await app.vault.create('.obsidian/plugins/barry-cards/manifest.json', '{"id":"barry-cards"}');
+  const loaded = await runtime.loadCardsPluginData(asApp(app), null); assert.equal(loaded.data.rootFolder, '工作台'); assert.equal(loaded.data.installationOrigin, 'legacy');
+  await app.vault.create('.obsidian/plugins/barry-cards/data.json', '{"unknown":"keep"}');
+  const missingRoot = await runtime.loadCardsPluginData(asApp(app), null); assert.equal(missingRoot.data.rootFolder, '工作台'); assert.equal(missingRoot.data.unknown, 'keep');
+});

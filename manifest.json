@@ -1,1 +1,9 @@
-{"id":"barry-cards","name":"Barry Cards","version":"0.1.0","minAppVersion":"1.11.4","description":"可拖拽的封面卡片集合、独立视图与笔记嵌入。","author":"AbigBlackCat","isDesktopOnly":true}
+{
+  "id": "magical-cards",
+  "name": "Magical Cards",
+  "version": "0.2.0",
+  "minAppVersion": "1.11.4",
+  "description": "Turn book and film collections into interactive cover cards with draggable modules and note embeds.",
+  "author": "AbigBlackCat",
+  "isDesktopOnly": true
+}

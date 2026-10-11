@@ -3,5 +3,4 @@ main.js
 styles.css
 dist/
 .DS_Store
-coverage/
-*.local.*
+.playwright-cli/

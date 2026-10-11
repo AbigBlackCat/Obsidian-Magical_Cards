@@ -1,6 +1,6 @@
 {
-  "name": "barry-cards",
-  "version": "0.1.0",
+  "name": "magical-cards",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,6 +9,18 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "preview": "node scripts/preview.mjs"
   },
-  "dependencies": {"react": "^19.2.0", "react-dom": "^19.2.0"},
-  "devDependencies": {"@types/node": "^24.0.0", "@types/react": "^19.2.0", "@types/react-dom": "^19.2.0", "esbuild": "^0.25.0", "obsidian": "^1.11.4", "tsx": "^4.20.0", "typescript": "^5.9.0", "yaml": "^2.8.0"}
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "esbuild": "^0.25.0",
+    "obsidian": "^1.11.4",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "yaml": "^2.8.0"
+  }
 }

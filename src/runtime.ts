@@ -6,11 +6,12 @@ import { WorkPropertiesManager } from './WorkPropertiesSessions';
 import { WorkPropertiesHost } from './WorkPropertiesHost';
 import { WorkOrderList } from './WorkOrder';
 import { registerCardsEmbeds, type EmbeddedRuntime } from './embeds';
+import { CARD_LANGUAGES } from './embed-source';
 import type { CardsSettings, WorkKind } from './types';
 
 export interface CardsLease { api: CardsStore; propertiesManager: WorkPropertiesManager; ready: Promise<void>; release(): Promise<void>; }
 interface Library { api: CardsStore; component: Component; manager?: WorkPropertiesManager; host?: WorkPropertiesHost; references: number; ready: Promise<void>; closing?: Promise<void>; children: Set<MarkdownRenderChild>; }
-interface AppRuntime { app: App; registrar: Plugin; libraries: Map<string, Library>; ready: Promise<void>; registered: boolean; processorError?: unknown; }
+interface AppRuntime { app: App; registrar: Plugin; libraries: Map<string, Library>; ready: Promise<void>; registered: boolean; cardLanguages?: Set<string>; processorError?: unknown; }
 const key = Symbol.for('barry-cards.runtime.v1');
 const globals = globalThis as typeof globalThis & { [key: symbol]: unknown };
 const registry = (globals[key] ??= new WeakMap<App, AppRuntime>()) as WeakMap<App, AppRuntime>;
@@ -30,19 +31,22 @@ function chooseLibrary(runtime: AppRuntime, sourcePath: string): Library | undef
 }
 function registerProcessors(runtime: AppRuntime) {
   if (runtime.processorError) throw runtime.processorError;
-  if (runtime.registered) return;
+  const languages = runtime.cardLanguages ??= new Set(runtime.registered ? ['barry-cards'] : []);
+  const missing = CARD_LANGUAGES.filter(language => !languages.has(language));
+  if (runtime.registered && !missing.length) return;
   try {
-  registerCardsEmbeds(runtime.registrar, sourcePath => {
-    const library = chooseLibrary(runtime, sourcePath);
-    return library?.manager ? { api: library.api, manager: library.manager, trackChild: child => { library.children.add(child); return () => library.children.delete(child); } } satisfies EmbeddedRuntime : undefined;
-  });
-  runtime.registrar.registerMarkdownCodeBlockProcessor('barry-work-order', (source, element, context) => {
-    const kind = source.trim(), library = chooseLibrary(runtime, context.sourcePath);
-    if (context.frontmatter?.bw_view !== 'work-order' || (kind !== 'book' && kind !== 'film') || !library) { element.createEl('p', { text: '请在作品排序笔记中使用 book 或 film 分组。' }); return; }
-    const child = new WorkOrderChild(element, library, kind); library.children.add(child); context.addChild(child);
-  });
-  runtime.registered = true;
-  } catch (error) { runtime.processorError = error; throw error; }
+    if (missing.length) registerCardsEmbeds(runtime.registrar, sourcePath => {
+      const library = chooseLibrary(runtime, sourcePath);
+      return library?.manager ? { api: library.api, manager: library.manager, trackChild: child => { library.children.add(child); return () => library.children.delete(child); } } satisfies EmbeddedRuntime : undefined;
+    }, missing);
+    missing.forEach(language => languages.add(language));
+    if (!runtime.registered) runtime.registrar.registerMarkdownCodeBlockProcessor('barry-work-order', (source, element, context) => {
+      const kind = source.trim(), library = chooseLibrary(runtime, context.sourcePath);
+      if (context.frontmatter?.bw_view !== 'work-order' || (kind !== 'book' && kind !== 'film') || !library) { element.createEl('p', { text: '请在作品排序笔记中使用 book 或 film 分组。' }); return; }
+      const child = new WorkOrderChild(element, library, kind); library.children.add(child); context.addChild(child);
+    });
+    runtime.registered = true;
+  } catch (error) { if (!runtime.registered) runtime.processorError = error; throw error; }
 }
 async function backupDrafts(app: App, manager: WorkPropertiesManager, directory: string, error: unknown) {
   const drafts = manager.recoveryDrafts(), message = error instanceof Error ? error.message : String(error);
@@ -57,7 +61,7 @@ export async function acquireCards(app: App, rootFolder: string, recoveryDir: st
   let runtime = registry.get(app);
   if (!runtime) {
     const registrar = new CardsRegistrar(app, runtimeManifest);
-    runtime = { app, registrar, libraries: new Map(), ready: Promise.resolve().then(() => registrar.load()), registered: false };
+    runtime = { app, registrar, libraries: new Map(), ready: Promise.resolve().then(() => registrar.load()), registered: false, cardLanguages: new Set() };
     registry.set(app, runtime);
   }
   let library = runtime.libraries.get(folder);

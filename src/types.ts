@@ -5,7 +5,7 @@ export type CardStyle = 'minimal' | 'cover';
 export type CardLayout = 'cylinder' | 'coverflow-carousel' | 'album-rail' | 'scroll-bend' | 'skewed-carousel';
 export type CardDirection = 'horizontal' | 'vertical';
 export type CardTextAlignment = 'left' | 'center' | 'right';
-export interface WorkCardAppearance { material: CardMaterial; style: CardStyle; layout?: CardLayout; orientation?: CardDirection; }
+export interface WorkCardAppearance { material: CardMaterial; style: CardStyle; layout?: CardLayout; orientation?: CardDirection; ratio?: CardRatio; imageFit?: 'contain' | 'cover'; }
 export type CardRatio = '1:1' | '4:3' | '3:4' | '2:3' | '16:9';
 export interface CustomCardModule { id: string; title: string; kind: WorkKind; appearance: WorkCardAppearance; ratio?: CardRatio; imageFit?: 'contain' | 'cover'; }
 export interface WorkOrder { book: string[]; film: string[]; }

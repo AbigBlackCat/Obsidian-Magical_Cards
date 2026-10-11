@@ -3,6 +3,7 @@ import type { CardDirection, CardLayout } from './types';
 
 export interface EmbeddedModule { id: string; collection: string; layout?: CardLayout; orientation?: CardDirection; }
 export interface CardsEmbed { id: string; modules: EmbeddedModule[]; }
+export const CARD_LANGUAGES = ['magical-cards', 'barry-cards'] as const;
 const layouts = ['cylinder', 'coverflow-carousel', 'album-rail', 'scroll-bend', 'skewed-carousel'];
 const identifier = (value: unknown) => typeof value === 'string' && value.length <= 180 && Boolean(value.trim()) && !/[\r\n\x00-\x1f]/.test(value);
 const canonical = (source: string) => source.replace(/\r\n/g, '\n').replace(/\n$/, '');
@@ -40,7 +41,7 @@ export function cardsSourceBlocks(text: string): SourceBlock[] {
     }
     const opening = value.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
     if (!opening || opening[1][0] === '`' && opening[2].includes('`')) continue;
-    fence = { character: opening[1][0], length: opening[1].length, card: opening[2].trim() === 'barry-cards', from: line.index! + line[0].length };
+    fence = { character: opening[1][0], length: opening[1].length, card: CARD_LANGUAGES.some(language => language === opening[2].trim()), from: line.index! + line[0].length };
   }
   return blocks;
 }
@@ -67,7 +68,11 @@ export function reorderCardsBlock(text: string, expectedSource: string, order: s
   return { text: text.slice(0, block.from) + source + text.slice(block.to), source: canonical(source) };
 }
 
-export function newCardsBlock(): string {
+export function newCardsBlock(collections: readonly string[] = ['book', 'film']): string {
+  if (collections.some(collection => !identifier(collection)) || new Set(collections).size !== collections.length) throw new Error('请选择不同的有效卡片集合。');
   const id = crypto.randomUUID();
-  return `\`\`\`barry-cards\nid: cards-${id}\nmodules:\n  - id: books-${crypto.randomUUID()}\n    collection: book\n    layout: coverflow-carousel\n  - id: films-${crypto.randomUUID()}\n    collection: film\n    layout: album-rail\n\`\`\`\n`;
+  const document = parseDocument('');
+  document.set('id', `cards-${id}`);
+  document.set('modules', collections.map(collection => ({ id: `module-${crypto.randomUUID()}`, collection })));
+  return `\`\`\`magical-cards\n${document.toString({ lineWidth: 0 })}\`\`\`\n`;
 }

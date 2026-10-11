@@ -22,10 +22,10 @@ async function files(directory:string):Promise<string[]>{
 test('eight offline examples contain fresh demo identities and no personal summaries, source records or original paths',async()=>{
   assert.equal(covers.length,8);assert.equal(new Set(covers.map(cover=>cover.id)).size,8);
   assert.equal(covers.filter(cover=>cover.type==='book').length,5);assert.equal(covers.filter(cover=>cover.type==='film').length,3);
-  const noteFiles=(await files(resolve(vault,'示例'))).filter(file=>file.endsWith('.md'));assert.equal(noteFiles.length,8);
+  const noteFiles=(await files(resolve(vault,'示例'))).filter(file=>file.endsWith('.md')&&!file.includes('/_数据/'));assert.equal(noteFiles.length,8);
   for(const cover of covers){
     assert.match(cover.id,/^demo-(?:book|film)-[a-z]+$/);
-    const text=await readFile(resolve(vault,'示例',cover.type==='book'?'书籍':'影视',`${cover.id}.md`),'utf8'),fields=frontmatter(text);
+    const text=await readFile(resolve(vault,'示例',cover.type==='book'?'书籍':'观影',`${cover.id}.md`),'utf8'),fields=frontmatter(text);
     assert.equal(fields.bw_id,cover.id);assert.equal(fields.bw_title,cover.title);assert.equal(fields.bw_type,cover.type);
     assert.deepEqual(Object.keys(fields).sort(),['bw_id','bw_type','bw_title','bw_created','bw_updated','bw_cover','bw_data'].sort());
     assert.equal(fields.bw_cover,`示例/附件/${cover.cover}`);assert.equal(fields.bw_data.cover,fields.bw_cover);
@@ -59,14 +59,16 @@ test('all eight bundled cover bytes match recorded SHA-256 fingerprints and the 
   }
 });
 
-test('example notes render every requested layout with local overrides and stable unique block/module IDs',async()=>{
-  const note=await readFile(resolve(vault,'卡片布局示例.md'),'utf8');const definitions=cardsSourceBlocks(note).map(block=>parseCardsEmbed(block.source));
-  assert.equal(definitions.length,5);assert.equal(new Set(definitions.map(block=>block.id)).size,definitions.length);
+test('welcome example renders only reading and films and inherits the three-card cylindrical starter appearance',async()=>{
+  const note=await readFile(resolve(vault,'Magical_Cards示例及用法说明.md'),'utf8');const definitions=cardsSourceBlocks(note).map(block=>parseCardsEmbed(block.source));
+  assert.equal(definitions.length,1);
   const modules=definitions.flatMap(block=>block.modules);assert.equal(new Set(modules.map(module=>module.id)).size,modules.length);
-  assert.deepEqual([...new Set(modules.map(module=>module.layout))].sort(),['coverflow-carousel','album-rail','scroll-bend','skewed-carousel'].sort());
-  assert.ok(modules.some(module=>module.layout==='scroll-bend'&&module.orientation==='vertical'));
-  assert.ok(modules.some(module=>module.layout==='scroll-bend'&&!module.orientation));
-  assert.ok(modules.every(module=>module.collection==='book'||module.collection==='film'));
+  assert.deepEqual(modules.map(module=>module.collection),['book','film']);
+  assert.ok(modules.every(module=>module.layout===undefined&&module.orientation===undefined));
+  const settings=frontmatter(await readFile(resolve(vault,'示例/_数据/卡片配置.md'),'utf8')).bw_card_settings;
+  for(const key of ['bookCardAppearance','filmCardAppearance'])assert.deepEqual(settings[key],{material:'paper',style:'cover',layout:'cylinder',ratio:'2:3',imageFit:'cover'});
+  assert.equal(settings.threeCardView,true);
+  assert.deepEqual(settings.customModules,[]);
   assert.doesNotMatch(note,/\/Users\/|\/home\/|认知笔记|bw_deleted_book_sources|bw_reading_days/);
 });
 

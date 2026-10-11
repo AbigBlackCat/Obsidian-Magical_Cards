@@ -13,7 +13,7 @@
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/issues">反馈问题</a>
 </p>
 
-![Obsidian 中的阅读与影视卡片，使用圆柱弧面、整幅封面和三卡显示](previews/cylinder.png)
+**作者惯用卡片风格（该插件提供多种样式供选择）：**
 <img width="1509" height="947" alt="image" src="https://github.com/user-attachments/assets/b4a68687-3389-4eb4-8da3-5a91ffc45ca9" />
 
 

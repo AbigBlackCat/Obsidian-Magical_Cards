@@ -1,0 +1,126 @@
+{
+  "date": "2026-10-11",
+  "platform": "macOS",
+  "obsidianVersion": "1.14.4",
+  "pluginVersion": "0.2.0",
+  "compatibleHostVersion": "0.1.31",
+  "phase": "cold-restart-complete",
+  "passed": 27,
+  "failed": 0,
+  "results": [
+    {
+      "name": "首次仅启用 Magical Cards，不读取工作台配置或旧独立插件数据",
+      "ok": true
+    },
+    {
+      "name": "新用户获得八张可编辑作品、阅读影视与起步外观",
+      "ok": true
+    },
+    {
+      "name": "八张封面离线解码，无远程图片依赖",
+      "ok": true
+    },
+    {
+      "name": "真实原生设置页默认折叠、五项顺序正确且无后台预览",
+      "ok": true
+    },
+    {
+      "name": "设置选择只预览，写入失败保留草稿，成功后保存并折叠",
+      "ok": true
+    },
+    {
+      "name": "设置并发冲突保留草稿，折叠卸载预览但不销毁摘要会话",
+      "ok": true
+    },
+    {
+      "name": "添加模块保留默认外观，新模块折叠且代码引用已有集合",
+      "ok": true
+    },
+    {
+      "name": "插入命令支持选择多个已有集合并生成新语言代码",
+      "ok": true
+    },
+    {
+      "name": "设置页关闭释放全部预览，新建模块移除保留原作品",
+      "ok": true
+    },
+    {
+      "name": "阅读模式支持新旧语言、四种布局与纵向画廊，覆盖不改全局",
+      "ok": true
+    },
+    {
+      "name": "笔记模块键盘排序原子保存，另一个语言的代码与正文保留",
+      "ok": true
+    },
+    {
+      "name": "实时预览使用原生代码块渲染，嵌入不重复",
+      "ok": true
+    },
+    {
+      "name": "原生源码冲突、跨语言重复ID与未保存缓冲保护正文",
+      "ok": true
+    },
+    {
+      "name": "关闭笔记释放嵌入根与运行时子组件",
+      "ok": true
+    },
+    {
+      "name": "原生作品属性区只挂载一次且摘要共享保存",
+      "ok": true
+    },
+    {
+      "name": "独立模块顺序持久化且不改变工作台位置",
+      "ok": true
+    },
+    {
+      "name": "之后同根启用工作台，两插件共享数据与草稿管理器",
+      "ok": true
+    },
+    {
+      "name": "工作台跨区块拖动、移出收藏分组和恢复",
+      "ok": true
+    },
+    {
+      "name": "布局切换保留当前卡、三卡上限和摘要草稿，专辑没有播放装置",
+      "ok": true
+    },
+    {
+      "name": "原生画廊渲染状态",
+      "ok": true
+    },
+    {
+      "name": "纵向WebGL画廊支持打开当前卡、编辑摘要与上下文丢失降级",
+      "ok": true
+    },
+    {
+      "name": "先停用工作台，独立插件与新旧嵌入继续可用",
+      "ok": true
+    },
+    {
+      "name": "先停用独立插件，工作台嵌入继续可用，最终停用释放运行时",
+      "ok": true
+    },
+    {
+      "name": "重新加载恢复排序与布局，最终恢复用户指定起步状态",
+      "ok": true
+    },
+    {
+      "name": "冷重启后稳定ID、八张作品及首次展示进度保持原样",
+      "ok": true
+    },
+    {
+      "name": "冷重启保持作品正文与离线封面的每个字节",
+      "ok": true
+    },
+    {
+      "name": "冷重启新旧代码块与独立视图仍可用且帮助页只保留一份",
+      "ok": true
+    }
+  ],
+  "manualChecks": {
+    "settingsCopyThenNativePaste": true,
+    "specifiedGuideReadingAndLivePreview": true,
+    "coverImageAndFaceEqualSize": true,
+    "existingVaultInstallPreservesDataAndEnabledStates": true
+  }
+}

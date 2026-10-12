@@ -20,7 +20,6 @@ Magical Cards is a desktop Obsidian plugin for book, film, and image showcase ca
 
 **已上传Obsidian社区，我会不定时维护和更新，欢迎体验插件，希望你喜欢～**
 https://community.obsidian.md/plugins/magical-cards
-<img width="688" height="761" alt="image" src="https://github.com/user-attachments/assets/e37d8e9a-3b02-46fe-8985-22c086d64986" />
 
 **浏览封面，留下感想。** 独立卡片视图和笔记内嵌入共用作品数据；支持搜索、编辑、排序、关联笔记和翻面摘要。作品与外观配置保存在你的笔记库中。
 

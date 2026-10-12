@@ -25,6 +25,7 @@ function textLines(context: CanvasRenderingContext2D, text: string, x: number, y
 
 export function createScrollBend(canvas: HTMLCanvasElement, changed: (mode: 'webgl' | 'fallback') => void, wake: () => void) {
   let gl: WebGLRenderingContext | null = null;
+  let context: WebGLRenderingContext | null = null;
   let program: WebGLProgram | null = null, buffer: WebGLBuffer | null = null, texture: WebGLTexture | null = null;
   let mode: 'webgl' | 'fallback' = 'fallback', disposed = false, atlasKey = '';
   let atlasSize = { width: 1, height: 1 }, bend = 0, bendVelocity = 0, previousPosition: number | null = null, previousTime = 0;
@@ -51,6 +52,7 @@ export function createScrollBend(canvas: HTMLCanvasElement, changed: (mode: 'web
     try {
       gl = canvas.getContext('webgl', { alpha: true, antialias: false, premultipliedAlpha: false });
       if (!gl) throw new Error('WebGL unavailable');
+      context = gl;
       compiler = gl;
       for (const [kind, source] of [[gl.VERTEX_SHADER, vertexShader], [gl.FRAGMENT_SHADER, fragmentShader]] as const) {
         const shader = gl.createShader(kind);
@@ -191,10 +193,14 @@ export function createScrollBend(canvas: HTMLCanvasElement, changed: (mode: 'web
     get mode() { return mode; }, draw,
     reset() { previousPosition = null; previousTime = 0; bend = 0; bendVelocity = 0; speed = 0; lastMovement = 0; },
     dispose() {
+      if (disposed) return;
       disposed = true; destroy(); gl = null;
       canvas.removeEventListener('webglcontextlost', lost); canvas.removeEventListener('webglcontextrestored', restored);
       for (const image of watched) { image.removeEventListener('load', imageChanged); image.removeEventListener('error', imageChanged); }
       watched.clear();
+      // Deleted GL objects alone do not retire Chromium's active canvas context.
+      context?.getExtension('WEBGL_lose_context')?.loseContext();
+      context = null;
     },
   };
 }

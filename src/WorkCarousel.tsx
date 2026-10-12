@@ -74,6 +74,21 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
     paintRef.current();
   }, [sequence]);
 
+  // Keep the canvas context while size and direction change; retire it with this canvas.
+  useLayoutEffect(() => {
+    const element = root.current, surface = canvas.current;
+    if (!element || !surface || layout !== 'scroll-bend') return;
+    const renderer = createScrollBend(surface, mode => {
+      element.dataset.scrollRenderer = mode;
+      paintRef.current();
+    }, () => wakeRef.current());
+    bend.current = renderer;
+    return () => {
+      renderer.dispose();
+      if (bend.current === renderer) bend.current = null;
+    };
+  }, [hasWorks, layout]);
+
   useLayoutEffect(() => {
     const element = root.current;
     if (!element || !owner) return;
@@ -211,7 +226,6 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
     element.addEventListener('wheel', wheel, { passive: false });
     doc.addEventListener('visibilitychange', onVisibility);
     preference.addEventListener('change', onPreference);
-    if (layout === 'scroll-bend' && canvas.current) bend.current = createScrollBend(canvas.current, mode => { element.dataset.scrollRenderer = mode; paint(); }, wake);
     measure();
     return () => {
       owner.cancelAnimationFrame(raf);
@@ -223,8 +237,6 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
       element.removeEventListener('wheel', wheel);
       doc.removeEventListener('visibilitychange', onVisibility);
       preference.removeEventListener('change', onPreference);
-      bend.current?.dispose();
-      bend.current = null;
       paintRef.current = () => {};
       wakeRef.current = () => {};
       focusRef.current = () => {};

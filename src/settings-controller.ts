@@ -253,7 +253,7 @@ export class CardsSettingsController {
         control.addOptions(field.options);
         if (field.field === 'style') {
           state.style = control;
-          if (state.creating) control.addOptions({ showcase: '橱窗式卡片' });
+          if (state.creating) control.addOptions({ showcase: '添加图片橱窗' });
           if (state.draft.mode === 'showcase') setting.setDesc('橱窗式模块；保存后类型固定，可继续调整外观。');
           control.setDisabled(state.creating && !!state.draft.showcaseNote);
         }
@@ -274,20 +274,23 @@ export class CardsSettingsController {
       if (field.field !== 'ratio') setting.settingEl.dataset.cardSettingsLevel = 'advanced';
       if (field.field === 'orientation') setting.settingEl.hidden = state.draft.appearance.layout !== 'scroll-bend';
       return () => { state.fields.delete(field.field); if (field.field === 'style') state.style = undefined; };
-    }, { aliases: [...Object.values(field.options), ...(field.field === 'imageFit' ? ['贴满卡片', '封面裁切'] : []), ...(field.field === 'style' && state.creating ? ['橱窗式卡片'] : [])], ...(field.field === 'orientation' ? { visible: () => state.draft.appearance.layout === 'scroll-bend' } : {}) });
+    }, { aliases: [...Object.values(field.options), ...(field.field === 'imageFit' ? ['贴满卡片', '封面裁切'] : []), ...(field.field === 'style' && state.creating ? ['添加图片橱窗', '橱窗式卡片'] : [])], ...(field.field === 'orientation' ? { visible: () => state.draft.appearance.layout === 'scroll-bend' } : {}) });
     rows.push(dropdown(CARD_APPEARANCE_FIELDS.find(field => field.field === 'ratio')!));
     rows.push(this.row(`${label} · 保存并收起`, section, setting => {
       setting.setName('').setDesc('点击左侧紫色卡片图标，在 Magical Cards 标签页体验。高级选项与基本设置一起保存。');
       const error = setting.settingEl.createEl('p'); error.setAttribute('role', 'alert'); error.className = 'bw-cards-settings-error'; error.textContent = state.error; error.hidden = !state.error; state.errorEl = error;
       setting.addButton(control => control.setButtonText('保存并收起').setCta().onClick(async () => {
         if (state.busy) return; this.setBusy(state, true); this.setError(state, '');
+        const appearanceChanged = Boolean(state.baseline && JSON.stringify(state.draft.appearance) !== JSON.stringify(state.baseline.appearance));
         try {
           await saveModuleDraft(this.api, state.draft, state.baseline);
           if (this.disposed) return;
           if (state.creating) { state.draft = newModuleDraft(); state.baseline = null; this.refreshFields(state); }
           else { const current = readModuleDraft(this.api.getSnapshot().settings, state.key); if (current) { state.baseline = current; state.draft = structuredClone(current); } }
           this.closeEditor(state);
-          new Notice('已保存。点击左侧紫色卡片图标，在 Magical Cards 标签页体验。');
+          new Notice(appearanceChanged
+            ? '已保存。点击左侧紫色卡片图标体验；若标签页黑屏，请重启 Obsidian 后重新打开笔记库。'
+            : '已保存。点击左侧紫色卡片图标，在 Magical Cards 标签页体验。');
         } catch (failure) { if (!this.disposed) this.setError(state, failure); }
         finally { this.setBusy(state, false); if (!this.disposed) this.refreshFields(state); }
       }));

@@ -11,7 +11,7 @@ for(const item of covers){
  if(item.type==='film')await rm(new URL(`示例/影视/${item.id}.md`,root),{force:true});
 }
 const template=await readFile(new URL('../examples/Magical_Cards示例及用法说明.md',import.meta.url),'utf8');
-const text=template.replace(/\{\{([^}]+)\}\}/g,(_match,key)=>key==='rootFolder'?'示例':`demo-${key}`);
+const text=template.replaceAll('{{rootFolder}}',()=> '示例')+'<!-- magical-cards-guide:03c64161-cdd1-4f58-b841-921115830e3e -->\n';
 await writeFile(new URL('Magical_Cards示例及用法说明.md',root),text);
 await rm(new URL('卡片布局示例.md',root),{force:true});
 const appearance={material:'paper',style:'cover',layout:'cylinder',ratio:'2:3',imageFit:'cover'};

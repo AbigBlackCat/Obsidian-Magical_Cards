@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import type { App as ObsidianApp, TFile as ObsidianFile } from 'obsidian';
 import type * as Mock from './obsidian-mock';
 import type { CardsPluginData, StarterItem } from '../src/onboarding';
@@ -96,9 +97,58 @@ test('fresh onboarding creates six ordinary works with fresh UUIDs, byte-exact o
     assert.ok(snapshot.entities.some(work => work.id === item.id && work.path === item.notePath));
   }
   const guide = app.vault.text(data().onboarding!.guidePath);
-  assert.equal((guide.match(/```magical-cards\n/g) ?? []).length, 1); assert.doesNotMatch(guide,/\n\s+layout:/); assert.match(guide, /卡片库\/_数据\/卡片配置.md/); assert.doesNotMatch(guide, /\{\{|\/Users\//);
+  assert.doesNotMatch(guide,/^# |```/m); assert.match(guide, /卡片库\/_数据\/卡片配置.md/); assert.doesNotMatch(guide, /\{\{|\/Users\//);
   assert.equal(data().onboarding!.status, 'complete'); assert.equal(data().onboarding!.helpOpened, true); assert.equal(app.opened.length, 1); assert.deepEqual(data().keep, { value: 1 });
   const before = app.vault.dump(); await board.run(); assert.deepEqual(app.vault.dump(), before); assert.equal(app.opened.length, 1); api.destroy();
+});
+
+test('the generated guide preserves the authored visible bytes, substitutes only root paths and has a unique invisible identity', async () => {
+  const template = await readFile(resolve(directory, '../examples/Magical_Cards示例及用法说明.md'), 'utf8');
+  const authored = template.replaceAll('{{rootFolder}}', () => '卡片库');
+  assert.equal(createHash('sha256').update(authored).digest('hex'), 'e3b634382687709fbece31eabf21570235dc688b501b75291e3d7ae0ad3ecab2');
+  const ids = [crypto.randomUUID(), crypto.randomUUID()]; assert.notEqual(ids[0], ids[1]);
+  const notes = ids.map(id => runtime.guideMarkdown('卡片库', id));
+  for (const [index, note] of notes.entries()) {
+    const marker = `<!-- magical-cards-guide:${ids[index]} -->\n`;
+    assert.ok(note.endsWith(marker)); assert.equal(note.slice(0, -marker.length), authored);
+    assert.doesNotMatch(note.slice(0, -marker.length), /^# |```|magical-cards-guide:/m);
+  }
+  const root = '我的$&卡片/收藏', custom = runtime.guideMarkdown(root, ids[0]);
+  assert.equal(custom, authored.replaceAll('卡片库/', () => `${root}/`) + `<!-- magical-cards-guide:${ids[0]} -->\n`);
+});
+
+test('a guide written before progress failure resumes by its invisible identity and preserves edits in both saved-path flows', async () => {
+  for (const changedRoot of [false, true]) {
+    const f = await fixture();
+    if (changedRoot) await f.board.run();
+    const api = changedRoot ? new runtime.CardsStore(asApp(f.app), '另一个目录') : f.api;
+    if (changedRoot) await api.initialize();
+    const update = f.options.update; let failed = false;
+    const options = { ...f.options, api, rootFolder: changedRoot ? '另一个目录' : '卡片库', update: async (patch: Partial<CardsPluginData>) => {
+      if (!failed && (changedRoot ? patch.guideNotes?.['另一个目录']?.created : patch.onboarding?.guideCreated)) { failed = true; throw new Error('说明进度保存失败'); }
+      await update(patch);
+    } };
+    const attempt = () => changedRoot ? new runtime.CardsOnboarding(options).openGuide() : new runtime.CardsOnboarding(options).run();
+    await assert.rejects(attempt(), /说明进度保存失败/);
+    const saved = changedRoot ? f.data().guideNotes!['另一个目录'] : { id: f.data().onboarding!.guideId, path: f.data().onboarding!.guidePath, created: f.data().onboarding!.guideCreated };
+    assert.equal(saved.created, false);
+    const note = f.app.vault.getAbstractFileByPath(saved.path) as Mock.TFile;
+    assert.match(note.contents, new RegExp(`<!-- magical-cards-guide:${saved.id} -->`));
+    note.contents += '\n用户补充的说明\n'; const edited = note.contents, files = f.app.vault.getMarkdownFiles().length;
+    await attempt(); assert.equal(note.contents, edited); assert.equal(f.app.vault.getMarkdownFiles().length, files);
+    assert.equal(changedRoot ? f.data().guideNotes!['另一个目录'].created : f.data().onboarding!.guideCreated, true);
+    if (changedRoot) api.destroy(); f.api.destroy();
+  }
+});
+
+test('legacy generated guides and already recorded user edits remain byte-exact during upgrade and retry', async () => {
+  const f = await fixture(); await f.board.run();
+  const journal = f.data().onboarding!, note = f.app.vault.getAbstractFileByPath(journal.guidePath) as Mock.TFile;
+  note.contents = `# Magical Cards 示例及用法说明\n\n\`\`\`magical-cards\nid: block-default-${journal.guideId}\nmodules:\n  - id: books-${journal.guideId}\n    collection: book\n\`\`\`\n\n原有说明\n`;
+  journal.guideCreated = false; journal.helpOpened = false;
+  const legacy = note.contents; await new runtime.CardsOnboarding(f.options).run(); assert.equal(note.contents, legacy);
+  note.contents = '\n我自己重写的旧说明，没有标题或生成标识。\n';
+  const edited = note.contents; await new runtime.CardsOnboarding(f.options).openGuide(); assert.equal(note.contents, edited); f.api.destroy();
 });
 
 test('completed eight-item legacy journals preserve all existing works, edited covers and progress without reseeding',async()=>{
@@ -281,7 +331,7 @@ test('older shared stores without starter capabilities are preserved and do not 
   const f = await fixture(); Reflect.deleteProperty(f.api, 'getInitializationInfo'); Reflect.deleteProperty(f.api, 'saveStarterWork');
   const before = f.app.vault.dump(); await f.board.run();
   assert.equal(f.data().onboarding!.status, 'skipped'); assert.deepEqual(f.app.vault.dump(), before); assert.equal(f.app.opened.length, 0);
-  await f.board.openGuide(); assert.equal(f.app.opened.length, 1); assert.match(f.app.vault.text(f.data().onboarding!.guidePath), /Magical Cards 示例及用法说明/); f.api.destroy();
+  await f.board.openGuide(); assert.equal(f.app.opened.length, 1); assert.match(f.app.vault.text(f.data().onboarding!.guidePath), /插件的开发思路/); f.api.destroy();
 });
 
 test('an incomplete journal pauses safely when an older workbench supplied the shared store', async () => {
@@ -305,9 +355,9 @@ test('corrupted journal paths and asset identities cannot write outside the inte
 
 test('a guide-path collision after planning is never overwritten or treated as a created guide', async () => {
   const f = await fixture(); const update = f.options.update; let collision = false;
-  f.options.update = async patch => { await update(patch); if (!collision && patch.onboarding) { collision = true; await f.app.vault.create(patch.onboarding.guidePath, '# 其他笔记\n'); } };
+  f.options.update = async patch => { await update(patch); if (!collision && patch.onboarding) { collision = true; await f.app.vault.create(patch.onboarding.guidePath, `# 其他笔记\n${patch.onboarding.guideId}\n`); } };
   await assert.rejects(new runtime.CardsOnboarding(f.options).run(), /已有其他内容/);
-  assert.equal(f.app.vault.text(f.data().onboarding!.guidePath), '# 其他笔记\n'); assert.equal(f.data().onboarding!.guideCreated, false); assert.equal(f.app.opened.length, 0); f.api.destroy();
+  assert.equal(f.app.vault.text(f.data().onboarding!.guidePath), `# 其他笔记\n${f.data().onboarding!.guideId}\n`); assert.equal(f.data().onboarding!.guideCreated, false); assert.equal(f.app.opened.length, 0); f.api.destroy();
 });
 
 test('queued collection edits conflict instead of silently replacing the first edit with a stale array', async () => {

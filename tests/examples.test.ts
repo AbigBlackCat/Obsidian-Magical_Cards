@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import { validateWork } from '../src/domain';
 import { entityFromFields } from '../src/persistence';
-import { cardsSourceBlocks, parseCardsEmbed } from '../src/embed-source';
+import { cardsSourceBlocks } from '../src/embed-source';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const vault=resolve(root,'examples/vault');
@@ -59,12 +59,11 @@ test('all six bundled cover bytes match recorded SHA-256 fingerprints and the an
   }
 });
 
-test('welcome example renders only reading and films and inherits the three-card cylindrical starter appearance',async()=>{
-  const note=await readFile(resolve(vault,'Magical_Cards示例及用法说明.md'),'utf8');const definitions=cardsSourceBlocks(note).map(block=>parseCardsEmbed(block.source));
-  assert.equal(definitions.length,1);
-  const modules=definitions.flatMap(block=>block.modules);assert.equal(new Set(modules.map(module=>module.id)).size,modules.length);
-  assert.deepEqual(modules.map(module=>module.collection),['book','film']);
-  assert.ok(modules.every(module=>module.layout===undefined&&module.orientation===undefined));
+test('the authored welcome example has no display block and preserves reading and film starter presets',async()=>{
+  const note=await readFile(resolve(vault,'Magical_Cards示例及用法说明.md'),'utf8');
+  assert.deepEqual(cardsSourceBlocks(note),[]); assert.doesNotMatch(note,/^# /m);
+  const template=await readFile(resolve(root,'examples/Magical_Cards示例及用法说明.md'),'utf8');
+  assert.equal(note,template.replaceAll('{{rootFolder}}',()=> '示例')+'<!-- magical-cards-guide:03c64161-cdd1-4f58-b841-921115830e3e -->\n');
   const settings=frontmatter(await readFile(resolve(vault,'示例/_数据/卡片配置.md'),'utf8')).bw_card_settings;
   for(const key of ['bookCardAppearance','filmCardAppearance'])assert.deepEqual(settings[key],{material:'paper',style:'cover',layout:'cylinder',ratio:'2:3',imageFit:'cover'});
   assert.equal(settings.threeCardView,true);

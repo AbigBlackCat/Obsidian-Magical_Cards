@@ -111,7 +111,11 @@ export function starterWork(item: StarterItem): Work {
   return { ...createWork(item.kind), id: item.id, title: item.title, cover: item.coverPath, createdAt: item.createdAt, updatedAt: item.createdAt };
 }
 export function guideMarkdown(rootFolder: string, guideId: string): string {
-  return GUIDE_TEMPLATE.replace(/\{\{([^}]+)\}\}/g, (_match, token: string) => token === 'rootFolder' ? rootFolder : `${token}-${guideId}`);
+  return GUIDE_TEMPLATE.replaceAll('{{rootFolder}}', () => rootFolder) + `<!-- magical-cards-guide:${guideId} -->\n`;
+}
+function guideIdentityMatches(text: string, guideId: string): boolean {
+  return text.includes(`<!-- magical-cards-guide:${guideId} -->`) ||
+    text.startsWith('# Magical Cards 示例及用法说明') && text.includes(guideId);
 }
 function journalValid(value: unknown, rootFolder: string): value is OnboardingJournal {
   const uuid=(id:unknown):id is string=>typeof id==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id);
@@ -165,7 +169,7 @@ export class CardsOnboarding {
     const existing = this.options.app.vault.getAbstractFileByPath(journal.guidePath);
     if (existing) {
       if (!(existing instanceof TFile)) throw new Error('说明页路径被文件夹占用，未覆盖原内容。');
-      if(!journal.guideCreated){const text=await this.options.app.vault.read(existing);this.options.assertActive();if(!text.startsWith('# Magical Cards 示例及用法说明')||!text.includes(journal.guideId))throw new Error('说明页路径已有其他内容，未覆盖原笔记，请检查后重试。');}
+      if(!journal.guideCreated){const text=await this.options.app.vault.read(existing);this.options.assertActive();if(!guideIdentityMatches(text,journal.guideId))throw new Error('说明页路径已有其他内容，未覆盖原笔记，请检查后重试。');}
       return existing;
     }
     await this.folder(this.options.rootFolder); this.options.assertActive();
@@ -258,7 +262,7 @@ export class CardsOnboarding {
     if(!guide){const id=crypto.randomUUID();guide={id,path:this.guidePath(rootFolder,id),created:false};await this.options.update({guideNotes:{...notes,[rootFolder]:guide}});}
     await this.folder(rootFolder);this.options.assertActive();
     let file=this.options.app.vault.getAbstractFileByPath(guide.path);
-    if(file){if(!(file instanceof TFile))throw new Error('说明页路径被文件夹占用。');if(!guide.created){const text=await this.options.app.vault.read(file);this.options.assertActive();if(!text.includes(guide.id))throw new Error('说明页路径已有其他内容，未覆盖原笔记。');}}
+    if(file){if(!(file instanceof TFile))throw new Error('说明页路径被文件夹占用。');if(!guide.created){const text=await this.options.app.vault.read(file);this.options.assertActive();if(!guideIdentityMatches(text,guide.id))throw new Error('说明页路径已有其他内容，未覆盖原笔记。');}}
     else {this.options.assertActive();file=await this.options.app.vault.create(guide.path,guideMarkdown(rootFolder,guide.id));}
     if(!(file instanceof TFile))throw new Error('说明页未能建立，首次导入进度已保留。');
     this.options.assertActive();await this.options.open(file);this.options.assertActive();

@@ -85,6 +85,7 @@ function gpuFixture(failure?: 'shader' | 'allocation' | 'texture' | 'unavailable
   const values = new Map<string, number>();
   const texts: string[] = [];
   let imageDraws = 0;
+  let retiredContexts = 0;
   const context = { save() {}, restore() {}, translate() {}, beginPath() {}, rect() {}, clip() {}, fillRect() {}, drawImage() { imageDraws++; }, fillText(value: string) { texts.push(value); }, measureText(value: string) { return { width: value.length }; }, createLinearGradient() { return { addColorStop() {} }; } };
   const gl = {
     VERTEX_SHADER: 1, FRAGMENT_SHADER: 2, COMPILE_STATUS: 3, LINK_STATUS: 4, ARRAY_BUFFER: 5, STATIC_DRAW: 6, FLOAT: 7, TEXTURE_2D: 8, TEXTURE_MIN_FILTER: 9, TEXTURE_MAG_FILTER: 10, LINEAR: 11, TEXTURE_WRAP_S: 12, TEXTURE_WRAP_T: 13, CLAMP_TO_EDGE: 14, MAX_TEXTURE_SIZE: 15, RGBA: 16, UNSIGNED_BYTE: 17, TRIANGLES: 18,
@@ -93,13 +94,14 @@ function gpuFixture(failure?: 'shader' | 'allocation' | 'texture' | 'unavailable
     shaderSource() {}, compileShader() {}, getShaderParameter() { return failure !== 'shader'; }, attachShader() {}, linkProgram() {}, getProgramParameter() { return true; }, useProgram() {}, bindBuffer() {}, bufferData() {}, getAttribLocation() { return 0; }, enableVertexAttribArray() {}, vertexAttribPointer() {}, bindTexture() {}, texParameteri() {},
     getParameter() { return 512; }, texImage2D() { if (failure === 'texture') throw new Error('Blocked texture'); }, viewport() {}, uniform2f() {}, drawArrays() {},
     getUniformLocation(_program: unknown, name: string) { return name; }, uniform1f(name: string, value: number) { values.set(name, value); },
+    getExtension(name: string) { assert.equal(name, 'WEBGL_lose_context'); return { loseContext() { retiredContexts++; surface.dispatchEvent(new Event('webglcontextlost', { cancelable: true })); } }; },
   };
   const surface = new EventTarget() as EventTarget & { getContext(): typeof gl | null; ownerDocument: unknown; clientHeight: number; width: number; height: number };
   Object.assign(surface, { width: 1, height: 1, clientHeight: 520, cloneNode: () => ({ width: 0, height: 0, getContext: () => context }), getContext: () => failure === 'unavailable' ? null : gl, ownerDocument: { defaultView: { devicePixelRatio: 1, getComputedStyle: (node: Element) => getComputedStyle(node) }, createElement: () => ({ width: 0, height: 0, getContext: () => context }) } });
   const modes: string[] = [];
   let wakes = 0;
   const renderer = createScrollBend(surface as unknown as HTMLCanvasElement, mode => modes.push(mode), () => wakes++);
-  return { surface, renderer, created, deleted, values, modes, texts, imageDraws: () => imageDraws, wakes: () => wakes };
+  return { surface, renderer, created, deleted, values, modes, texts, imageDraws: () => imageDraws, wakes: () => wakes, retiredContexts: () => retiredContexts };
 }
 
 test('WebGL resources are released on context loss, restoration and unmount', () => {
@@ -113,7 +115,10 @@ test('WebGL resources are released on context loss, restoration and unmount', ()
   assert.equal(fixture.deleted.texture, 1); assert.equal(fixture.deleted.program, 1); assert.equal(fixture.deleted.buffer, 1);
   fixture.surface.dispatchEvent(new Event('webglcontextrestored'));
   assert.equal(fixture.renderer.mode, 'webgl');
+  const modes = [...fixture.modes], beforeDisposeWakes = fixture.wakes();
   fixture.renderer.dispose(); fixture.renderer.dispose();
+  assert.equal(fixture.retiredContexts(), 1);
+  assert.deepEqual(fixture.modes, modes);assert.equal(fixture.wakes(), beforeDisposeWakes);
   assert.deepEqual(fixture.deleted, fixture.created);
   const wakes = fixture.wakes();
   fixture.surface.dispatchEvent(new Event('webglcontextrestored'));
@@ -127,6 +132,7 @@ test('shader/allocation failures clean up partial allocations and leave DOM fall
     assert.equal(fixture.renderer.mode, 'fallback');
     assert.deepEqual(fixture.deleted, fixture.created);
     fixture.renderer.dispose();
+    assert.equal(fixture.retiredContexts(), failure === 'unavailable' ? 0 : 1);
   }
 });
 
@@ -149,12 +155,25 @@ test('WebGL honors both orientations, three-card clipping and reduced motion, an
   assert.deepEqual(fixture.deleted, fixture.created);
 });
 
+test('changing gallery ratio and orientation reuses GPU resources until the canvas is retired', () => {
+  const fixture = gpuFixture(), allocations = { ...fixture.created };
+  for (let index = 0; index < 200; index++) {
+    const vertical = index % 2 === 0, factor = [1, 3 / 4, 4 / 3, 3 / 2, 9 / 16][index % 5];
+    fixture.renderer.draw({ geometry: cardGeometry(800, factor, 'scroll-bend', vertical), position: 0, anchor: 0, vertical, limit: 1.5, reduced: false, tiles: Array(7).fill(null) }, index * 16);
+    assert.equal(fixture.renderer.mode, 'webgl');assert.deepEqual(fixture.created, allocations);
+    assert.equal(fixture.retiredContexts(), 0);assert.equal(fixture.values.get('uVertical'), Number(vertical));
+  }
+  fixture.renderer.dispose();fixture.renderer.dispose();
+  assert.equal(fixture.retiredContexts(), 1);assert.deepEqual(fixture.deleted, fixture.created);
+});
+
 test('an image texture security failure returns to DOM cards and frees the GPU allocations', () => {
   const fixture = gpuFixture('texture');
   assert.equal(fixture.renderer.draw({ geometry: cardGeometry(800, 1.5, 'scroll-bend'), position: 0, anchor: 0, vertical: false, limit: 1.5, reduced: false, tiles: Array(7).fill(null) }, 16), false);
   assert.equal(fixture.renderer.mode, 'fallback');
   assert.deepEqual(fixture.deleted, fixture.created);
   fixture.renderer.dispose();
+  assert.equal(fixture.retiredContexts(), 1);
 });
 
 test('the atlas uses the resolved DOM image and text and removes image listeners on unmount', () => {

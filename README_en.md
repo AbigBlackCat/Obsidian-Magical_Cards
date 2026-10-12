@@ -101,7 +101,7 @@ Enter a directory relative to the current vault, such as `卡片库`. Work notes
 
 ### Image showcases
 
-While creating a module, expand **Advanced settings → Card style** and select **橱窗式卡片** (Showcase cards). Its storage type becomes fixed after saving; existing work modules cannot be converted.
+While creating a module, expand **Advanced settings → Card style** and select **添加图片橱窗** (Add image showcase). Its storage type becomes fixed after saving; existing work modules cannot be converted.
 
 | Image front | Description on the back |
 | --- | --- |
@@ -156,6 +156,10 @@ Show whole image preserves all image content and may leave space when the ratios
 
 Works are ordinary Markdown notes inside the card directory. Appearance and module order are stored in `_数据/卡片配置.md`. Local plugin configuration stores the directory, first-run progress, and recovery information. Switching directories neither imports examples again nor moves existing works.
 
+**What if the tab turns black after changing an appearance?**
+
+Wait for the save to finish, quit and restart Obsidian, then reopen the same vault. The appearance is saved and works and images are preserved. Saving appearance changes to an existing module also shows this recovery hint.
+
 **Does the plugin use the network or clipboard?**
 
 No account or data sync is required. Built-in examples work offline. User-supplied remote cover URLs load from their image servers. The Copy control writes generated code only after you click it. The linked-note picker searches note paths within your vault and does not send note content elsewhere.
@@ -172,6 +176,8 @@ Compatible hosts share the existing runtime. New versions add missing block lang
 </details>
 
 **0.3.0 changes:** image showcases add batch import, optional names and editable back descriptions. Basic module settings are now name and aspect ratio, with advanced options collapsed and a three-card limit per module. Reading, film and custom modules can be hidden and restored without losing data or order. Settings previews only browse; use the purple cards ribbon icon to open the Magical Cards tab for editing.
+
+**0.3.1 changes:** curved galleries retire unused WebGL contexts and reuse their canvas for ratio and direction changes; the first-run guide uses the author's revised text; the new showcase option is named “添加图片橱窗” (Add image showcase); appearance saves include a recovery hint for a black tab.
 
 ## Development and license
 

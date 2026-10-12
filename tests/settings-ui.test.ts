@@ -218,7 +218,7 @@ class SettingTabStub {
   refreshDomState(){this.domRefreshes++;}
 }
 const directory=dirname(fileURLToPath(import.meta.url));
-const uiBundle=await build({stdin:{contents:"export {addCardsSettings,CardsSettingsController} from '../src/settings-tab';export {cardModuleChoices} from '../src/module-choice';export {CardsSettingsTab,default as MagicalCardsPlugin} from '../src/main';export {renderedRoots} from 'react-dom/client';",resolveDir:directory,loader:'ts'},bundle:true,platform:'node',format:'cjs',write:false,external:['react'],plugins:[{
+const uiBundle=await build({stdin:{contents:"export {addCardsSettings,CardsSettingsController} from '../src/settings-tab';export {cardModuleChoices} from '../src/module-choice';export {CardsSettingsTab,default as MagicalCardsPlugin} from '../src/main';export {renderedRoots} from 'react-dom/client';export {Notice} from 'obsidian';",resolveDir:directory,loader:'ts'},bundle:true,platform:'node',format:'cjs',write:false,external:['react'],plugins:[{
   name:'settings-platform',setup(builder){
     builder.onResolve({filter:/^obsidian$/},()=>({path:'platform',namespace:'settings-platform'}));
     builder.onLoad({filter:/.*/,namespace:'settings-platform'},()=>({contents:`export * from ${JSON.stringify(resolve(directory,'obsidian-mock.ts'))};export const Setting=globalThis.__settingsSetting;export const PluginSettingTab=globalThis.__settingsTab;export const Platform={isDesktopApp:true};export const requireApiVersion=()=>Boolean(globalThis.__settingsModern);export function addIcon(){} export class ItemView {} export class Modal {}`,resolveDir:directory,loader:'js'}));
@@ -229,7 +229,7 @@ const uiBundle=await build({stdin:{contents:"export {addCardsSettings,CardsSetti
 (globalThis as any).__settingsSetting=SettingStub;
 (globalThis as any).__settingsTab=SettingTabStub;
 const bundledModule={exports:{}};new Function('require','module','exports',uiBundle.outputFiles[0].text)(createRequire(import.meta.url),bundledModule,bundledModule.exports);
-const ui=bundledModule.exports as {cardModuleChoices:typeof import('../src/module-choice').cardModuleChoices;addCardsSettings:typeof import('../src/settings-tab').addCardsSettings;CardsSettingsController:typeof import('../src/settings-controller').CardsSettingsController;CardsSettingsTab:typeof import('../src/main').CardsSettingsTab;MagicalCardsPlugin:typeof import('../src/main').default;renderedRoots:Array<{element:{props:{draft:import('../src/settings').CardModuleDraft}};unmounted:boolean}>};
+const ui=bundledModule.exports as {cardModuleChoices:typeof import('../src/module-choice').cardModuleChoices;addCardsSettings:typeof import('../src/settings-tab').addCardsSettings;CardsSettingsController:typeof import('../src/settings-controller').CardsSettingsController;CardsSettingsTab:typeof import('../src/main').CardsSettingsTab;MagicalCardsPlugin:typeof import('../src/main').default;Notice:{messages:string[]};renderedRoots:Array<{element:{props:{draft:import('../src/settings').CardModuleDraft}};unmounted:boolean}>};
 const button=(element:Element,text:string)=>element.all().find(child=>child.tagName==='BUTTON'&&child.textContent===text)!.control!;
 const row=(element:Element,name:string)=>element.all().find(child=>child.dataset.settingName===name)!;
 
@@ -286,6 +286,33 @@ test('an external module change preserves dirty settings controls and blocks sav
     await button(reading,'重新载入').click!();assert.equal(row(reading,'卡片样式').children[0].value,'cover');assert.equal(row(reading,'材质').children[0].value,'foil');
     await row(reading,'比例').children[0].control!.choose('1:1');await button(reading,'保存并收起').click!();
     assert.equal(reading.open,false);assert.equal(api.getSnapshot().settings.bookCardAppearance.ratio,'1:1');assert.equal(api.getSnapshot().settings.bookCardAppearance.material,'foil');
+  }finally{cleanup();}
+});
+
+test('only successful appearance changes show the black-screen recovery hint, preserving ordinary saves and failed drafts',async()=>{
+  const {api,fail}=fixture(freshCardsSettings()),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
+  const saved='已保存。点击左侧紫色卡片图标，在 Magical Cards 标签页体验。';
+  const changed='已保存。点击左侧紫色卡片图标体验；若标签页黑屏，请重启 Obsidian 后重新打开笔记库。';
+  try{
+    const reading=el.all().find(child=>child.dataset.cardCollection==='book')!;
+    await row(reading,'模块名称').children[0].control!.choose('我的阅读');
+    await button(reading,'保存并收起').click!();assert.equal(ui.Notice.messages.at(-1),saved);
+    for(const [name,value] of [['卡片样式','minimal'],['显示方式','contain'],['材质','foil'],['比例','4:3'],['动效布局','scroll-bend'],['画廊方向','vertical']] as const){
+      await row(reading,name).children[0].control!.choose(value);
+      await button(reading,'保存并收起').click!();assert.equal(ui.Notice.messages.at(-1),changed,name);
+    }
+    await row(reading,'卡片样式').children[0].control!.choose('cover');
+    await row(reading,'卡片样式').children[0].control!.choose('minimal');
+    await button(reading,'保存并收起').click!();assert.equal(ui.Notice.messages.at(-1),saved);
+    const noticeCount=ui.Notice.messages.length;reading.open=true;
+    await row(reading,'材质').children[0].control!.choose('matte');fail('暂不可写');
+    await button(reading,'保存并收起').click!();assert.equal(ui.Notice.messages.length,noticeCount);assert.equal(reading.open,true);
+    assert.equal(row(reading,'材质').children[0].value,'matte');assert.equal(api.getSnapshot().settings.bookCardAppearance.material,'foil');
+    await button(reading,'保存并收起').click!();assert.equal(ui.Notice.messages.at(-1),changed);
+    const add=el.all().find(child=>child.dataset.settingsGroup==='add-module')!;
+    await row(add,'模块名称').children[0].control!.choose('新模块');await button(add,'保存并收起').click!();
+    assert.equal(ui.Notice.messages.at(-1),saved);assert.equal(api.getSnapshot().settings.workbenchText['book.title'],'我的阅读');
   }finally{cleanup();}
 });
 
@@ -371,7 +398,7 @@ test('showcase selection only lives in the creation advanced style field, locks 
     const add=el.all().find(child=>child.dataset.settingsGroup==='add-module')!,advanced=add.all().find(child=>child.dataset.settingsGroup==='advanced')!;
     const basic=add.all().find(child=>child.tagName==='FIELDSET')!;
     assert.deepEqual(basic.children.map(child=>child.dataset.settingName),['模块名称','比例','']);assert.equal(advanced.open,false);
-    const style=row(add,'卡片样式').children[0].control!;assert.ok(style.inputEl.options.showcase);
+    const style=row(add,'卡片样式').children[0].control!;assert.equal(style.inputEl.options.showcase,'添加图片橱窗');
     const reading=el.all().find(child=>child.dataset.cardCollection==='book')!;assert.equal(row(reading,'卡片样式').children[0].options.showcase,undefined);
     assert.equal(row(add,'允许翻面').hidden,true);assert.equal(row(add,'名称位置').hidden,true);
     add.open=true;advanced.open=true;await row(add,'模块名称').children[0].control!.choose('照片橱窗');

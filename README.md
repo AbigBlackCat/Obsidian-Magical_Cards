@@ -1,5 +1,7 @@
 简体中文 · [English](README_en.md)
 
+Magical Cards is a desktop Obsidian plugin for book, film, and image showcase cards, with draggable modules and note embeds. It works offline with six editable starter examples. The interface is currently in Chinese; see the [full English guide](README_en.md).
+
 <h1 align="center">Magical Cards</h1>
 <p align="center">把阅读、观影与图片收藏，变成可以浏览、编辑、嵌入笔记的卡片。</p>
 <p align="center">
@@ -21,8 +23,6 @@ https://community.obsidian.md/plugins/magical-cards
 <img width="688" height="761" alt="image" src="https://github.com/user-attachments/assets/e37d8e9a-3b02-46fe-8985-22c086d64986" />
 
 **浏览封面，留下感想。** 独立卡片视图和笔记内嵌入共用作品数据；支持搜索、编辑、排序、关联笔记和翻面摘要。作品与外观配置保存在你的笔记库中。
-
-Magical Cards is a desktop Obsidian plugin for book, film, and image showcase cards, with draggable modules and note embeds. It works offline with six editable starter examples. The interface is currently in Chinese; see the [full English guide](README_en.md).
 
 ## Installation
 

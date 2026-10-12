@@ -1,0 +1,116 @@
+{
+  "date": "2026-10-12",
+  "recordedAt": "2026-10-12T06:19:40.402455+00:00",
+  "tag": "0.3.0",
+  "sourceCommit": "5aae52cd6aa457611eed9408f823843c6c9afb2d",
+  "releaseUrl": "https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.3.0",
+  "workflow": "https://github.com/AbigBlackCat/Obsidian-Magical_Cards/actions/runs/38211712309",
+  "conclusion": "success",
+  "isDraft": false,
+  "isPrerelease": false,
+  "assetCount": 3,
+  "assets": [
+    {
+      "name": "main.js",
+      "bytes": 4714582,
+      "sha256": "c9a5bb85fdc19a90cbe2630d5ccc3cdac77fa42cb20687d31e33a2ccf1a38a82",
+      "matchesTestedCandidate": true
+    },
+    {
+      "name": "manifest.json",
+      "bytes": 285,
+      "sha256": "0dbd358db5bfde5014de242768adeec6d75fb88e25e8372787b1be9b624860b8",
+      "matchesTestedCandidate": true
+    },
+    {
+      "name": "styles.css",
+      "bytes": 31284,
+      "sha256": "77f96dbb9398a792db7694ab36e784e95947e92db5c32fc2c1c969326b4bcddc",
+      "matchesTestedCandidate": true
+    }
+  ],
+  "attestationVerification": {
+    "main.js": {
+      "status": "pass",
+      "signerWorkflow": "AbigBlackCat/Obsidian-Magical_Cards/.github/workflows/ci.yml",
+      "sourceRef": "refs/tags/0.3.0",
+      "sourceCommit": "5aae52cd6aa457611eed9408f823843c6c9afb2d",
+      "verifiedAttestationCount": 1
+    },
+    "manifest.json": {
+      "status": "pass",
+      "signerWorkflow": "AbigBlackCat/Obsidian-Magical_Cards/.github/workflows/ci.yml",
+      "sourceRef": "refs/tags/0.3.0",
+      "sourceCommit": "5aae52cd6aa457611eed9408f823843c6c9afb2d",
+      "verifiedAttestationCount": 1
+    },
+    "styles.css": {
+      "status": "pass",
+      "signerWorkflow": "AbigBlackCat/Obsidian-Magical_Cards/.github/workflows/ci.yml",
+      "sourceRef": "refs/tags/0.3.0",
+      "sourceCommit": "5aae52cd6aa457611eed9408f823843c6c9afb2d",
+      "verifiedAttestationCount": 1
+    }
+  },
+  "nativeVerification": {
+    "passed": 22,
+    "failed": 0,
+    "includesActualProcessRestart": true,
+    "evidence": "verification/native-0.3.0.json"
+  },
+  "cleanCloneEvidence": "verification/clean-0.3.0.json",
+  "compatibleHost": {
+    "version": "0.1.33",
+    "sourceCommit": "628240d80837128cfe81c2d490712a2c2dfe944a",
+    "ci": "success",
+    "assetCount": 3,
+    "downloadedFilesMatchTestedCandidate": true,
+    "attestation": "not generated; private workflow records SHA-256 hashes and reproducible builds"
+  },
+  "communityReview": {
+    "version": "0.3.0",
+    "sourceCommit": "5aae52cd6aa457611eed9408f823843c6c9afb2d",
+    "date": "2026-10-12",
+    "automaticScan": "Completed",
+    "failedOrErrorFindings": 0,
+    "checks": {
+      "releaseAttestations": {
+        "main.js": "pass",
+        "styles.css": "pass"
+      },
+      "network": "pass",
+      "dependencies": "pass",
+      "buildVerification": "pass; main.js reproduced byte for byte"
+    },
+    "recommendations": [
+      {
+        "finding": "Vault Enumeration",
+        "functionalReason": "Card discovery and user-invoked linked-note search"
+      },
+      {
+        "finding": "Clipboard Access",
+        "functionalReason": "Writing generated embed code when the user clicks Copy"
+      },
+      {
+        "finding": "keyCode",
+        "functionalReason": "Keeping keyCode 229 for IME composition compatibility"
+      },
+      {
+        "finding": "execCommand",
+        "functionalReason": "Inserting pasted text while preserving native undo"
+      }
+    ],
+    "warnings": [
+      {
+        "finding": "README does not appear to contain English text",
+        "followUp": "Existing English overview moved immediately below the language switch, before HTML and images; default-branch re-review pending",
+        "resolved": false
+      }
+    ],
+    "existingListingPublicationState": "preserved; published entry displays 0.3.0",
+    "humanReviewApproval": "not established",
+    "evidence": "verification/community-0.3.0.png",
+    "details": "COMMUNITY.md"
+  },
+  "existingVaultDeployment": "pending"
+}

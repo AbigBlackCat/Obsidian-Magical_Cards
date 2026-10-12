@@ -1,6 +1,6 @@
 # Community submission: Magical Cards 0.3.0
 
-The entry is now available in the [community directory](https://community.obsidian.md/plugins/magical-cards), as confirmed on 2026-10-12. Its existing publication state is preserved. The **0.3.0 automatic scan has not yet been run**; the completed 0.2.1 scan below is historical evidence only and does not establish a result for 0.3.0 or approval by a community human reviewer.
+The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). On 2026-10-12, the **0.3.0 automatic scan completed with no Failed/Error findings**, four recommendations and one README English-language warning. The existing published entry now displays 0.3.0; its publication state is preserved. Automatic scan completion does not establish approval by a community human reviewer.
 
 | Field | Value |
 | --- | --- |
@@ -33,6 +33,31 @@ The interface is in Chinese, with complete Chinese and English guides. No accoun
 
 Vault enumeration is used for card discovery and the user-invoked linked-note picker. Showcase imports copy only images explicitly selected or dropped by the user; folders are not scanned automatically. Clipboard writes occur when the user clicks Copy for generated embed code. No background clipboard reading or note-content upload is performed. Card and showcase edit failures retain drafts; final shutdown backs up drafts that cannot be saved into the local plugin directory and reports the recovery path.
 
+## Automatic scan of 0.3.0
+
+On 2026-10-12, the existing [account entry](https://community.obsidian.md/account/plugins/magical-cards) reported the scan of **0.3.0**, released from commit `5aae52cd6aa457611eed9408f823843c6c9afb2d`, as Completed. The status was read through native Chrome DOM. [Captured scan result](verification/community-0.3.0.png).
+
+| Check | Result |
+| --- | --- |
+| Overall scan | Completed; no Failed/Error findings |
+| Release attestations | main.js and styles.css: Pass |
+| Network | Pass |
+| Dependencies | Pass |
+| Build verification | Pass; main.js reproduced byte for byte |
+| Listing | Existing published entry displays 0.3.0; publication state preserved |
+
+The scan retained five findings:
+
+| Finding | Level | Functional reason or follow-up |
+| --- | --- | --- |
+| Vault Enumeration | Recommendation | Card discovery and user-invoked linked-note search |
+| Clipboard Access | Recommendation | Writing generated embed code when the user clicks Copy |
+| keyCode | Recommendation | Keeping keyCode 229 for IME composition compatibility |
+| execCommand | Recommendation | Inserting pasted text while preserving native undo |
+| README does not appear to contain English text | Warning | The existing English overview was moved immediately below the language switch, before HTML and images. A default-branch re-review is pending; the warning is not claimed resolved. |
+
+The scan reports no blocking failure. These results do not establish community human-review approval. The earlier Draft status below remains the historical state of the 0.2.1 review.
+
 ## Historical automatic scan of 0.2.1
 
 On 2026-10-11, the scan of **0.2.1** at commit `1c33e9c2aa4787332f322813c2b694c8468d7bd1` completed. The status below was read from the existing [account entry](https://community.obsidian.md/account/plugins/magical-cards) through native Chrome DOM that day. The earlier automatic review of 0.2.0 failed on the same date. These results apply to 0.2.1, not the new 0.3.0 candidate.
@@ -61,7 +86,7 @@ These recommendations are not reported as blocking failures by this scan. Comple
 
 1. Verify the default branch manifest, package version and release tag match 0.3.0.
 2. Verify the release's three files, build size, artifact attestations and reproducible clean build.
-3. Run and inspect the **0.3.0** automatic review in the existing [account entry](https://community.obsidian.md/account/plugins/magical-cards); it has not yet been run. Record its own commit, result and recommendations without replacing the historical scan above.
+3. Re-review the default branch after the README introduction moves to the top. Record the actual English-warning result; the completed 0.3.0 release scan above still contains that warning.
 4. Preserve the entry’s existing publication state. Automatic scan completion alone does not establish human-review approval.
 
 ## Verification and limits

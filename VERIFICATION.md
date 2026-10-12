@@ -1,6 +1,6 @@
-# Magical Cards 0.3.0 candidate verification
+# Magical Cards 0.3.0 verification
 
-Checked on 2026-10-12. This records a release candidate; 0.3.0 has not yet been published. Native acceptance and updated settings screenshots are complete. Deployment and the new community automatic scan remain pending.
+Checked on 2026-10-12. [Magical Cards 0.3.0](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.3.0) is released from commit `5aae52cd6aa457611eed9408f823843c6c9afb2d`. Native acceptance, screenshots and both release workflows are complete. The community automatic scan completed with no Failed/Error findings, four recommendations and one README English-language warning. Deployment to the existing user vault remains pending.
 
 | Check | Result |
 | --- | --- |
@@ -8,16 +8,20 @@ Checked on 2026-10-12. This records a release candidate; 0.3.0 has not yet been 
 | Compatible host 0.1.33, clean release export | Pass; TypeScript, build and 251 / 251 tests |
 | Host development tree with existing Gantt work | Pass; TypeScript and 255 / 255 tests; Gantt work is excluded from official release source |
 | Official type-aware lint | 0 errors; the same three documented compatibility/fixture warnings |
-| Candidate package | 4,714,582-byte main.js; three installation files |
+| Released package | 4,714,582-byte main.js; exactly three installation files, matching the tested candidate |
 | Lossless cover packing | Six original SHA-256 hashes match |
 | Script-resource policy | All three renderer script entry points reject execution; version/source mismatch aborts building |
 | Reproducible build | Independent build processes produce identical installation bytes |
 | Clean Git clones | Standalone `1d547cd` on Node 24.19.0 and 26.8.1: all checks and 133 tests pass; host `f49675d` on Node 24.19.0: full workspace CI path and 251 tests pass; all three installation files match the candidates |
 | Native Obsidian acceptance and actual process restart | Pass; 22 / 22 on macOS with Obsidian 1.14.4, Magical Cards 0.3.0 and compatible host 0.1.33 |
 | Actual settings search | Manually confirmed; “翻面” finds “图片橱窗 · 允许翻面” |
-| Deployment and new community scan | Pending; no 0.3.0 release or new scan is claimed |
+| GitHub CI and release | [Tag workflow passed](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/actions/runs/38211712309); exactly main.js, manifest.json and styles.css published |
+| Artifact attestations | All three downloaded files verified against the official workflow, tag 0.3.0 and source commit 5aae52c |
+| Compatible host release | 0.1.33 from commit 628240d; CI passed, three downloaded installation files match the clean candidate; no private-repository attestation is claimed |
+| Community automatic scan | Completed for 0.3.0 / 5aae52c; no Failed/Error findings, four recommendations and one README English-language warning; default-branch warning re-review pending |
+| Existing-vault deployment | Pending |
 
-Clean clone evidence: [verification/clean-0.3.0.json](verification/clean-0.3.0.json). Candidate file hashes: [verification/candidate-0.3.0.json](verification/candidate-0.3.0.json).
+Release and attestation evidence: [verification/release-0.3.0.json](verification/release-0.3.0.json). Clean clone evidence: [verification/clean-0.3.0.json](verification/clean-0.3.0.json). Pre-release candidate hashes: [verification/candidate-0.3.0.json](verification/candidate-0.3.0.json).
 
 Native acceptance covers the five layouts, image import retries, shared Markdown rendering, retained fields and surrounding text, settings save-failure drafts, IME save guards, name and flip controls, module restoration, both plugin loading orders, reading/Live Preview for both block languages, popout cleanup and open-view restoration. An actual application quit and new process launch preceded the final cold check at 2026-10-12T06:06:35.083Z; module settings, note bytes and image hashes remained unchanged. Sanitized results and the six bundled-cover hashes are recorded in [verification/native-0.3.0.json](verification/native-0.3.0.json).
 
@@ -27,7 +31,7 @@ New regression coverage includes native-readable showcase notes, image import id
 
 Import retry Files and stable IDs are retained while the shared library remains open. Closing a view or removing/restoring a module keeps this queue. A full application restart does not serialize File objects; already written images and note blocks remain on disk. Missing showcase notes are never automatically recreated.
 
-Windows has not been tested on physical hardware. The community entry remains a draft; the previous completed scan below applies to 0.2.1 only.
+Windows has not been tested on physical hardware. The existing published community entry now displays 0.3.0, preserving its publication state. The 0.3.0 scan completed without Failed/Error findings; its four recommendations and README English-language warning remain recorded. Moving the English introduction to the top has not yet been re-reviewed. No community human-review approval is claimed. The previous scan below applies to 0.2.1 only. See [COMMUNITY.md](COMMUNITY.md) for current community status.
 
 <details>
 <summary>Previous verified releases</summary>

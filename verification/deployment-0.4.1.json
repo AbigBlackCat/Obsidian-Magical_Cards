@@ -8,6 +8,12 @@
   "enabledListsPreserved": true,
   "originalGanttWorkingTreePreserved": true,
   "originalVaultInstalledLocalGanttBuild": true,
-  "currentNativeReloadPendingUnlock": true,
-  "physicalWindowsNotTested": true
+  "currentNativeReloadPendingUnlock": false,
+  "physicalWindowsNotTested": true,
+  "currentNativeReopenedAndControlsVerified": true,
+  "currentNativeVisibleModuleActions": 5,
+  "currentNativeCardDirectoryFilesUnchanged": 38,
+  "currentNativePluginDataAndEnabledListUnchanged": true,
+  "qaHelpersDisabled": true,
+  "nativeReloadNote": "Force Reload initially showed a blank host window; closing and reopening the same vault restored the Cards tab. Module controls were then verified without changing works or settings."
 }

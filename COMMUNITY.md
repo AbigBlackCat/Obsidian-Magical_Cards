@@ -35,7 +35,7 @@ Vault enumeration is used for card discovery and the user-invoked linked-note pi
 
 ## Automatic scan of 0.4.0
 
-The [account entry](https://community.obsidian.md/account/plugins/magical-cards) reported **0.4.0**, released from commit `93050e9b74b6a8d049de37cd14dfe89453e8507a`, as Completed on 2026-10-12. The result was read from Chrome DOM after requesting a release scan. [Captured scan result](verification/community-0.4.0.png).
+The [account entry](https://community.obsidian.md/account/plugins/magical-cards) reported **0.4.0**, released from commit `93050e9b74b6a8d049de37cd14dfe89453e8507a`, as Completed on 2026-10-12. The result was read from Chrome DOM after requesting a release scan. [Captured scan result](verification/community-0.4.0.jpg).
 
 | Check | Result |
 | --- | --- |

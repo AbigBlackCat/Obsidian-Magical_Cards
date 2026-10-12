@@ -16,6 +16,15 @@
 .bw-dashboard-delete { border-top:1px solid var(--bw-line); margin-top:20px; padding-top:16px; }
 .bw-dashboard-delete > p { margin-bottom:10px; }
 .bw-dashboard-delete > button + button { margin-left:8px; }
+.bw-module-visibility-action { flex-shrink:0; color:var(--bw-muted); white-space:nowrap; }
+.bw-hidden-modules { border-top:1px solid var(--bw-line); margin-top:20px; padding-top:12px; }
+.bw-hidden-modules > summary { cursor:pointer; color:var(--bw-muted); }
+.bw-hidden-modules > p { color:var(--bw-muted); line-height:1.7; margin-top:12px; }
+.bw-hidden-modules > ul { list-style:none; margin:0; padding:0; }
+.bw-hidden-modules li { display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:8px 0; }
+.bw-hidden-modules li > span:first-child { flex:1; min-width:120px; }
+.bw-hidden-module-help { color:var(--bw-muted); font-size:var(--font-small); }
+.bw-dashboard-status { color:var(--bw-muted); margin-bottom:16px; line-height:1.7; }
 .bw-cards-modules { position:relative; display:grid; gap:20px; }
 .bw-cards-module-slot { position:relative; min-width:0; }
 .bw-cards-module-slot.is-drop-before::before,.bw-cards-modules.is-drop-end::after { content:""; position:absolute; top:-11px; left:0; right:0; height:3px; background:var(--interactive-accent); pointer-events:none; z-index:10; }

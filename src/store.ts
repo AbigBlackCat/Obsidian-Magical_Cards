@@ -12,6 +12,7 @@ const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof va
 export class CardsStore implements CardsAPI {
  readonly showcase:ShowcaseAPI;
  readonly supportsDashboards=true;
+ readonly supportsStandaloneModuleVisibility=true;
  private snapshot:CardsSnapshot;
  private listeners=new Set<()=>void>(); private queue:Promise<unknown>=Promise.resolve(); private timer:number|undefined;
  private destroyed=false; private refreshRevision=0; private orderPath=''; private initialization?:Promise<void>;

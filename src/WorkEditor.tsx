@@ -41,7 +41,7 @@ export default function WorkEditor({ entity, genericCard = false, api, run, clos
   const kind = genericCard ? '卡片' : draft.type === 'book' ? '书籍' : '影片';
   const Container = modalEditor ? 'dialog' : 'section';
   const WorkOptions = entity.path ? 'div' : 'details';
-  return <Container ref={modalEditor ? dialog : undefined} className={`bw-editor${modalEditor ? ' bw-editor-dialog' : ''}`} data-bw-editor aria-label={`${kind}编辑`} onKeyDown={modalEditor ? event => { event.stopPropagation(); if (busy && event.key === 'Escape') event.preventDefault(); } : undefined} onCancel={modalEditor ? event => { event.preventDefault(); if (!busy) close(); } : undefined}>
+  return <Container ref={modalEditor ? dialog : undefined} className={`bw-editor${modalEditor ? ' bw-editor-dialog' : ''}`} data-bw-editor data-cards-pending="card-editor" aria-label={`${kind}编辑`} onKeyDown={modalEditor ? event => { event.stopPropagation(); if (busy && event.key === 'Escape') event.preventDefault(); } : undefined} onCancel={modalEditor ? event => { event.preventDefault(); if (!busy) close(); } : undefined}>
     <header className="bw-section-head"><h2>{entity.path ? '编辑' : '新建'}{kind}</h2><button type="button" disabled={busy} onClick={close}>{modalEditor ? '关闭' : '收起编辑'}</button></header>
     {error && !busy && <p className="bw-sync-note is-error" role="alert">{error}</p>}
     <form onSubmit={event => { void submit(event).catch(error => setError(error instanceof Error ? error.message : '保存未完成，请重试。')); }} onInvalidCapture={event => { const details = (event.target as HTMLElement).closest('details'); if (details) details.open = true; }}><fieldset className="bw-form" disabled={busy}>
@@ -67,9 +67,9 @@ export function DeleteWorkDialog({ work, genericCard = false, busy, error, remov
   const titleId = useId(), descriptionId = useId();
   useEffect(() => { const element = dialog.current; const trigger = element?.ownerDocument.activeElement as HTMLElement | null; element?.showModal(); return () => { element?.close(); if (trigger?.isConnected) trigger.focus(); }; }, []);
   return <dialog ref={dialog} className="bw-delete-dialog" aria-labelledby={titleId} aria-describedby={descriptionId} onKeyDown={event => event.stopPropagation()} onCancel={event => { event.preventDefault(); if (!busy) close(); }}>
-    <h2 id={titleId}>删除《{work.title}》？</h2>
+    <h2 id={titleId}>删除当前{genericCard ? '卡片' : work.type === 'book' ? '书籍' : '影片'}《{work.title}》？</h2>
     <p id={descriptionId}>{genericCard ? '卡片资料笔记将移入 Obsidian 设置的回收站，关联笔记会保留。' : '对应笔记及感想将移入 Obsidian 设置的回收站。'}{work.type === 'book' && work.sourceId && '此来源记录不会自动重新添加。'}恢复原笔记后可重新显示。</p>
     {error && <p className="bw-sync-note is-error" role="alert">{error}</p>}
-    <footer><button type="button" autoFocus disabled={busy} onClick={close}>取消</button><button className="bw-danger" type="button" disabled={busy} onClick={remove}>{busy ? '正在删除…' : genericCard ? '删除卡片' : work.type === 'book' ? '删除书籍' : '删除影片'}</button></footer>
+    <footer><button type="button" autoFocus disabled={busy} onClick={close}>取消</button><button className="bw-danger" type="button" disabled={busy} onClick={remove}>{busy ? '正在删除…' : `确认删除《${work.title}》`}</button></footer>
   </dialog>;
 }

@@ -9,14 +9,15 @@ import { getShowcaseManager } from './showcase-sessions';
 import { EMPTY_SHOWCASE_OPERATIONS, getShowcaseRenderOperations, type ShowcasePendingMove } from './showcase-render-state';
 
 export interface ShowcaseCollectionProps {
-  module: CustomCardModule; api: CardsAPI; appearance?: WorkCardAppearance; threeCardView?: boolean; handle?: React.ReactNode;
+  module: CustomCardModule; api: CardsAPI; appearance?: WorkCardAppearance; threeCardView?: boolean; handle?: React.ReactNode; headerAction?: React.ReactNode;
   previewOnly?: boolean; previewCards?: ShowcaseCard[]; previewPath?: string;
 }
 type DisplayCard = ShowcaseCard & { title: string; summary: string };
 const subscribePreview = () => () => {};
 const previewOperations = () => EMPTY_SHOWCASE_OPERATIONS;
 
-export default function ShowcaseCollection({ module, api, appearance = module.appearance, threeCardView = false, handle, previewOnly = false, previewCards, previewPath }: ShowcaseCollectionProps) {
+export default function ShowcaseCollection({ module, api, appearance = module.appearance, threeCardView = false, handle, headerAction, previewOnly = false, previewCards, previewPath }: ShowcaseCollectionProps) {
+  const section = useRef<HTMLElement>(null);
   const [document, setDocument] = useState<ShowcaseDocument>({ moduleId: module.id, path: previewPath ?? module.showcaseNote ?? '', cards: [], revision: '' });
   const [loading, setLoading] = useState(!previewCards);
   const [error, setError] = useState('');
@@ -58,10 +59,11 @@ export default function ShowcaseCollection({ module, api, appearance = module.ap
   const labelFor = (card: ShowcaseCard) => card.name.trim() || `图片 ${cards.findIndex(item => item.id === card.id) + 1}`;
   const execute = async (action: () => Promise<unknown>) => {
     if (busy) return false;
+    section.current?.setAttribute('data-cards-pending', 'showcase-operation');
     setBusy(true); setError('');
     try { await action(); await reload.current(); return true; }
     catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); return false; }
-    finally { setBusy(false); }
+    finally { section.current?.removeAttribute('data-cards-pending'); setBusy(false); }
   };
   const importPending = async () => {
     if (!service || !operations || !operations.getSnapshot().imports.length || operations.getSnapshot().importing || busy) return;
@@ -92,16 +94,17 @@ export default function ShowcaseCollection({ module, api, appearance = module.ap
     <div className="bw-paper-image"><CoverImage src={api.coverUrl(card.image, path)} source={card.image} sourcePath={path} readSvg={api.readCoverSvg} title={namePosition === 'front' ? labelFor(card) : `图片 ${cards.findIndex(item => item.id === card.id) + 1}`} loading="eager" showFailure /></div>
     {namePosition === 'front' && card.name.trim() && <div className="bw-paper-copy"><h3>{card.name}</h3></div>}
   </>;
-  return <section className="bw-work-stack bw-module bw-showcase-module" data-module-id={module.id} data-module-mode="showcase" data-name-position={namePosition} onDragOver={event => { if (!previewOnly && event.dataTransfer.types.includes('Files')) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; } }} onDrop={event => { if (!previewOnly && event.dataTransfer.files.length) { event.preventDefault(); event.stopPropagation(); importFiles(Array.from(event.dataTransfer.files)); } }}>
+  return <section ref={section} className="bw-work-stack bw-module bw-showcase-module" data-module-id={module.id} data-module-mode="showcase" data-name-position={namePosition} data-cards-pending={busy ? 'showcase-operation' : !previewOnly && (operationState.importing || operationState.imports.length || pendingMove) ? 'showcase-draft' : undefined} onDragOver={event => { if (!previewOnly && event.dataTransfer.types.includes('Files')) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; } }} onDrop={event => { if (!previewOnly && event.dataTransfer.files.length) { event.preventDefault(); event.stopPropagation(); importFiles(Array.from(event.dataTransfer.files)); } }}>
     <header className="bw-section-head bw-work-head">{handle}<h2>{module.title}</h2>{!previewOnly && <div className="bw-work-tools">
       <span className="bw-count">{displayed.length} 张</span>
       <button type="button" className="bw-icon-button" aria-label="搜索图片" aria-expanded={searchOpen} onClick={() => { setSearchOpen(value => !value); setQuery(''); }}><Icon name="search" /></button>
       <button type="button" className="bw-icon-button" aria-label="批量添加图片" title="选择多张图片，或拖放到此模块" disabled={busy || !service} onClick={() => fileInput.current?.click()}><Icon name="plus" /></button>
       <button type="button" className="bw-icon-button" aria-label="排序图片" aria-expanded={sortOpen} onClick={() => setSortOpen(value => !value)}><Icon name="sort" /></button>
       <button type="button" className="bw-icon-button" aria-label="编辑当前图片" disabled={!active || busy || !manager} onClick={() => { if (active) setEditingId(active.id); }}><Icon name="settings" /></button>
-      <button type="button" className="bw-icon-button" aria-label="删除当前图片" disabled={!active || busy || !service} onClick={() => { if (active) setDeleting(active); }}><Icon name="trash" /></button>
+      <button type="button" className="bw-icon-button" aria-label={active ? `删除当前图片《${labelFor(active)}》` : '删除当前图片'} title={active ? `删除当前图片《${labelFor(active)}》` : '删除当前图片'} disabled={!active || busy || !service} onClick={() => { if (active) setDeleting(active); }}><Icon name="trash" /></button>
       <button type="button" disabled={!path || busy} onClick={openNote}>编辑模块笔记</button>
       <input ref={fileInput} hidden type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg" aria-label="批量选择图片" onChange={event => { importFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
+      {headerAction}
     </div>}</header>
     {loading && <p role="status">正在读取图片…</p>}{error && <p className="bw-sync-note is-error" role="alert">{error}</p>}
     {failedImports.length > 0 && <div className="bw-sync-note is-error" role="alert"><p>{failedImports.length} 张图片尚未导入，已保留重试记录。</p>{failedImports.map(item => <p key={item.id}>{item.error}</p>)}<button type="button" disabled={busy} onClick={() => { void importPending(); }}>重试未完成图片</button></div>}
@@ -117,5 +120,5 @@ export default function ShowcaseCollection({ module, api, appearance = module.ap
 function ShowcaseDeleteDialog({ card, label, busy, error, close, remove }: { card: ShowcaseCard; label: string; busy: boolean; error: string; close: () => void; remove: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => { const element = dialog.current; const trigger = element?.ownerDocument.activeElement as HTMLElement | null; element?.showModal(); return () => { element?.close(); if (trigger?.isConnected) trigger.focus(); }; }, []);
-  return <dialog ref={dialog} className="bw-delete-dialog" aria-label={`删除${label}`} data-showcase-card={card.id} onKeyDown={event => event.stopPropagation()} onCancel={event => { event.preventDefault(); if (!busy) close(); }}><h2>删除{label}？</h2><p>仅删除模块笔记中的这张图片卡片。原图片文件和模块笔记会保留。</p>{error && <p role="alert">{error}</p>}<footer><button type="button" autoFocus disabled={busy} onClick={close}>取消</button><button type="button" className="bw-danger" disabled={busy} onClick={remove}>{busy ? '正在删除…' : '删除图片卡片'}</button></footer></dialog>;
+  return <dialog ref={dialog} className="bw-delete-dialog" aria-label={`删除当前图片《${label}》`} data-showcase-card={card.id} onKeyDown={event => event.stopPropagation()} onCancel={event => { event.preventDefault(); if (!busy) close(); }}><h2>删除当前图片《{label}》？</h2><p>仅删除模块笔记中的这张图片卡片。原图片文件和模块笔记会保留。</p>{error && <p role="alert">{error}</p>}<footer><button type="button" autoFocus disabled={busy} onClick={close}>取消</button><button type="button" className="bw-danger" disabled={busy} onClick={remove}>{busy ? '正在删除…' : `确认删除《${label}》`}</button></footer></dialog>;
 }

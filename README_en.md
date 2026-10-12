@@ -76,7 +76,13 @@ The **全部** (All) tab at the top of Magical Cards shows every module that is 
 
 In a category, use **编辑 Dashboard** (Edit Dashboard) to change its name or membership. Deleting a Dashboard removes only the category, preserving its modules, notes and images. Each Dashboard saves its own module order, independently of All. Categories reference stable existing module IDs and do not change work notes or the collection references and local ordering of note embeds.
 
-The settings trash icon **hides a module globally**, from All and every Dashboard. Restoring it retains its previous category membership and order. If the shared runtime does not support Dashboards, upgrade the enabled compatible cards plugins and restart the vault; existing modules and data remain intact.
+The module heading provides a management action for the current page:
+
+- **Hide a module in All:** hide it from All and every Dashboard in the Magical Cards tab. Note embeds continue to display it. Expand **已隐藏模块** (Hidden modules), collapsed by default on All, to restore its category membership, appearance and order. Settings → **已移除模块** (Removed modules) also offers restoration.
+- **Remove a module from a Dashboard:** remove only its reference in the current category. All and other Dashboards are unchanged. To add it back, use **编辑 Dashboard** (Edit Dashboard), select the original module, and save.
+- **Trash in the card toolbar:** delete the current individual card, rather than the entire module. Read the confirmation before deleting.
+
+Hiding and removing category references preserve configuration, notes and images. If the shared runtime does not support Dashboards, upgrade the enabled compatible cards plugins and restart the vault; existing modules and data remain intact.
 
 ### Five layouts
 
@@ -106,7 +112,7 @@ Expand **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add 
 
 ![Showcase advanced settings with layout, three-card limit, flipping, name position and a read-only preview](previews/settings-advanced.png)
 
-The trash icon beside an expanded module's heading removes its **display only**, preserving its configuration, order, notes and images. Expand **已移除模块** (Removed modules) to restore it. Failed saves and source conflicts retain your draft for retry or explicit reload.
+The trash icon beside an expanded module's heading **hides its display in the cards tab only**, preserving its configuration, order, notes and images. Note embeds continue to display it. Restore it through Settings → **已移除模块** (Removed modules) or All → **已隐藏模块** (Hidden modules). Failed saves and source conflicts retain your draft for retry or explicit reload.
 
 Enter a directory relative to the current vault, such as `卡片库`. Work notes live under `书籍` (books) and `观影` (films); showcases live under `橱窗/<module ID>/`. Configuration is in `_数据/卡片配置.md`. Changing this setting does not move existing data. Absolute computer paths are rejected.
 

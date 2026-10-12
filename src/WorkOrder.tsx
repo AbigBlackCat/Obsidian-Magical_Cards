@@ -8,6 +8,7 @@ export interface WorkOrderAPI extends Pick<CardsAPI, 'subscribe' | 'moveWork' | 
 
 type DragSession = { id: string; phase: 'dragging' | 'saving'; initial: string[]; before: string | null };
 type Press = { id: number; x: number; y: number; startX: number; startY: number; moved: boolean; handle: HTMLButtonElement };
+type PendingMove = { id: string; order: string[]; initial: string[] };
 
 export function WorkOrderList({ api, kind, moduleId }: { api: WorkOrderAPI; kind: WorkKind; moduleId?: string }) {
   const snapshot = useSyncExternalStore(api.subscribe, api.getSnapshot, api.getSnapshot);
@@ -18,7 +19,11 @@ export function WorkOrderList({ api, kind, moduleId }: { api: WorkOrderAPI; kind
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [announcement, setAnnouncement] = useState('');
+  const [failedMove, setFailedMove] = useState<PendingMove | null>(null);
+  const pendingMove = useRef<PendingMove | null>(null);
+  const root = useRef<HTMLDivElement>(null);
   const sorted = orderedWorks(works, draft ?? snapshot.workOrder?.[kind]);
+  const savedIds = useRef<string[]>([]); savedIds.current = orderedWorks(works, snapshot.workOrder?.[kind]).map(work => work.id);
   const idsRef = useRef<string[]>([]);
   idsRef.current = sorted.map(work => work.id);
   const list = useRef<HTMLOListElement>(null);
@@ -42,6 +47,7 @@ export function WorkOrderList({ api, kind, moduleId }: { api: WorkOrderAPI; kind
     session.current = null;
     setDraft(null);
     setDropBefore(undefined);
+    if (!pendingMove.current) root.current?.removeAttribute('data-cards-pending');
   };
   useEffect(() => {
     mounted.current = true;
@@ -97,26 +103,35 @@ export function WorkOrderList({ api, kind, moduleId }: { api: WorkOrderAPI; kind
     idsRef.current = next;
     setDraft(next);
   };
-  const save = async (moving: string) => {
+  const save = async (moving: string, retry?: PendingMove) => {
     stopScroll();
-    const index = idsRef.current.indexOf(moving);
+    const order = retry?.order ?? [...idsRef.current], index = order.indexOf(moving);
     if (index < 0) { cancel(); return; }
+    pendingMove.current ??= { id: moving, order, initial: [...(session.current?.initial ?? savedIds.current)] };
     if (session.current) session.current.phase = 'saving';
     else session.current = { id: moving, phase: 'saving', initial: [...idsRef.current], before: idsRef.current[index + 1] ?? null };
     setBusy(true);
     setError('');
+    root.current?.setAttribute('data-cards-pending', 'work-sort');
     try {
-      await api.moveWork(kind, moving, idsRef.current[index + 1] ?? null);
+      const current = api.getSnapshot();
+      const currentWorks = current.entities.filter((entity): entity is Book | Film => entity.type === kind && (moduleId !== undefined ? entity.moduleId === moduleId : !current.settings.customModules.some(item => item.id === entity.moduleId && item.kind === entity.type)));
+      const currentIds = orderedWorks(currentWorks, current.workOrder?.[kind]).map(work => work.id);
+      if (JSON.stringify(currentIds) !== JSON.stringify(pendingMove.current.initial)) throw new Error('作品顺序已在其他位置改变，请先确认后放弃草稿，再重新排序。');
+      await api.moveWork(kind, moving, order[index + 1] ?? null);
+      pendingMove.current = null; root.current?.removeAttribute('data-cards-pending');
+      if (mounted.current) setFailedMove(null);
       if (mounted.current) setAnnouncement(`${label}顺序已保存，第 ${index + 1} 位`);
     } catch (failure) {
-      if (mounted.current) setError(`顺序未保存：${(failure as Error).message}`);
+      if (mounted.current) { setFailedMove(pendingMove.current); setError(`顺序未保存，草稿已保留：${failure instanceof Error ? failure.message : String(failure)}`); }
     } finally {
       session.current = null;
       if (mounted.current) { setDraft(null); setDropBefore(undefined); setBusy(false); }
     }
   };
   const pointerDown = (event: React.PointerEvent<HTMLButtonElement>, work: Book | Film) => {
-    if (event.button !== 0 || !event.isPrimary || busy || session.current || idsRef.current.length < 2) return;
+    if (event.button !== 0 || !event.isPrimary || busy || session.current || pendingMove.current || idsRef.current.length < 2) return;
+    root.current?.setAttribute('data-cards-pending', 'work-sort');
     event.preventDefault();
     event.currentTarget.focus({ preventScroll: true });
     press.current = { id: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, moved: false, handle: event.currentTarget };
@@ -148,7 +163,7 @@ export function WorkOrderList({ api, kind, moduleId }: { api: WorkOrderAPI; kind
     if (event.key === 'Escape' && session.current?.phase === 'dragging') { event.preventDefault(); event.stopPropagation(); cancel(); return; }
     if (!event.altKey || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
     event.preventDefault(); event.stopPropagation();
-    if (busy || session.current) return;
+    if (busy || session.current || pendingMove.current) return;
     const index = idsRef.current.indexOf(work.id);
     if (event.key === 'ArrowUp' && index > 0) placeBefore(work.id, idsRef.current[index - 1]);
     else if (event.key === 'ArrowDown' && index >= 0 && index < idsRef.current.length - 1) placeBefore(work.id, idsRef.current[index + 2] ?? null);
@@ -156,9 +171,9 @@ export function WorkOrderList({ api, kind, moduleId }: { api: WorkOrderAPI; kind
     void save(work.id);
   };
 
-  return <div className="bw-work-order" data-work-kind={kind} data-work-module={moduleId} aria-busy={busy}>
+  return <div ref={root} className="bw-work-order" data-work-kind={kind} data-work-module={moduleId} aria-busy={busy} data-cards-pending={busy || draft || failedMove ? 'work-sort' : undefined}>
     <span className="bw-sr-only" role="status">{announcement}</span>
-    {error && <p className="bw-order-error" role="alert">{error}</p>}
+    {error && <div className="bw-order-error" role="alert"><p>{error}</p>{failedMove && <><button type="button" disabled={busy} onClick={() => { void save(failedMove.id, failedMove); }}>重试排序草稿</button><button type="button" disabled={busy} onClick={() => { pendingMove.current = null; root.current?.removeAttribute('data-cards-pending'); setFailedMove(null); setError(''); setDraft(null); }}>放弃排序草稿</button></>}</div>}
     {sorted.length ? <ol ref={list} className={`bw-order-list${dropBefore === null ? ' has-drop-end' : ''}`} aria-label={`${label}顺序`}>
       {sorted.map((work, index) => <li key={work.id} data-work-id={work.id} className={`bw-order-row${session.current?.id === work.id ? ' is-moving' : ''}${dropBefore === work.id ? ' is-drop-before' : ''}`}>
         <button type="button" className="bw-order-handle" aria-label={`调整《${work.title}》顺序`} title="拖拽排序 · Alt / Option + ↑ / ↓" aria-disabled={busy} onPointerDown={event => pointerDown(event, work)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={cancel} onLostPointerCapture={() => { if (press.current) cancel(); }} onKeyDown={event => keyboard(event, work)}>

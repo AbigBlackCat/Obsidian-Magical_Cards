@@ -11,6 +11,7 @@ import CardsSurface from '../src/CardsSurface';
 import type CardsDashboardView from '../src/CardsDashboardView';
 import { WorkPropertiesManager } from '../src/WorkPropertiesSessions';
 import { getShowcaseManager, releaseShowcaseManager } from '../src/showcase-sessions';
+import { getShowcaseRenderOperations } from '../src/showcase-render-state';
 import { createWork } from '../src/domain';
 import { freshCardsSettings } from '../src/settings';
 import type { CardsAPI, CardsDashboard, CardsSettings, CardsSnapshot, ShowcaseCard, WorkProperties, WorkPropertyValues } from '../src/types';
@@ -33,14 +34,15 @@ function fixture(supported = true) {
   let card: ShowcaseCard = { id: 'image', image: 'image.png', name: '原名称', description: '原描述' };
   const listeners = new Set<() => void>(), patches: Partial<CardsSettings>[] = [], writes: Array<{ kind: string; patch: object }> = [];
   let workError = '', settingsError = '';
-  let pause: (() => Promise<void>) | undefined;
+  let pause: (() => Promise<void>) | undefined, settingsPause: (() => Promise<void>) | undefined;
   const api = {
-    ...(supported ? { supportsDashboards: true } : {}),
+    ...(supported ? { supportsDashboards: true, supportsStandaloneModuleVisibility: true } : {}),
     getSnapshot: () => snapshot,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     coverUrl: (value: string) => value,
     saveSettings: async (patch: Partial<CardsSettings>) => {
       patches.push(structuredClone(patch));
+      if (settingsPause) await settingsPause();
       if (settingsError) throw new Error(settingsError);
       snapshot = { ...snapshot, settings: { ...snapshot.settings, ...patch } };
       for (const listener of listeners) listener();
@@ -65,6 +67,7 @@ function fixture(supported = true) {
     workFail: (message: string) => { workError = message; },
     settingsFail: (message: string) => { settingsError = message; },
     pauseWrite: (wait: (() => Promise<void>) | undefined) => { pause = wait; },
+    pauseSettings: (wait: (() => Promise<void>) | undefined) => { settingsPause = wait; },
     dispose: () => { manager.dispose(); releaseShowcaseManager(api); },
   };
 }
@@ -113,7 +116,7 @@ const nodes = (value: React.ReactNode): React.ReactElement<any>[] => {
 const directory = dirname(fileURLToPath(import.meta.url)), require = createRequire(import.meta.url);
 const source = await readFile(resolve(directory, '../src/main.tsx'), 'utf8');
 const memoryBundle = await build({
-  stdin: { contents: `${source}\nexport { CardsView };\nexport { default as Dashboard, flushDashboardEdits } from './CardsDashboardView';\nexport { default as Surface } from './CardsSurface';\nexport { default as Text } from './EditableText';\nexport { renderedRoots } from 'react-dom/client';`, resolveDir: resolve(directory, '../src'), loader: 'tsx' },
+  stdin: { contents: `${source}\nexport { CardsView };\nexport { default as Dashboard, flushDashboardEdits } from './CardsDashboardView';\nexport { default as Surface } from './CardsSurface';\nexport { default as Text } from './EditableText';\nexport { default as ModuleList } from './ModuleList';\nexport { WorkOrderList } from './WorkOrder';\nexport { default as WorkCollection } from './WorkCollection';\nexport { default as ShowcaseCollection } from './ShowcaseCollection';\nexport { DeleteWorkDialog } from './WorkEditor';\nexport { renderedRoots } from 'react-dom/client';`, resolveDir: resolve(directory, '../src'), loader: 'tsx' },
   bundle: true, platform: 'node', format: 'cjs', write: false, external: ['react', 'react/jsx-runtime'],
   plugins: [{ name: 'dashboard-view-platform', setup(builder) {
     builder.onResolve({ filter: /^obsidian$/ }, () => ({ path: 'platform', namespace: 'dashboard-test' }));
@@ -132,6 +135,11 @@ interface ViewStub { getState(): { existing: string; dashboardId: string }; setS
 const ui = memoryModule.exports as {
   Dashboard: typeof CardsDashboardView; Surface: typeof CardsSurface; renderedRoots: RootStub[];
   Text: typeof import('../src/EditableText').default;
+  ModuleList: typeof import('../src/ModuleList').default;
+  WorkOrderList: typeof import('../src/WorkOrder').WorkOrderList;
+  WorkCollection: typeof import('../src/WorkCollection').default;
+  ShowcaseCollection: typeof import('../src/ShowcaseCollection').default;
+  DeleteWorkDialog: typeof import('../src/WorkEditor').DeleteWorkDialog;
   flushDashboardEdits: typeof import('../src/CardsDashboardView').flushDashboardEdits;
   CardsView: new (leaf: unknown, plugin: unknown, closed: () => void) => ViewStub;
 };
@@ -256,6 +264,7 @@ test('module title pending and failed saves synchronously block navigation until
   let pending = new Promise<boolean>(resolve => { finish = resolve; });
   const element = { textContent: '原模块', dataset: {} as Record<string, string>, ownerDocument: { getSelection: () => null } };
   const surface = { ownerDocument: { activeElement: null }, querySelector: (selector: string) => {
+    if (selector.includes('data-cards-pending')) return null;
     if (selector.includes('editable-composing')) return element.dataset.editableComposing === 'true' ? element : null;
     return element.dataset.editableSaving === 'true' || element.dataset.editableError === 'true' ? element : null;
   } } as unknown as HTMLElement;
@@ -297,7 +306,7 @@ test('navigation checks title status again after a slow card save', async () => 
   const pending = new Promise<void>(resolve => { finish = resolve; });
   const manager = { flushAll: () => pending, recoveryDrafts: () => [] } as unknown as WorkPropertiesManager;
   let failedTitle = false;
-  const surface = { ownerDocument: { activeElement: null }, querySelector: (selector: string) => !selector.includes('editable-composing') && failedTitle ? {} : null } as unknown as HTMLElement;
+  const surface = { ownerDocument: { activeElement: null }, querySelector: (selector: string) => !selector.includes('data-cards-pending') && !selector.includes('editable-composing') && failedTitle ? {} : null } as unknown as HTMLElement;
   try {
     const flush = flushDashboardEdits(f.api, manager, surface); failedTitle = true; finish();
     await assert.rejects(flush, /模块名称尚未保存/);
@@ -422,4 +431,232 @@ test('native leaf state preserves each dashboard independently and closes only i
     assert.equal(closed, 1); assert.equal(disposed, 0);
     await second.setState({ dashboardId: 42 }, {}); assert.equal(second.getState().dashboardId, 'all');
   } finally { await second.onClose(); f.dispose(); }
+});
+
+const dashboardProps = (f: ReturnType<typeof fixture>, dashboardId = 'all') => ({ api: f.api, manager: f.manager, dashboardId, onDashboardChange() {} });
+const dashboardSurface = (tree: React.ReactNode) => nodes(tree).find(node => node.type === ui.Surface)!;
+const actionFor = (tree: React.ReactNode, id: string) => dashboardSurface(tree).props.headerAction(id) as React.ReactElement<any>;
+const visibleStatus = (tree: React.ReactNode) => nodes(tree).filter(node => node.props.role === 'status').map(node => String(node.props.children)).join('\n');
+
+test('another standalone window protects its sorting and title drafts until saved or closed', async () => {
+  const f = fixture(), hooks = new Hooks();
+  let pending = 'sorting';
+  const element = { ownerDocument: { activeElement: null }, querySelector: (selector: string) => {
+    if (selector === '[data-cards-pending]') return pending === 'sorting' ? {} : null;
+    if (selector.includes('editable-composing')) return pending === 'composition' ? {} : null;
+    return pending === 'title-error' ? {} : null;
+  } } as unknown as HTMLDivElement;
+  try {
+    const tree = hooks.render(ui.Surface, { api: f.api, manager: f.manager, dashboard: boardA });
+    nodes(tree).find(node => node.props.className === 'bw-app bw-cards-surface')!.props.ref.current = element;
+    hooks.runEffects();
+    await assert.rejects(flushDashboardEdits(f.api, f.manager), /排序/);
+    pending = 'composition'; await assert.rejects(flushDashboardEdits(f.api, f.manager), /输入法/);
+    pending = 'title-error'; await assert.rejects(flushDashboardEdits(f.api, f.manager), /模块名称尚未保存/);
+    assert.equal(f.patches.length, 0); assert.equal(f.writes.length, 0);
+    hooks.dispose(); await flushDashboardEdits(f.api, f.manager);
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('standalone hiding affects all dashboards but neither note embeds nor the original memberships and order', () => {
+  const f = fixture();
+  try {
+    const before = structuredClone(f.api.getSnapshot());
+    f.replace({ ...before, settings: { ...before.settings, standaloneHiddenModuleIds: ['book', 'custom-a'] } });
+    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), ['film']);
+    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, dashboard: boardA }))), ['missing', 'film']);
+    const embed: CardsEmbed = { id: 'hidden-still-in-note', modules: [{ id: 'reading', collection: 'book' }, { id: 'custom', collection: 'custom-a' }] };
+    const html = renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, embed, headerAction: () => React.createElement('button', null, 'should not appear') }));
+    assert.deepEqual(moduleOrder(html), ['reading', 'custom']); assert.ok(html.includes('data-work-id="reading"'));
+    assert.equal(html.includes('should not appear'), false); assert.equal(html.includes('隐藏模块'), false);
+    assert.deepEqual(f.api.getSnapshot().settings.dashboards, before.settings.dashboards);
+    assert.deepEqual(f.api.getSnapshot().settings.standaloneOrder, before.settings.standaloneOrder);
+    assert.deepEqual(f.api.getSnapshot().entities, before.entities); assert.equal(f.patches.length, 0);
+  } finally { f.dispose(); }
+});
+
+test('empty ordinary and showcase modules both expose independent visibility actions, without a card-delete action being enabled', () => {
+  const f = fixture();
+  try {
+    const snapshot = f.api.getSnapshot();
+    f.replace({ ...snapshot, entities: [], settings: { ...snapshot.settings, customModules: [...snapshot.settings.customModules, { id: 'showcase', title: '空图片橱窗', kind: 'book', mode: 'showcase', appearance: { style: 'cover', material: 'paper' } }] } });
+    const html = renderToStaticMarkup(React.createElement(ui.Dashboard, dashboardProps(f)));
+    assert.equal((html.match(/data-module-action="hide"/g) ?? []).length, 4);
+    assert.ok(html.includes('data-module-collection="showcase"')); assert.ok(html.includes('data-module-collection="book"'));
+    assert.ok(/aria-label="删除当前书籍"[^>]*disabled/.test(html)); assert.ok(/aria-label="删除当前图片"[^>]*disabled/.test(html));
+  } finally { f.dispose(); }
+});
+
+test('failed hide keeps the module mounted; successful hide and restore preserve its original slot with visible status', async () => {
+  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f);
+  try {
+    const before = structuredClone(f.api.getSnapshot());
+    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
+    f.settingsFail('配置不可写'); actionFor(tree, 'book').props.onClick(); await tick();
+    tree = hooks.render(ui.Dashboard, props);
+    assert.equal(f.api.getSnapshot().settings.standaloneHiddenModuleIds, undefined);
+    assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('配置不可写')));
+    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), before.settings.standaloneOrder);
+    f.settingsFail(''); actionFor(tree, 'book').props.onClick(); await tick(); tree = hooks.render(ui.Dashboard, props);
+    assert.deepEqual(f.api.getSnapshot().settings.standaloneHiddenModuleIds, ['book']);
+    assert.match(visibleStatus(tree), /已隐藏.*已隐藏模块.*恢复/);
+    const panel = nodes(tree).find(node => node.props['data-hidden-modules'] !== undefined)!;
+    assert.equal(panel.props.open, undefined);
+    const restore = nodes(panel).find(node => node.props['data-module-action'] === 'restore')!;
+    assert.equal(restore.props['data-module-collection'], 'book'); restore.props.onClick(); await tick(); tree = hooks.render(ui.Dashboard, props);
+    assert.deepEqual(f.api.getSnapshot().settings.standaloneHiddenModuleIds, []);
+    assert.match(visibleStatus(tree), /已恢复模块.*原顺序/);
+    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), before.settings.standaloneOrder);
+    assert.deepEqual(f.api.getSnapshot().settings.dashboards, before.settings.dashboards);
+    assert.deepEqual(f.api.getSnapshot().entities, before.entities);
+    assert.equal(f.api.getSnapshot().settings.hiddenModuleIds, before.settings.hiddenModuleIds);
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('removing a module changes only the selected dashboard and awaits its save, preserving the complete library and other boards', async () => {
+  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f, boardA.id);
+  let finish!: () => void; const pending = new Promise<void>(resolve => { finish = resolve; });
+  try {
+    const before = structuredClone(f.api.getSnapshot()); f.pauseSettings(() => pending);
+    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects(); actionFor(tree, 'book').props.onClick(); await tick();
+    tree = hooks.render(ui.Dashboard, props);
+    assert.equal(actionFor(tree, 'film').props.disabled, true);
+    assert.equal(nodes(tree).find(node => node.props.role === 'tabpanel')!.props.inert, true);
+    assert.deepEqual(f.api.getSnapshot().settings.dashboards, before.settings.dashboards);
+    assert.equal(f.patches.length, 1); finish(); await tick(); tree = hooks.render(ui.Dashboard, props);
+    assert.deepEqual(f.api.getSnapshot().settings.dashboards![0].moduleIds, ['custom-a', 'missing', 'film']);
+    assert.deepEqual(f.api.getSnapshot().settings.dashboards![1], before.settings.dashboards![1]);
+    assert.deepEqual(f.api.getSnapshot().settings.standaloneOrder, before.settings.standaloneOrder);
+    assert.equal(f.api.getSnapshot().settings.standaloneHiddenModuleIds, undefined);
+    assert.match(visibleStatus(tree), /已从此 Dashboard 移出.*编辑 Dashboard/);
+    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), before.settings.standaloneOrder);
+  } finally { finish(); hooks.dispose(); f.dispose(); }
+});
+
+test('legacy global removals never expose a restore that clears their settings; older runtimes reject standalone hiding', async () => {
+  const f = fixture(), hooks = new Hooks();
+  try {
+    const snapshot = f.api.getSnapshot();
+    f.replace({ ...snapshot, settings: { ...snapshot.settings, hiddenModuleIds: ['book'], standaloneHiddenModuleIds: ['book', 'film'] } });
+    const tree = hooks.render(ui.Dashboard, dashboardProps(f)), panel = nodes(tree).find(node => node.props['data-hidden-modules'] !== undefined)!;
+    const rows = nodes(panel).filter(node => node.type === 'li');
+    assert.equal(nodes(rows.find(node => node.props['data-hidden-module'] === 'book')).some(node => node.props['data-module-action'] === 'restore'), false);
+    assert.ok(renderToStaticMarkup(rows[0]).includes('先前往设置恢复，再在此处恢复模块'));
+    assert.deepEqual(f.api.getSnapshot().settings.hiddenModuleIds, ['book']); assert.equal(f.patches.length, 0);
+  } finally { hooks.dispose(); f.dispose(); }
+  const old = fixture(false), oldHooks = new Hooks();
+  try {
+    const tree = oldHooks.render(ui.Dashboard, dashboardProps(old)); oldHooks.runEffects(); actionFor(tree, 'book').props.onClick(); await tick();
+    assert.equal(old.patches.length, 0);
+    assert.ok(nodes(oldHooks.render(ui.Dashboard, dashboardProps(old))).some(node => node.props.role === 'alert' && String(node.props.children).includes('升级')));
+  } finally { oldHooks.dispose(); old.dispose(); }
+});
+
+test('IME pointerdown is intercepted before blur and module visibility never writes or unloads its draft', async () => {
+  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f);
+  try {
+    const tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
+    const wrapper = nodes(tree).find(node => typeof node.props.onCompositionStartCapture === 'function')!, target = new EventTarget();
+    wrapper.props.onCompositionStartCapture({ target });
+    const hide = actionFor(tree, 'book'); let prevented = false;
+    hide.props.onPointerDownCapture({ preventDefault: () => { prevented = true; } }); hide.props.onClick(); await tick();
+    assert.equal(prevented, true); assert.equal(f.patches.length, 0); assert.equal(f.writes.length, 0);
+    assert.ok(nodes(hooks.render(ui.Dashboard, props)).some(node => node.props.role === 'alert' && String(node.props.children).includes('输入法')));
+    wrapper.props.onCompositionEndCapture({ target }); actionFor(hooks.render(ui.Dashboard, props), 'book').props.onClick(); await tick();
+    assert.deepEqual(f.api.getSnapshot().settings.standaloneHiddenModuleIds, ['book']);
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('module sorting and card editing pending markers block visibility before flushing any sessions', async () => {
+  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f);
+  let pending = true;
+  try {
+    const work = f.manager.getSession('reading'); await work.refresh(); work.update({ summary: '尚未提交的草稿' });
+    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
+    nodes(tree).find(node => node.props.role === 'tabpanel')!.props.ref.current = { querySelector: (selector: string) => selector.includes('data-cards-pending') && pending ? {} : null, ownerDocument: { activeElement: null } };
+    actionFor(tree, 'book').props.onClick(); await tick();
+    assert.equal(f.patches.length, 0); assert.equal(f.writes.length, 0); assert.equal(work.getSnapshot().dirty, true);
+    tree = hooks.render(ui.Dashboard, props); assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('排序')));
+    pending = false; actionFor(tree, 'book').props.onClick(); await tick();
+    assert.equal(work.getSnapshot().dirty, false); assert.deepEqual(f.api.getSnapshot().settings.standaloneHiddenModuleIds, ['book']);
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('showcase import retries and failed moves block visibility without discarding their original queue or order baseline', async () => {
+  const f = fixture();
+  try {
+    const snapshot = f.api.getSnapshot(); f.replace({ ...snapshot, settings: { ...snapshot.settings, customModules: [...snapshot.settings.customModules, { id: 'showcase', title: '橱窗', kind: 'book', mode: 'showcase', appearance: { style: 'cover', material: 'paper' } }] } });
+    const operations = getShowcaseRenderOperations(f.api, 'showcase')!, file = {} as File;
+    operations.update({ imports: [{ id: 'retained-import', file }], importing: true });
+    await assert.rejects(flushDashboardEdits(f.api, f.manager), /图片导入或排序/);
+    operations.update({ importing: false, failures: [{ id: 'retained-import', error: '图片不可写' }] });
+    await assert.rejects(flushDashboardEdits(f.api, f.manager), /图片导入或排序/);
+    assert.equal(operations.getSnapshot().imports[0].file, file);
+    const move = { id: 'image', beforeId: null, expectedIds: ['image', 'other'] };
+    operations.update({ imports: [], failures: [], move, moveError: '正文冲突' });
+    await assert.rejects(flushDashboardEdits(f.api, f.manager), /图片导入或排序/);
+    assert.equal(operations.getSnapshot().move, move); assert.deepEqual(operations.getSnapshot().move!.expectedIds, ['image', 'other']);
+    assert.equal(f.patches.length, 0); assert.equal(f.writes.length, 0);
+    operations.update({ move: null, moveError: '' }); await flushDashboardEdits(f.api, f.manager);
+  } finally { f.dispose(); }
+});
+
+test('ModuleList marks sorting synchronously, retains a failed draft and blocks unmount until retry or discard', async () => {
+  const f = fixture(), hooks = new Hooks(); let fail = true;
+  const attributes = new Set<string>(), retained: Array<string[] | null> = [], attempts: string[][] = [];
+  const props = { ids: ['book', 'film'], save: async (order: string[]) => { attempts.push(order); if (fail) throw new Error('排序磁盘错误'); }, children: (_id: string, handle: React.ReactNode) => handle, retainDraft: (draft: string[] | null) => retained.push(draft) };
+  const surface = { querySelector: (selector: string) => selector.includes('data-cards-pending') && attributes.has('data-cards-pending') ? {} : null, ownerDocument: { activeElement: null } } as unknown as HTMLElement;
+  try {
+    let tree = hooks.render(ui.ModuleList, props); hooks.runEffects();
+    nodes(tree).find(node => node.props.className === 'bw-cards-modules')!.props.ref.current = { setAttribute: (name: string) => attributes.add(name), removeAttribute: (name: string) => attributes.delete(name) };
+    nodes(tree).find(node => node.props.className?.includes('bw-module-handle'))!.props.onKeyDown({ altKey: true, key: 'ArrowDown', preventDefault() {}, stopPropagation() {}, currentTarget: { isConnected: false } });
+    assert.equal(attributes.has('data-cards-pending'), true); await assert.rejects(flushDashboardEdits(f.api, f.manager, surface), /排序/); await tick();
+    tree = hooks.render(ui.ModuleList, props); assert.equal(nodes(tree).find(node => node.props.className === 'bw-cards-modules')!.props['data-cards-pending'], 'module-sort');
+    assert.deepEqual(retained[0], ['film', 'book']); assert.ok(nodes(tree).some(node => node.props.role === 'alert'));
+    fail = false; nodes(tree).find(node => node.props.children === '重试排序草稿')!.props.onClick(); await tick();
+    assert.deepEqual(attempts, [['film', 'book'], ['film', 'book']]); assert.equal(attributes.has('data-cards-pending'), false); assert.equal(retained.at(-1), null);
+    await flushDashboardEdits(f.api, f.manager, surface);
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('ordinary card sorting retains its first failed baseline, rejects external changes on retry and releases only after explicit discard', async () => {
+  const f = fixture(), hooks = new Hooks(); let moves = 0;
+  try {
+    const snapshot = f.api.getSnapshot(), first = { ...snapshot.entities[0], moduleId: 'custom-a' }, second = { ...first, id: 'second', title: '第二张' };
+    f.replace({ ...snapshot, entities: [first, second], workOrder: { book: ['reading', 'second'], film: [] } });
+    f.api.moveWork = async () => { moves++; throw new Error('排序不可写'); };
+    const props = { api: f.api, kind: 'book' as const, moduleId: 'custom-a' };
+    let tree = hooks.render(ui.WorkOrderList, props); hooks.runEffects();
+    nodes(tree).find(node => node.props.className === 'bw-order-handle')!.props.onKeyDown({ altKey: true, key: 'ArrowDown', preventDefault() {}, stopPropagation() {} }); await tick();
+    tree = hooks.render(ui.WorkOrderList, props);
+    assert.equal(nodes(tree).find(node => node.props.className === 'bw-work-order')!.props['data-cards-pending'], 'work-sort');
+    assert.deepEqual(nodes(tree).filter(node => node.type === 'li').map(node => node.props['data-work-id']), ['reading', 'second']);
+    assert.equal(moves, 1); f.replace({ ...f.api.getSnapshot(), workOrder: { book: ['second', 'reading'], film: [] } });
+    nodes(tree).find(node => node.props.children === '重试排序草稿')!.props.onClick(); await tick(); tree = hooks.render(ui.WorkOrderList, props);
+    assert.equal(moves, 1); assert.ok(nodes(tree).some(node => node.type === 'p' && String(node.props.children).includes('其他位置改变')));
+    assert.equal(nodes(tree).find(node => node.props.className === 'bw-work-order')!.props['data-cards-pending'], 'work-sort');
+    nodes(tree).find(node => node.props.children === '放弃排序草稿')!.props.onClick(); tree = hooks.render(ui.WorkOrderList, props);
+    assert.equal(nodes(tree).find(node => node.props.className === 'bw-work-order')!.props['data-cards-pending'], undefined);
+    assert.deepEqual(f.api.getSnapshot().workOrder!.book, ['second', 'reading']);
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('single-card delete tooltips and confirmation explicitly name the current ordinary and showcase card', () => {
+  const f = fixture(), ordinary = new Hooks(), showcase = new Hooks();
+  try {
+    const work = f.api.getSnapshot().entities[0];
+    const props = { kind: 'book' as const, works: [work], appearance: f.api.getSnapshot().settings.bookCardAppearance, threeCardView: false, manager: f.manager, api: f.api, run: async () => true, edit() {} };
+    let tree = ordinary.render(ui.WorkCollection, props); nodes(tree).find(node => typeof node.props.onActiveChange === 'function')!.props.onActiveChange(work.id);
+    tree = ordinary.render(ui.WorkCollection, props); const trash = nodes(tree).find(node => node.props.title === '删除当前书籍《书》')!;
+    assert.equal(trash.props['aria-label'], '删除当前书籍《书》');
+    const dialog = renderToStaticMarkup(React.createElement(ui.DeleteWorkDialog, { work, busy: false, close() {}, remove() {} }));
+    assert.ok(dialog.includes('删除当前书籍《书》？')); assert.ok(dialog.includes('确认删除《书》'));
+    const module = { id: 'showcase', title: '收藏图', kind: 'book' as const, mode: 'showcase' as const, appearance: { material: 'paper' as const, style: 'cover' as const } };
+    const showcaseProps = { module, api: f.api, previewCards: [{ id: 'picture', name: '山顶', image: 'cover.jpg', description: '' }] };
+    tree = showcase.render(ui.ShowcaseCollection, showcaseProps); nodes(tree).find(node => typeof node.props.onActiveChange === 'function')!.props.onActiveChange('picture');
+    tree = showcase.render(ui.ShowcaseCollection, showcaseProps); const pictureTrash = nodes(tree).find(node => node.props.title === '删除当前图片《山顶》')!;
+    assert.equal(pictureTrash.props['aria-label'], '删除当前图片《山顶》'); pictureTrash.props.onClick();
+    tree = showcase.render(ui.ShowcaseCollection, showcaseProps); const pictureDialog = nodes(tree).find(node => typeof node.type === 'function' && node.props.card?.id === 'picture')!;
+    assert.ok(renderToStaticMarkup(pictureDialog).includes('确认删除《山顶》'));
+  } finally { ordinary.dispose(); showcase.dispose(); f.dispose(); }
 });

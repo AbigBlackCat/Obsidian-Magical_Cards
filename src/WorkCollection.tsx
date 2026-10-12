@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import type { Work, CardsAPI, CustomCardModule, WorkCardAppearance } from './types';
 import { createWork } from './domain';
 import { CoverImage } from './CoverImage';
@@ -11,7 +11,8 @@ import EditableText from './EditableText';
 import { WorkOrderList } from './WorkOrder';
 import { DeleteWorkDialog, type Run } from './WorkEditor';
 
-export default function WorkCollection({ kind, module, renameModule, works, order, appearance, threeCardView, manager, api, run, edit, handle, previewOnly = false }: { kind: 'book' | 'film'; module?: CustomCardModule; renameModule?: (id: string, title: string) => Promise<boolean>; works: Work[]; order?: string[]; appearance: WorkCardAppearance; threeCardView: boolean; handle?: React.ReactNode; manager: WorkPropertiesManager; api: CardsAPI; run: Run; edit: (entity: Work) => void; previewOnly?: boolean }) {
+export default function WorkCollection({ kind, module, renameModule, works, order, appearance, threeCardView, manager, api, run, edit, handle, headerAction, previewOnly = false }: { kind: 'book' | 'film'; module?: CustomCardModule; renameModule?: (id: string, title: string) => Promise<boolean>; works: Work[]; order?: string[]; appearance: WorkCardAppearance; threeCardView: boolean; handle?: React.ReactNode; headerAction?: React.ReactNode; manager: WorkPropertiesManager; api: CardsAPI; run: Run; edit: (entity: Work) => void; previewOnly?: boolean }) {
+  const section = useRef<HTMLElement>(null);
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
@@ -37,14 +38,15 @@ export default function WorkCollection({ kind, module, renameModule, works, orde
     <div className="bw-paper-copy"><h3 style={{textAlign:item.cardTitleAlign??'left'}}>{item.title}</h3>{item.summary?.trim() && <p style={{textAlign:item.cardSummaryAlign??'left'}}>{item.summary}</p>}{!module && <footer><span>{item.type === 'book' ? item.author : [item.director, item.year].filter(Boolean).join(' · ')}</span></footer>}</div>
   </>;
   const noun = module ? '卡片' : kind === 'book' ? '书籍' : '影片';
-  return <section className="bw-work-stack bw-module" data-module-id={module?.id}>
+  return <section ref={section} className="bw-work-stack bw-module" data-module-id={module?.id} data-cards-pending={deleting ? 'card-delete' : undefined}>
     <header className="bw-section-head bw-work-head">{handle}{previewOnly ? <h2>{module?.title || '卡片预览'}</h2> : module ? <EditableText as="h2" value={module.title} onSave={title => renameModule!(module.id, title)} /> : <EditableText as="h2" textKey={`${kind}.title`} defaultText={kind === 'book' ? '读过的世界' : '银幕之后'} />}{!previewOnly && <div className="bw-work-tools">
       <span className="bw-count">{sorted.length} {module ? '张' : kind === 'book' ? '本' : '部'}</span>
       <button className="bw-icon-button" aria-label={`搜索${noun}`} aria-expanded={searchOpen} title={`搜索${noun}`} onClick={() => { setSearchOpen(value => !value); setQuery(''); }}><Icon name="search" /></button>
       <button className="bw-icon-button" aria-label={`添加${noun}`} title={`添加${noun}`} onClick={() => { const entity = createWork(kind); entity.title = ''; if (module) entity.moduleId = module.id; edit(entity); }}><Icon name="plus" /></button>
-      <button className="bw-icon-button" aria-label={`排序${noun}`} title={`排序${noun}`} aria-expanded={module ? sortOpen : undefined} onClick={() => { if (module) setSortOpen(value => !value); else void run(() => api.openWorkOrder(kind)); }}><Icon name="sort" /></button>
+      <button className="bw-icon-button" aria-label={`排序${noun}`} title={`排序${noun}`} aria-expanded={module ? sortOpen : undefined} onClick={() => { if (module) { if (sortOpen && section.current?.querySelector('.bw-work-order[data-cards-pending]')) { void run(async () => { throw new Error('排序草稿已保留，请先重试或放弃草稿后收起。'); }); return; } setSortOpen(value => !value); } else void run(() => api.openWorkOrder(kind)); }}><Icon name="sort" /></button>
       {module && <button className="bw-icon-button" aria-label="编辑卡片资料" title={active ? `编辑《${active.title}》的卡片资料` : '编辑卡片资料'} disabled={!active} onClick={() => { if (active) void run(() => api.openNote(active.path)); }}><Icon name="settings" /></button>}
-      <button className="bw-icon-button" aria-label={`删除当前${noun}`} title={active ? `删除《${active.title}》` : `删除当前${noun}`} disabled={!active || deleting} onClick={() => { if (active) { setDeleteError(''); setDeleteCandidate(active); } }}><Icon name="trash" /></button>
+      <button className="bw-icon-button" aria-label={active ? `删除当前${noun}《${active.title}》` : `删除当前${noun}`} title={active ? `删除当前${noun}《${active.title}》` : `删除当前${noun}`} disabled={!active || deleting} onClick={() => { if (active) { setDeleteError(''); setDeleteCandidate(active); } }}><Icon name="trash" /></button>
+      {headerAction}
     </div>}</header>
     {module && sortOpen && <WorkOrderList api={api} kind={kind} moduleId={module.id} />}
     {searchOpen && <label className="bw-work-search"><Icon name="search" /><input autoFocus type="search" aria-label={`搜索${noun}`} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') { setQuery(''); setSearchOpen(false); } }} /></label>}

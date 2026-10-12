@@ -11,7 +11,7 @@ export const CARD_APPEARANCE_FIELDS = [
   { field: 'layout', name: '动效布局', options: CARD_LAYOUTS, fallback: 'cylinder' },
   { field: 'orientation', name: '画廊方向', options: { horizontal: '横向', vertical: '竖向' }, fallback: 'horizontal' },
 ] as const;
-export const CARD_SETTING_KEYS = ['bookCardAppearance', 'filmCardAppearance', 'customModules', 'threeCardView', 'workbenchText', 'workbenchCards', 'standaloneOrder', 'hiddenModuleIds', 'dashboards'] as const;
+export const CARD_SETTING_KEYS = ['bookCardAppearance', 'filmCardAppearance', 'customModules', 'threeCardView', 'workbenchText', 'workbenchCards', 'standaloneOrder', 'hiddenModuleIds', 'standaloneHiddenModuleIds', 'dashboards'] as const;
 export const FRESH_CARD_APPEARANCE: Readonly<WorkCardAppearance> = { material: 'paper', style: 'cover', layout: 'cylinder', ratio: '2:3', imageFit: 'cover' };
 export const NEW_MODULE_APPEARANCE: Readonly<WorkCardAppearance> = { material: 'paper', style: 'cover', layout: 'skewed-carousel', ratio: '2:3', imageFit: 'cover', threeCardView: false };
 export function freshCardsSettings(): CardsSettings {
@@ -19,6 +19,7 @@ export function freshCardsSettings(): CardsSettings {
 }
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const ids = (value: unknown): value is string[] => Array.isArray(value) && value.every(id => typeof id === 'string' && !!id.trim()) && new Set(value).size === value.length;
+const standaloneIds = (value: unknown): value is string[] => ids(value) && value.every(id => /^[\w-]+$/.test(id));
 export function validCardAppearance(value: unknown): value is WorkCardAppearance {
   return record(value) && ['paper', 'matte', 'foil'].includes(String(value.material)) && ['minimal', 'cover'].includes(String(value.style))
     && (value.layout === undefined || typeof value.layout === 'string' && Object.hasOwn(CARD_LAYOUTS, value.layout))
@@ -106,14 +107,22 @@ export async function setModuleHidden(api: CardsAPI, id: string, hidden: boolean
   const ids = settings.hiddenModuleIds ?? [];
   await api.saveSettings({ hiddenModuleIds: hidden ? [...new Set([...ids, id])] : ids.filter(value => value !== id) });
 }
+export async function setStandaloneModuleHidden(api: CardsAPI, id: string, hidden: boolean): Promise<void> {
+  if (!api.supportsStandaloneModuleVisibility) throw new Error('请升级已启用的兼容卡片插件后再移除或恢复独立卡片页模块。已有模块和资料已保留。');
+  const settings = api.getSnapshot().settings;
+  if (!readModuleDraft(settings, id)) throw new Error('模块已改变，请重新载入后重试。');
+  const ids = settings.standaloneHiddenModuleIds ?? [];
+  await api.saveSettings({ standaloneHiddenModuleIds: hidden ? [...new Set([...ids, id])] : ids.filter(value => value !== id) });
+}
 export function validWorkbenchCards(value: unknown): value is WorkbenchCardPlacement[] {
   const placement = (item: unknown): item is WorkbenchCardPlacement => record(item) && typeof item.module === 'string' && !!item.module.trim() && ['reflection', 'actions', 'gantt', 'quadrants', 'collections', 'end', 'inside-collections'].includes(String(item.before));
   return Array.isArray(value) && value.every(placement) && new Set(value.map(item => item.module)).size === value.length;
 }
 export function readCardsSettings(value: unknown): CardsSettings {
   const saved = record(value) ? value : {};
+  if (Object.hasOwn(saved, 'standaloneHiddenModuleIds') && !standaloneIds(saved.standaloneHiddenModuleIds)) throw new Error('独立卡片页已移除模块标识无效，原内容已保留。');
   const text = record(saved.workbenchText) ? Object.fromEntries(Object.entries(saved.workbenchText).filter(([key, value]) => ['book.title', 'film.title'].includes(key) && typeof value === 'string')) : {};
-  return { bookCardAppearance: readCardAppearance(saved.bookCardAppearance, DEFAULT_CARD_SETTINGS.bookCardAppearance), filmCardAppearance: readCardAppearance(saved.filmCardAppearance, DEFAULT_CARD_SETTINGS.filmCardAppearance), customModules: readCustomModules(saved.customModules), threeCardView: typeof saved.threeCardView === 'boolean' ? saved.threeCardView : false, workbenchText: text as Record<string, string>, workbenchCards: validWorkbenchCards(saved.workbenchCards) ? saved.workbenchCards.map(item => ({ ...item })) : [], standaloneOrder: ids(saved.standaloneOrder) ? [...saved.standaloneOrder] : [], ...(ids(saved.hiddenModuleIds) ? { hiddenModuleIds: [...saved.hiddenModuleIds] } : {}), ...(Object.hasOwn(saved, 'dashboards') ? { dashboards: readDashboards(saved.dashboards) } : {}) };
+  return { bookCardAppearance: readCardAppearance(saved.bookCardAppearance, DEFAULT_CARD_SETTINGS.bookCardAppearance), filmCardAppearance: readCardAppearance(saved.filmCardAppearance, DEFAULT_CARD_SETTINGS.filmCardAppearance), customModules: readCustomModules(saved.customModules), threeCardView: typeof saved.threeCardView === 'boolean' ? saved.threeCardView : false, workbenchText: text as Record<string, string>, workbenchCards: validWorkbenchCards(saved.workbenchCards) ? saved.workbenchCards.map(item => ({ ...item })) : [], standaloneOrder: ids(saved.standaloneOrder) ? [...saved.standaloneOrder] : [], ...(ids(saved.hiddenModuleIds) ? { hiddenModuleIds: [...saved.hiddenModuleIds] } : {}), ...(standaloneIds(saved.standaloneHiddenModuleIds) ? { standaloneHiddenModuleIds: [...saved.standaloneHiddenModuleIds] } : {}), ...(Object.hasOwn(saved, 'dashboards') ? { dashboards: readDashboards(saved.dashboards) } : {}) };
 }
 export function validateCardsPatch(patch: Partial<CardsSettings>): void {
   for (const key of Object.keys(patch)) if (!(CARD_SETTING_KEYS as readonly string[]).includes(key)) throw new Error(`不能修改卡片设置：${key}`);
@@ -123,6 +132,7 @@ export function validateCardsPatch(patch: Partial<CardsSettings>): void {
   if ('workbenchCards' in patch && !validWorkbenchCards(patch.workbenchCards)) throw new Error('工作台卡片位置无效。');
   if ('standaloneOrder' in patch && !ids(patch.standaloneOrder)) throw new Error('卡片模块顺序无效。');
   if ('hiddenModuleIds' in patch && !ids(patch.hiddenModuleIds)) throw new Error('已移除模块标识无效。');
+  if ('standaloneHiddenModuleIds' in patch && !standaloneIds(patch.standaloneHiddenModuleIds)) throw new Error('独立卡片页已移除模块标识无效，原内容已保留。');
   if ('dashboards' in patch && !validDashboards(patch.dashboards)) throw new Error('看板设置无效，请检查名称、唯一标识和模块顺序。原内容已保留。');
   if ('workbenchText' in patch && (!record(patch.workbenchText) || Object.entries(patch.workbenchText).some(([key, value]) => !['book.title', 'film.title'].includes(key) || typeof value !== 'string'))) throw new Error('卡片模块文字无效。');
 }

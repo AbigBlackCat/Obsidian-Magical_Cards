@@ -13,11 +13,17 @@
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/issues">Report a bug</a>
 </p>
 
-![Book and film modules in Obsidian, using the cylindrical layout and three full-cover cards](previews/cylinder.png)
+**The author’s preferred card style; the plugin offers several layouts:**
+
+<img width="1509" height="947" alt="The author’s preferred card layout" src="https://github.com/user-attachments/assets/b4a68687-3389-4eb4-8da3-5a91ffc45ca9" />
+
+[Available in the Obsidian community](https://community.obsidian.md/plugins/magical-cards), with ongoing updates.
+
+<img width="688" height="761" alt="Magical Cards community listing" src="https://github.com/user-attachments/assets/e37d8e9a-3b02-46fe-8985-22c086d64986" />
 
 Magical Cards is a desktop Obsidian plugin for browsing and editing book, film and image showcase cards. Open a dedicated cards view or embed collections in your notes. Both use the same work notes, with search, sorting, linked notes, and editable summaries on the back of each card.
 
-**The interface is currently in Chinese.** This guide includes the original labels so you can find the controls. The community entry is a draft under review; manual installation is available.
+**The interface is currently in Chinese.** This guide includes the original labels so you can find the controls. Install from the community browser or use the manual steps below.
 
 ## Contents
 
@@ -31,7 +37,9 @@ Magical Cards is a desktop Obsidian plugin for browsing and editing book, film a
 
 ## Installation
 
-Requires **Obsidian desktop 1.11.4 or later**.
+Requires **Obsidian desktop 1.11.4 or later**. In Settings → Community plugins → Browse, search for **Magical Cards**, install and enable it.
+
+For manual installation:
 
 1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/latest).
 2. Put all three files in `<vault>/.obsidian/plugins/magical-cards/`.

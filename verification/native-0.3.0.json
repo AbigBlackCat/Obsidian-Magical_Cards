@@ -164,5 +164,10 @@
     "nativeWebGLContextLossRestoration": "Synthetic context events verify handler and fallback lifecycle; a physical GPU failure is not established.",
     "systemLevelDisconnectedNetworkTesting": "Not performed. Bundled local covers have no remote image dependencies.",
     "importRetryQueue": "Files and stable retry IDs persist only while the shared library remains open; a full restart does not serialize File objects."
+  },
+  "manual_brand_check": {
+    "light_and_dark": true,
+    "theme_restored": true,
+    "screenshot": "previews/showcase-dark.png"
   }
 }

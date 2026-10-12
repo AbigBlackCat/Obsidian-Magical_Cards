@@ -1,6 +1,6 @@
 # Community submission: Magical Cards 0.3.0
 
-The entry remains a **Draft**, not a published community listing. The **0.3.0 automatic scan has not yet been run**; the completed 0.2.1 scan below is historical evidence only and does not establish a result for 0.3.0 or approval by a community human reviewer.
+The entry is now available in the [community directory](https://community.obsidian.md/plugins/magical-cards), as confirmed on 2026-10-12. Its existing publication state is preserved. The **0.3.0 automatic scan has not yet been run**; the completed 0.2.1 scan below is historical evidence only and does not establish a result for 0.3.0 or approval by a community human reviewer.
 
 | Field | Value |
 | --- | --- |
@@ -35,7 +35,7 @@ Vault enumeration is used for card discovery and the user-invoked linked-note pi
 
 ## Historical automatic scan of 0.2.1
 
-On 2026-10-11, the scan of **0.2.1** at commit `1c33e9c2aa4787332f322813c2b694c8468d7bd1` completed. The status below was read from the existing [draft entry](https://community.obsidian.md/account/plugins/magical-cards) through native Chrome DOM that day. The earlier automatic review of 0.2.0 failed on the same date. These results apply to 0.2.1, not the new 0.3.0 candidate.
+On 2026-10-11, the scan of **0.2.1** at commit `1c33e9c2aa4787332f322813c2b694c8468d7bd1` completed. The status below was read from the existing [account entry](https://community.obsidian.md/account/plugins/magical-cards) through native Chrome DOM that day. The earlier automatic review of 0.2.0 failed on the same date. These results apply to 0.2.1, not the new 0.3.0 candidate.
 
 | Check | Result |
 | --- | --- |
@@ -61,8 +61,8 @@ These recommendations are not reported as blocking failures by this scan. Comple
 
 1. Verify the default branch manifest, package version and release tag match 0.3.0.
 2. Verify the release's three files, build size, artifact attestations and reproducible clean build.
-3. Run and inspect the **0.3.0** automatic review in the existing [draft entry](https://community.obsidian.md/account/plugins/magical-cards); it has not yet been run. Record its own commit, result and recommendations without replacing the historical scan above.
-4. Keep the entry a Draft until publication is requested. Automatic scan completion alone does not establish human-review approval.
+3. Run and inspect the **0.3.0** automatic review in the existing [account entry](https://community.obsidian.md/account/plugins/magical-cards); it has not yet been run. Record its own commit, result and recommendations without replacing the historical scan above.
+4. Preserve the entry’s existing publication state. Automatic scan completion alone does not establish human-review approval.
 
 ## Verification and limits
 

@@ -93,3 +93,7 @@ Windows has not been verified on a physical machine. No mobile support is claime
 </details>
 
 </details>
+
+The purple ribbon and tab icons were visually checked in both the default light and dark themes. [Native dark-theme preview](previews/showcase-dark.png). The test vault’s original system-following color setting was restored.
+
+GitHub artifact attestations are generated for the public plugin. The private compatible-host workflow records SHA-256 values and reproducible builds instead: GitHub requires Enterprise Cloud for private-repository attestations, so that workflow does not claim a signed attestation.

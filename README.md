@@ -13,7 +13,12 @@
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/issues">反馈问题</a>
 </p>
 
-![Obsidian 中的阅读与影视卡片，使用圆柱弧面、整幅封面和三卡显示](previews/cylinder.png)
+**作者惯用卡片风格（该插件提供多种样式供选择）：**
+<img width="1509" height="947" alt="image" src="https://github.com/user-attachments/assets/b4a68687-3389-4eb4-8da3-5a91ffc45ca9" />
+
+**已上传Obsidian社区，我会不定时维护和更新，欢迎体验插件，希望你喜欢～**
+https://community.obsidian.md/plugins/magical-cards
+<img width="688" height="761" alt="image" src="https://github.com/user-attachments/assets/e37d8e9a-3b02-46fe-8985-22c086d64986" />
 
 **浏览封面，留下感想。** 独立卡片视图和笔记内嵌入共用作品数据；支持搜索、编辑、排序、关联笔记和翻面摘要。作品与外观配置保存在你的笔记库中。
 
@@ -21,7 +26,9 @@ Magical Cards is a desktop Obsidian plugin for book, film, and image showcase ca
 
 ## Installation
 
-Requires **Obsidian desktop 1.11.4 or later**. The community listing is currently a draft under review; use manual installation:
+Requires **Obsidian desktop 1.11.4 or later**. In Settings → Community plugins → Browse, search for **Magical Cards**, install and enable it. [Community listing](https://community.obsidian.md/plugins/magical-cards).
+
+For manual installation:
 
 1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/latest).
 2. Put all three files in `<vault>/.obsidian/plugins/magical-cards/`.
@@ -74,8 +81,6 @@ On first use in an empty card directory, the plugin creates six offline examples
 圆柱弧面见首页预览。滚动弯曲画廊还支持竖向：
 
 ![原生笔记中的竖向滚动弯曲画廊](previews/scroll-bend-vertical.png)
-
-卡片不会自动轮播。黑胶专辑架只展示封套，没有播放按钮、唱片抽出或旋转。弯曲画廊提供「打开笔记」按钮，用于打开当前卡对应的作品笔记，并提供摘要编辑入口；WebGL 不可用或纹理加载失败时降级为普通卡片。系统开启减少动态效果时关闭弯曲与过渡。
 
 ## 外观与设置
 

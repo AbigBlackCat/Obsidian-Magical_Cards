@@ -1,22 +1,29 @@
 # Magical Cards 0.4.0 verification
 
-Checked on 2026-10-12 from source commit `1868348817d4c243a88485eefcb66b8673191b71`. This version adds Dashboard categories and separate ordinary-card and image-showcase creation. The checks below cover the clean public source and its native installation; release provenance, compatible-host checks and community review are recorded separately.
+Checked on 2026-10-12 from source commit `1868348817d4c243a88485eefcb66b8673191b71`. This version adds Dashboard categories and separate ordinary-card and image-showcase creation. The checks below cover the clean public source, its native installation, compatible-host loading orders and the official release. Tag `0.4.0` uses source commit `93050e9b74b6a8d049de37cd14dfe89453e8507a`; its installation bytes match the checked clean build.
 
 | Check | Result |
 | --- | --- |
 | Standalone clean GitHub clone | Node 24.19.0 / npm 11.17.0; npm ci, TypeScript, 168 / 168 tests, resource checks, two independent reproducible builds and release checks pass; tracked source remains clean |
 | Dependency audit and official typed lint | 0 vulnerabilities; 0 lint errors and the three existing compatibility/fixture warnings |
 | Installation bytes | main.js: 4,730,659 bytes, below 5,000,000; manifest.json: 285 bytes; styles.css: 32,913 bytes; all three clean-build files match the tested native installation |
+| Compatible-host builds | Clean host 0.1.35: 251 / 251 tests; shared cards: 168 / 168. The separate local host with Gantt changes passes 255 / 255 after the required cards prebuild; those local changes are excluded from the official host release |
 | Dashboard regression coverage | Independent membership and ordering, hidden/missing references, failed-sort baseline retention, draft-safe navigation, slow-save IME guards, title-save failures, per-leaf state and older shared API compatibility pass |
 | Native Dashboard acceptance | 14 / 14 pass on macOS / Obsidian 1.14.4: 12 checks before restart and 2 after an actual acceptance-vault window close and reopen |
 | Native file and state preservation | 18 checkpointed files and settings are byte-preserved after restart; the selected Dashboard and nonzero card stage are restored |
 | Five native layouts and popout ownership | Layout saves retain the card tabs and loaded images in both windows; each window uses its own document and selection |
 | Public example assets and authored guide | Six original local-cover hashes match; expected visible guide bytes, the author's introduction and hidden identity are preserved |
 | Native diagnostics | 0 unhandled/React errors; 1 ResizeObserver warning in the pre-restart checks, with 0 in the cold-restart checks |
+| Native dual-plugin compatibility | 10 / 10 pass; both loading orders, stopping/restarting either consumer, a shared Store and editing sessions, both block languages in reading and Live Preview, and the original leaf/board selection are verified |
+| Compatibility data and diagnostics | 18 card files, configuration and the enabled-plugin list remain byte-identical; no unhandled/React errors or warnings |
+| Official releases and provenance | Public 0.4.0 and compatible host 0.1.35 release CI succeed; each release has exactly three installation files matching the tested builds. All three public files pass signer-workflow-bound GitHub attestation verification; private-host attestation is not claimed |
+| Community automated scan | 0.4.0 Completed with no Failed/Error: release attestations, network, dependencies and byte-for-byte build verification pass. Four recommendations and one English-README warning remain; this is not evidence of human review approval |
 
-Sanitized records: [clean-0.4.0.json](verification/clean-0.4.0.json) and [native-0.4.0.json](verification/native-0.4.0.json). main.js SHA-256 is `821bac93390a2d8cffb2e29f8c8b916d571870d778a5bfcc432d00fba8b709fd`.
+Sanitized records: [clean-0.4.0.json](verification/clean-0.4.0.json), [native-0.4.0.json](verification/native-0.4.0.json), [compatibility-0.4.0.json](verification/compatibility-0.4.0.json), [release-0.4.0.json](verification/release-0.4.0.json) and [community-0.4.0.json](verification/community-0.4.0.json). main.js SHA-256 is `821bac93390a2d8cffb2e29f8c8b916d571870d778a5bfcc432d00fba8b709fd`.
 
 The final native report is dated 2026-10-12T09:32:05.515Z and verifies the restart checkpoint from 2026-10-12T09:31:31.106Z. The independent creation check explicitly reuses the successful native checkpoint from 2026-10-12T09:25:00.875Z; it does not claim another fresh creation. Earlier helper failures were corrected before this final run and are not counted as product fixes. The warning recorded in the earlier window check remains part of the evidence even though the cold-stage warning list is empty.
+
+The final dual-plugin compatibility report is dated 2026-10-12T09:56:21.311Z. Its first two failed helper checks used the SDK focused-view API as a gate after tab changes. The corrected helper verifies that the original cards tab is foreground before simulating user focus and checking that API. These were harness preparation failures; no automatic `openCards` focus fix or product focus change is claimed. Both `magical-cards` and `barry-cards` render one surface with two modules in reading and Live Preview, without Dashboard navigation, after each tested loading-order transition.
 
 Native checks confirm empty new Dashboard defaults, explicit module sharing between boards, keyboard reordering independent of the complete library and other boards, global hiding/restoration without changing membership or files, and deletion of a Dashboard without deleting modules, notes or images. The helper and acceptance-vault contents are excluded from the public plugin and these records.
 

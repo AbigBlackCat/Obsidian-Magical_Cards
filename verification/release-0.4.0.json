@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-12",
+  "releases": {
+    "magical-cards": {
+      "version": "0.4.0",
+      "sourceCommit": "93050e9b74b6a8d049de37cd14dfe89453e8507a",
+      "repository": "AbigBlackCat/Obsidian-Magical_Cards",
+      "releaseUrl": "https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.4.0",
+      "publishedAt": "2026-10-12T09:46:53Z",
+      "workflow": {
+        "runId": 38231953037,
+        "url": "https://github.com/AbigBlackCat/Obsidian-Magical_Cards/actions/runs/38231953037",
+        "status": "completed",
+        "conclusion": "success",
+        "sourceCommit": "93050e9b74b6a8d049de37cd14dfe89453e8507a"
+      },
+      "installationFilesExactlyThree": true,
+      "assets": {
+        "main.js": {
+          "bytes": 4730659,
+          "sha256": "821bac93390a2d8cffb2e29f8c8b916d571870d778a5bfcc432d00fba8b709fd",
+          "matchesReleaseDigest": true,
+          "matchesTestedSourceBuild": true,
+          "downloadUrl": "https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/download/0.4.0/main.js"
+        },
+        "manifest.json": {
+          "bytes": 285,
+          "sha256": "b76b6c36e6f37fa0f283060518ca7d60837bfd23bb8a863340e361fb259f8c01",
+          "matchesReleaseDigest": true,
+          "matchesTestedSourceBuild": true,
+          "downloadUrl": "https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/download/0.4.0/manifest.json"
+        },
+        "styles.css": {
+          "bytes": 32913,
+          "sha256": "7952640b432dc0c22a2a22b1dcea80d491c1b62b34fad5d360bd5e4a2c22a11c",
+          "matchesReleaseDigest": true,
+          "matchesTestedSourceBuild": true,
+          "downloadUrl": "https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/download/0.4.0/styles.css"
+        }
+      }
+    },
+    "barry-workbench": {
+      "version": "0.1.35",
+      "sourceCommit": "1c2dd0cfd201c82a0bbceed567a80863c49eb0d2",
+      "repository": "AbigBlackCat/obsidian-barry-workbench",
+      "releaseUrl": "https://github.com/AbigBlackCat/obsidian-barry-workbench/releases/tag/0.1.35",
+      "publishedAt": "2026-10-12T09:47:13Z",
+      "workflow": {
+        "runId": 38231957277,
+        "url": "https://github.com/AbigBlackCat/obsidian-barry-workbench/actions/runs/38231957277",
+        "status": "completed",
+        "conclusion": "success",
+        "sourceCommit": "1c2dd0cfd201c82a0bbceed567a80863c49eb0d2"
+      },
+      "installationFilesExactlyThree": true,
+      "assets": {
+        "main.js": {
+          "bytes": 717720,
+          "sha256": "c3825da98eaad5341d9b5f5e3d889f7d67c58dedf27fb58072b57371a34e6852",
+          "matchesReleaseDigest": true,
+          "matchesTestedSourceBuild": true,
+          "downloadUrl": "https://github.com/AbigBlackCat/obsidian-barry-workbench/releases/download/0.1.35/main.js"
+        },
+        "manifest.json": {
+          "bytes": 291,
+          "sha256": "6bdce7ee92943284ff159eb6b531348345769931d8b0a4dde9c0bef8e134c3e9",
+          "matchesReleaseDigest": true,
+          "matchesTestedSourceBuild": true,
+          "downloadUrl": "https://github.com/AbigBlackCat/obsidian-barry-workbench/releases/download/0.1.35/manifest.json"
+        },
+        "styles.css": {
+          "bytes": 63081,
+          "sha256": "b0e37e83f544b9e29ca8953a996b0c21ae68b76f01d0ad8bc9b4c3de8ddefa5a",
+          "matchesReleaseDigest": true,
+          "matchesTestedSourceBuild": true,
+          "downloadUrl": "https://github.com/AbigBlackCat/obsidian-barry-workbench/releases/download/0.1.35/styles.css"
+        }
+      }
+    }
+  },
+  "attestations": {
+    "main.js": {
+      "status": "verified",
+      "repository": "AbigBlackCat/Obsidian-Magical_Cards",
+      "signerWorkflow": "AbigBlackCat/Obsidian-Magical_Cards/.github/workflows/ci.yml",
+      "signerDigest": "93050e9b74b6a8d049de37cd14dfe89453e8507a",
+      "sourceCommit": "93050e9b74b6a8d049de37cd14dfe89453e8507a",
+      "sourceRef": "refs/tags/0.4.0",
+      "predicateType": "https://slsa.dev/provenance/v1",
+      "selfHostedRunnersRejected": true,
+      "verifiedAttestations": 1
+    },
+    "manifest.json": {
+      "status": "verified",
+      "repository": "AbigBlackCat/Obsidian-Magical_Cards",
+      "signerWorkflow": "AbigBlackCat/Obsidian-Magical_Cards/.github/workflows/ci.yml",
+      "signerDigest": "93050e9b74b6a8d049de37cd14dfe89453e8507a",
+      "sourceCommit": "93050e9b74b6a8d049de37cd14dfe89453e8507a",
+      "sourceRef": "refs/tags/0.4.0",
+      "predicateType": "https://slsa.dev/provenance/v1",
+      "selfHostedRunnersRejected": true,
+      "verifiedAttestations": 1
+    },
+    "styles.css": {
+      "status": "verified",
+      "repository": "AbigBlackCat/Obsidian-Magical_Cards",
+      "signerWorkflow": "AbigBlackCat/Obsidian-Magical_Cards/.github/workflows/ci.yml",
+      "signerDigest": "93050e9b74b6a8d049de37cd14dfe89453e8507a",
+      "sourceCommit": "93050e9b74b6a8d049de37cd14dfe89453e8507a",
+      "sourceRef": "refs/tags/0.4.0",
+      "predicateType": "https://slsa.dev/provenance/v1",
+      "selfHostedRunnersRejected": true,
+      "verifiedAttestations": 1
+    }
+  },
+  "complete": true,
+  "privateHostAttestation": {
+    "status": "not-claimed",
+    "reason": "GitHub artifact attestations for private repositories require Enterprise Cloud. Host evidence uses official release hashes and matching reproducible source builds."
+  },
+  "mainBelow5000000Bytes": true,
+  "verifiedAt": "2026-10-12T09:49:14.352395Z",
+  "passed": true,
+  "localPackages": {
+    "source": "official release downloads only",
+    "packages": {
+      "magical-cards": {
+        "folder": "magical-cards",
+        "installationFilesExactlyThree": true,
+        "archive": "Magical-Cards-0.4.0.zip",
+        "archiveBytes": 3335415,
+        "archiveSha256": "de317dd9e7f062556ae51ba78fbb48838378280763d9832c30c51adedbc141f8",
+        "archiveMembers": [
+          "main.js",
+          "manifest.json",
+          "styles.css"
+        ],
+        "archiveContentsMatchOfficialDownloads": true
+      },
+      "barry-workbench": {
+        "folder": "barry-workbench",
+        "installationFilesExactlyThree": true,
+        "archive": "Barry-Workbench-0.1.35.zip",
+        "archiveBytes": 227183,
+        "archiveSha256": "1d620491c6d0eb5bcab1b581e1b854f1576998a9bc97530fd6ae912fdcffa55b",
+        "archiveMembers": [
+          "main.js",
+          "manifest.json",
+          "styles.css"
+        ],
+        "archiveContentsMatchOfficialDownloads": true
+      }
+    },
+    "checksumFile": "SHA256SUMS",
+    "checksumsVerified": 8,
+    "existingNativePreviewsPreserved": [
+      "Dashboard分类.png",
+      "独立创建入口.png",
+      "社区审核.png"
+    ]
+  },
+  "packagedAt": "2026-10-12T09:50:03.816051Z"
+}

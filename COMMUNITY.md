@@ -1,6 +1,6 @@
 # Community submission: Magical Cards 0.4.0
 
-The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). On 2026-10-12, the **0.3.1 automatic scan completed with no Failed/Error findings**, four recommendations and one README English-language warning. The existing published entry displays 0.3.1; its publication state is preserved. The 0.4.0 scan has not yet been requested. Automatic scan completion does not establish approval by a community human reviewer.
+The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). On 2026-10-12, the **0.4.0 automatic scan completed with no Failed/Error findings**, four recommendations and one README English-language warning. The existing published entry displays 0.4.0; its publication state is preserved. Automatic scan completion does not establish approval by a community human reviewer.
 
 | Field | Value |
 | --- | --- |
@@ -33,7 +33,21 @@ The interface is in Chinese, with full Chinese and English guides. No account, s
 
 Vault enumeration is used for card discovery and the user-invoked linked-note picker. Showcase imports copy only images explicitly selected or dropped by the user; folders are not scanned automatically. Clipboard writes occur when the user clicks Copy for generated embed code. No background clipboard reading or note-content upload is performed. Card and showcase edit failures retain drafts; final shutdown backs up drafts that cannot be saved into the local plugin directory and reports the recovery path.
 
-## Automatic scan of 0.3.0
+## Automatic scan of 0.4.0
+
+The [account entry](https://community.obsidian.md/account/plugins/magical-cards) reported **0.4.0**, released from commit `93050e9b74b6a8d049de37cd14dfe89453e8507a`, as Completed on 2026-10-12. The result was read from Chrome DOM after requesting a release scan. [Captured scan result](verification/community-0.4.0.png).
+
+| Check | Result |
+| --- | --- |
+| Overall scan | Completed; no Failed/Error findings |
+| Release attestations | main.js and styles.css: Pass |
+| Network and dependencies | Pass |
+| Build verification | Pass; main.js reproduced byte for byte |
+| Listing | Existing published entry displays 0.4.0; publication state preserved |
+
+The same four recommendations remain: vault enumeration for card discovery and user-invoked linked-note search, clipboard access for user-invoked code copying, keyCode 229 for IME compatibility, and execCommand for undo-preserving plain-text paste. The README English-language warning remains even though README.md has an English introduction and Installation / Usage sections and README_en.md is a complete English guide. It is not claimed resolved. Automatic completion does not establish approval by a human reviewer.
+
+## Historical automatic scan of 0.3.0
 
 On 2026-10-12, the existing [account entry](https://community.obsidian.md/account/plugins/magical-cards) reported the scan of **0.3.0**, released from commit `5aae52cd6aa457611eed9408f823843c6c9afb2d`, as Completed. The status was read through native Chrome DOM. [Captured scan result](verification/community-0.3.0.png).
 
@@ -86,7 +100,7 @@ These recommendations are not reported as blocking failures by this scan. Comple
 
 1. Verify the default branch manifest, package version and release tag match 0.4.0.
 2. Verify the release's three files, build size, artifact attestations and reproducible clean build.
-3. Re-review the default branch after the README introduction moves to the top. Record the actual English-warning result; the completed 0.3.0 release scan above still contains that warning.
+3. Record the actual scan result. The completed 0.4.0 release scan still contains the README English-language warning.
 4. Preserve the entry’s existing publication state. Automatic scan completion alone does not establish human-review approval.
 
 ## Verification and limits

@@ -30,6 +30,7 @@ https://community.obsidian.md/plugins/magical-cards
 进一步思考，我想到这个卡片轮播也可以单纯的只展示不记录，于是新增了橱窗功能，大家喜欢的照片、角色、明星等可以通过用橱窗功能，呈现在Magical Cards窗口以及你的任意笔记里。
 
 这个插件是从我的Obsidian工作台里独立出来的，等我的工作台开发完善了我会带它和大家见面。关于这个插件，如果你有任何建议和反馈，欢迎给我提issue,或者作为contributor参与进一步开发我的插件，你也可以fork我的插件去自定义你的功能。
+
 传送门:https://github.com/AbigBlackCat/Obsidian-Magical_Cards/ 
 
 ## Installation

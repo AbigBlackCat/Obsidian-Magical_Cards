@@ -14,13 +14,13 @@ The entry remains a **Draft**, not a published community listing. The **0.3.0 au
 
 ## Listing description
 
-Browse and edit book, film and image showcase cards in Obsidian. Open a dedicated cards view or embed collections in notes, with reading mode and Live Preview support. Choose a cylindrical carousel, coverflow, album rail, horizontal or vertical curved gallery, or a skewed carousel. Drag modules to reorder them and use the keyboard to browse.
+The text below is English-only and fits the community form's 1,000-character limit (910 characters):
 
-For an image collection, create a module and choose **橱窗式卡片** (Showcase cards) under Advanced → Card style. Select multiple images or drag images into it; each showcase has its own folder and one native-readable Markdown note with local image embeds, optional names and plain-text descriptions. Flipping and name position are configurable. Removing a module hides its display and keeps its notes, images, configuration and order for restoration.
+Browse book, film and image showcase cards in a dedicated view or embed modules in notes. Choose from five layouts, including horizontal and vertical curved galleries. Each showcase stores explicitly imported images and optional names and descriptions in one local folder and Markdown note. Configure flipping and name position, edit descriptions, reorder cards, and drag modules to reposition them.
 
-New users start with six editable offline examples: three books and three films. Existing collections are preserved and are not reseeded. Settings need only a module name and aspect ratio to start; advanced options are collapsed, and settings previews browse without flipping or editing. Collections and settings remain ordinary Markdown files in the vault.
+Start with six editable offline examples. Create modules with a name and aspect ratio; other options stay under Advanced. Removing a module hides it and keeps its notes, images and settings for restoration. Settings previews browse without flipping.
 
-The interface is currently in Chinese; complete Chinese and English guides and a six-cover example vault are provided. No account is required. The plugin does not sync data or play audio. User-supplied remote cover URLs load from their image servers. Built-in sample covers are bundled for offline use and are excluded from the code license; attribution is in examples/SOURCES.md.
+The interface is in Chinese, with complete Chinese and English guides. No account, sync service or audio playback is required. User-provided remote covers load from their image servers. Built-in covers work offline and are excluded from the MIT code license.
 
 ## Remediation of the 0.2.0 review
 

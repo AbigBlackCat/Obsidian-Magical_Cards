@@ -18,5 +18,22 @@
       "bytes": 31284,
       "sha256": "77f96dbb9398a792db7694ab36e784e95947e92db5c32fc2c1c969326b4bcddc"
     }
+  },
+  "cleanClone": {
+    "sourceCommit": "1d547cd081579d895b66a1f7dee191394d76c536",
+    "nodeVersions": [
+      "24.19.0",
+      "26.8.1"
+    ],
+    "tests": 133,
+    "checks": "npm ci, lint, typecheck, tests, original cover hashes, reproducible build, release check; all pass",
+    "artifactsMatch": true
+  },
+  "compatibleHostCleanClone": {
+    "sourceCommit": "f49675d39e00d6b626972437b2db833493cacfee",
+    "nodeVersion": "24.19.0",
+    "tests": 251,
+    "artifactsMatch": true,
+    "ganttWIPExcluded": true
   }
 }

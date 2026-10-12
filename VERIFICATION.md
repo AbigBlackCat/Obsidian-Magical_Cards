@@ -12,7 +12,10 @@ Checked on 2026-10-12. This records a release candidate; 0.3.0 has not yet been 
 | Lossless cover packing | Six original SHA-256 hashes match |
 | Script-resource policy | All three renderer script entry points reject execution; version/source mismatch aborts building |
 | Reproducible build | Independent build processes produce identical installation bytes |
+| Clean Git clones | Standalone `1d547cd` on Node 24.19.0 and 26.8.1: all checks and 133 tests pass; host `f49675d` on Node 24.19.0: full workspace CI path and 251 tests pass; all three installation files match the candidates |
 | Native Obsidian acceptance and community scan | Pending; no new scan or native pass is claimed |
+
+Clean clone evidence: [verification/clean-0.3.0.json](verification/clean-0.3.0.json). Candidate file hashes: [verification/candidate-0.3.0.json](verification/candidate-0.3.0.json).
 
 New regression coverage includes native-readable showcase notes, image import identity and partial retries, safe SVGs, target-field merging, literal description newlines and repeated saves, damaged and duplicate markers, native unsaved-editor protection, retained names/descriptions and interrupted IME input, shared import/sort retries across view remounts, per-module appearance and three-card limits, read-only settings previews, hidden-module restoration, and real 0.2.1 final-release closures preserving showcase recovery drafts.
 

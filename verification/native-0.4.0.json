@@ -1,0 +1,240 @@
+{
+  "date": "2026-10-12",
+  "at": "2026-10-12T09:32:05.515Z",
+  "platform": "macOS",
+  "obsidianVersion": "1.14.4",
+  "pluginVersion": "0.4.0",
+  "sourceCommit": "1868348817d4c243a88485eefcb66b8673191b71",
+  "phase": "cold-restart-verified",
+  "passed": 14,
+  "failed": 0,
+  "phases": {
+    "beforeRestart": {
+      "checks": 12,
+      "checkpointAt": "2026-10-12T09:31:31.106Z"
+    },
+    "afterActualApplicationQuitAndRelaunch": {
+      "checks": 2,
+      "at": "2026-10-12T09:32:05.515Z",
+      "verifiedFiles": 18,
+      "settingsAndFileBytesUnchanged": true
+    }
+  },
+  "results": [
+    {
+      "name": "首次说明已实际打开，作者可见字节及不可见身份保留，不依赖私人绝对路径",
+      "ok": true
+    },
+    {
+      "name": "首次六张作品、原始离线封面及阅读影视预设保留",
+      "ok": true
+    },
+    {
+      "name": "两个独立创建设置卡片保留各自草稿，仅名称比例保存，预览不翻面",
+      "ok": true,
+      "evidence": {
+        "mode": "previous-success-checkpoint",
+        "recordedAt": "2026-10-12T09:25:00.875Z",
+        "basicOnly": true,
+        "reusesExistingNativeFixture": true
+      }
+    },
+    {
+      "name": "验收卡片仅复用六张公共离线资源，橱窗单笔记导入且稳定重试不复制",
+      "ok": true
+    },
+    {
+      "name": "新建 Dashboard 默认名称和全部复选框为空，空板可保存及编辑",
+      "ok": true
+    },
+    {
+      "name": "第二板默认不复制已有成员，显示其他板提示，仅主动勾选才复用阅读",
+      "ok": true
+    },
+    {
+      "name": "板内 Alt/Option 键盘排序各自保存，不改全部页或另一板",
+      "ok": true
+    },
+    {
+      "name": "真实设置垃圾桶全局隐藏阅读，各板成员与原笔记保留，真实恢复返回原位置",
+      "ok": true
+    },
+    {
+      "name": "双窗口各自选择看板，五布局真实保存保持标签和图像加载，无零视口",
+      "ok": true,
+      "evidence": {
+        "ownerDocumentCorrect": true,
+        "layouts": [
+          {
+            "layout": "cylinder",
+            "main": {
+              "images": 3,
+              "stageWidth": 624,
+              "stageHeight": 514
+            },
+            "popout": {
+              "images": 3,
+              "stageWidth": 1044,
+              "stageHeight": 514
+            }
+          },
+          {
+            "layout": "coverflow-carousel",
+            "main": {
+              "images": 3,
+              "stageWidth": 624,
+              "stageHeight": 514
+            },
+            "popout": {
+              "images": 3,
+              "stageWidth": 1044,
+              "stageHeight": 514
+            }
+          },
+          {
+            "layout": "album-rail",
+            "main": {
+              "images": 3,
+              "stageWidth": 624,
+              "stageHeight": 514
+            },
+            "popout": {
+              "images": 3,
+              "stageWidth": 1044,
+              "stageHeight": 514
+            }
+          },
+          {
+            "layout": "scroll-bend",
+            "main": {
+              "images": 3,
+              "stageWidth": 624,
+              "stageHeight": 514
+            },
+            "popout": {
+              "images": 3,
+              "stageWidth": 1044,
+              "stageHeight": 514
+            }
+          },
+          {
+            "layout": "skewed-carousel",
+            "main": {
+              "images": 3,
+              "stageWidth": 624,
+              "stageHeight": 424
+            },
+            "popout": {
+              "images": 3,
+              "stageWidth": 1044,
+              "stageHeight": 424
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "删除看板需明确确认，回到全部，模块、图片、笔记和另一个看板保留",
+      "ok": true
+    },
+    {
+      "name": "恢复六张示例外观和全局显示预设，不删除验收模块、卡片或图片",
+      "ok": true
+    },
+    {
+      "name": "真实窗口无未处理异常或 React 错误，浏览器递送警告独立保留",
+      "ok": true
+    },
+    {
+      "name": "正常冷重启后看板、模块、配置、笔记和图片字节不变",
+      "ok": true,
+      "evidence": {
+        "checkpointAt": "2026-10-12T09:31:31.106Z",
+        "verifiedFiles": 18,
+        "settingsAndFileBytesUnchanged": true,
+        "selectedDashboardRestored": true,
+        "nonzeroStage": true
+      }
+    },
+    {
+      "name": "冷重启过程无未处理或 React 异常",
+      "ok": true
+    }
+  ],
+  "installationFiles": {
+    "main.js": {
+      "bytes": 4730659,
+      "sha256": "821bac93390a2d8cffb2e29f8c8b916d571870d778a5bfcc432d00fba8b709fd",
+      "matchesCleanBuild": true
+    },
+    "manifest.json": {
+      "bytes": 285,
+      "sha256": "b76b6c36e6f37fa0f283060518ca7d60837bfd23bb8a863340e361fb259f8c01",
+      "matchesCleanBuild": true
+    },
+    "styles.css": {
+      "bytes": 32913,
+      "sha256": "7952640b432dc0c22a2a22b1dcea80d491c1b62b34fad5d360bd5e4a2c22a11c",
+      "matchesCleanBuild": true
+    }
+  },
+  "coverHashes": [
+    {
+      "asset": "demo-film-odyssey",
+      "sha256": "b8f84421015f84429a040ac4f9167d416c2428b95f281228a69e1a475560ecd4",
+      "matchesOriginal": true
+    },
+    {
+      "asset": "demo-film-lost",
+      "sha256": "feca6ee14e0727f5d73f0313ae496da28034e1c226ce7ffd245f9735731c1ba3",
+      "matchesOriginal": true
+    },
+    {
+      "asset": "demo-film-whitedeer",
+      "sha256": "4ea1a60747622a5d730c80a022d9ff058f7499e29c1869447bf0534794f65efe",
+      "matchesOriginal": true
+    },
+    {
+      "asset": "demo-book-educated",
+      "sha256": "0f2dac5a9a8a4b140e792d78a918c3dae177d70c585c830619940bf42e47ed06",
+      "matchesOriginal": true
+    },
+    {
+      "asset": "demo-book-thinking",
+      "sha256": "b9daa9e42c1814a741ec061b8396d6e4c1c7a15a118bcc4da932930004e554f6",
+      "matchesOriginal": true
+    },
+    {
+      "asset": "demo-book-mimetic",
+      "sha256": "8dad2679a64f448ad87894092fd79708913a156d230aa5500b94ee9f6032e096",
+      "matchesOriginal": true
+    }
+  ],
+  "authoredGuide": {
+    "visibleSha256": "df914b6da3532f73b52c62610004001e788ffa0dfa12e01fd9cf4a76b416cefa",
+    "authorIntroductionSha256": "ade9cca52edac606a23cfde8526188319798d04be86a04d135709fab9b241ff7",
+    "visibleGuideMatchesExpectedText": true,
+    "authorIntroductionPreserved": true,
+    "hiddenIdentityPreserved": true,
+    "openedNativeNoteObservedBeforeHelperOpenedCards": true,
+    "journalOpenSucceeded": true,
+    "guideWasActiveAtHelperStart": false
+  },
+  "diagnostics": {
+    "unhandledOrReactErrors": 0,
+    "resizeObserverWarnings": 1,
+    "beforeRestartResizeObserverWarnings": 1,
+    "afterRestartResizeObserverWarnings": 0,
+    "warning": "ResizeObserver loop completed with undelivered notifications."
+  },
+  "harnessNotes": [
+    "Earlier helper failures were corrected before the final successful run; they are not counted as product fixes.",
+    "The independent ordinary/showcase creation check reuses an explicit successful native checkpoint from 2026-10-12T09:25:00.875Z; it is not counted as another fresh creation."
+  ],
+  "limitations": [
+    "A whole-tab black screen was not reproduced; these checks do not establish its root cause or resolution.",
+    "Physical Windows testing and system-level disconnected-network testing are not claimed.",
+    "Compatible-host loading-order checks and release/community results are recorded separately.",
+    "The acceptance helper, fixture identifiers, note paths and raw vault data are excluded from this public record."
+  ]
+}

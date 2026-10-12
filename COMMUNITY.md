@@ -1,12 +1,12 @@
-# Community submission: Magical Cards 0.3.0
+# Community submission: Magical Cards 0.4.0
 
-The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). On 2026-10-12, the **0.3.0 automatic scan completed with no Failed/Error findings**, four recommendations and one README English-language warning. The existing published entry now displays 0.3.0; its publication state is preserved. Automatic scan completion does not establish approval by a community human reviewer.
+The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). On 2026-10-12, the **0.3.1 automatic scan completed with no Failed/Error findings**, four recommendations and one README English-language warning. The existing published entry displays 0.3.1; its publication state is preserved. The 0.4.0 scan has not yet been requested. Automatic scan completion does not establish approval by a community human reviewer.
 
 | Field | Value |
 | --- | --- |
 | Name / ID | Magical Cards / magical-cards |
 | Repository | AbigBlackCat/Obsidian-Magical_Cards |
-| Version / target release tag | 0.3.0 |
+| Version / target release tag | 0.4.0 |
 | Minimum app version | 1.11.4 |
 | Platforms | Desktop; macOS checks and their app version recorded in VERIFICATION.md; Windows not physically tested |
 | Short description | Browse book, film and image showcase cards with editable descriptions, draggable modules and note embeds. |
@@ -14,13 +14,13 @@ The entry is available in the [community directory](https://community.obsidian.m
 
 ## Listing description
 
-The text below is English-only and fits the community form's 1,000-character limit (910 characters):
+The text below fits the community form's 1,000-character limit (889 characters). The existing published form is not changed automatically:
 
-Browse book, film and image showcase cards in a dedicated view or embed modules in notes. Choose from five layouts, including horizontal and vertical curved galleries. Each showcase stores explicitly imported images and optional names and descriptions in one local folder and Markdown note. Configure flipping and name position, edit descriptions, reorder cards, and drag modules to reposition them.
+Browse book, film and image showcase cards in a dedicated view or note embeds. Choose five layouts, including horizontal and vertical curved galleries. A showcase stores explicitly imported images, optional names and descriptions in one local folder and Markdown note.
 
-Start with six editable offline examples. Create modules with a name and aspect ratio; other options stay under Advanced. Removing a module hides it and keeps its notes, images and settings for restoration. Settings previews browse without flipping.
+Start with six editable offline examples. Create card modules or image showcases with a name and aspect ratio; other options stay under Advanced. Manually place modules in Dashboards. One module can appear in several categories, each with its own order. Removing a module hides it and preserves its files and settings for restoration. Settings previews browse without flipping.
 
-The interface is in Chinese, with complete Chinese and English guides. No account, sync service or audio playback is required. User-provided remote covers load from their image servers. Built-in covers work offline and are excluded from the MIT code license.
+The interface is in Chinese, with full Chinese and English guides. No account, sync service or audio playback is required. Remote covers load from their image servers; built-in covers work offline and are excluded from the MIT code license.
 
 ## Remediation of the 0.2.0 review
 
@@ -84,11 +84,11 @@ These recommendations are not reported as blocking failures by this scan. Comple
 
 ## Review and release checklist
 
-1. Verify the default branch manifest, package version and release tag match 0.3.0.
+1. Verify the default branch manifest, package version and release tag match 0.4.0.
 2. Verify the release's three files, build size, artifact attestations and reproducible clean build.
 3. Re-review the default branch after the README introduction moves to the top. Record the actual English-warning result; the completed 0.3.0 release scan above still contains that warning.
 4. Preserve the entry’s existing publication state. Automatic scan completion alone does not establish human-review approval.
 
 ## Verification and limits
 
-See VERIFICATION.md for recorded checks. Windows has not been tested on a physical machine. No mobile compatibility is claimed. Compatible host **0.1.33** shares showcase editing, per-module settings and removed-module restoration. When an older host owns the shared runtime, the plugin preserves it and prompts an upgrade for unsupported showcase and restoration features. Original cover rights and source notices remain applicable and are not expanded by this release.
+See VERIFICATION.md for recorded checks. Windows has not been tested on a physical machine. No mobile compatibility is claimed. Compatible host **0.1.35** shares showcase editing, per-module settings, removed-module restoration and explicit Dashboard capability. Dashboard navigation appears only in the standalone Magical Cards view. When an older host owns the shared runtime, the plugin preserves it and prompts an upgrade for unsupported showcase and restoration features. Original cover rights and source notices remain applicable and are not expanded by this release.

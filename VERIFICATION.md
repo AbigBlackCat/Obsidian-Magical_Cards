@@ -1,3 +1,29 @@
+# Magical Cards 0.4.0 verification
+
+Checked on 2026-10-12 from source commit `1868348817d4c243a88485eefcb66b8673191b71`. This version adds Dashboard categories and separate ordinary-card and image-showcase creation. The checks below cover the clean public source and its native installation; release provenance, compatible-host checks and community review are recorded separately.
+
+| Check | Result |
+| --- | --- |
+| Standalone clean GitHub clone | Node 24.19.0 / npm 11.17.0; npm ci, TypeScript, 168 / 168 tests, resource checks, two independent reproducible builds and release checks pass; tracked source remains clean |
+| Dependency audit and official typed lint | 0 vulnerabilities; 0 lint errors and the three existing compatibility/fixture warnings |
+| Installation bytes | main.js: 4,730,659 bytes, below 5,000,000; manifest.json: 285 bytes; styles.css: 32,913 bytes; all three clean-build files match the tested native installation |
+| Dashboard regression coverage | Independent membership and ordering, hidden/missing references, failed-sort baseline retention, draft-safe navigation, slow-save IME guards, title-save failures, per-leaf state and older shared API compatibility pass |
+| Native Dashboard acceptance | 14 / 14 pass on macOS / Obsidian 1.14.4: 12 checks before restart and 2 after an actual acceptance-vault window close and reopen |
+| Native file and state preservation | 18 checkpointed files and settings are byte-preserved after restart; the selected Dashboard and nonzero card stage are restored |
+| Five native layouts and popout ownership | Layout saves retain the card tabs and loaded images in both windows; each window uses its own document and selection |
+| Public example assets and authored guide | Six original local-cover hashes match; expected visible guide bytes, the author's introduction and hidden identity are preserved |
+| Native diagnostics | 0 unhandled/React errors; 1 ResizeObserver warning in the pre-restart checks, with 0 in the cold-restart checks |
+
+Sanitized records: [clean-0.4.0.json](verification/clean-0.4.0.json) and [native-0.4.0.json](verification/native-0.4.0.json). main.js SHA-256 is `821bac93390a2d8cffb2e29f8c8b916d571870d778a5bfcc432d00fba8b709fd`.
+
+The final native report is dated 2026-10-12T09:32:05.515Z and verifies the restart checkpoint from 2026-10-12T09:31:31.106Z. The independent creation check explicitly reuses the successful native checkpoint from 2026-10-12T09:25:00.875Z; it does not claim another fresh creation. Earlier helper failures were corrected before this final run and are not counted as product fixes. The warning recorded in the earlier window check remains part of the evidence even though the cold-stage warning list is empty.
+
+Native checks confirm empty new Dashboard defaults, explicit module sharing between boards, keyboard reordering independent of the complete library and other boards, global hiding/restoration without changing membership or files, and deletion of a Dashboard without deleting modules, notes or images. The helper and acceptance-vault contents are excluded from the public plugin and these records.
+
+A whole-tab native black screen was not reproduced. The historical WebGL resource checks below establish context retirement and reuse, but do not establish the black screen's root cause or claim it resolved. Physical Windows and system-level disconnected-network testing are not claimed. All earlier release evidence is preserved below.
+
+---
+
 # Magical Cards 0.3.1 verification
 
 Checked on 2026-10-12. [Magical Cards 0.3.1](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.3.1) is released from commit `bb34c362c2dcec353e04c7633484ef3fc01e3a55`; compatible host 0.1.34 is released from `f935506e2adc2355b526db77276df4254f18f89f`. This patch preserves the author's welcome-guide text, adds the appearance-save recovery hint and retires WebGL contexts when their canvases exit. Release provenance, community review and deployment evidence are recorded separately.

@@ -1,6 +1,6 @@
 # Magical Cards 0.3.0 candidate verification
 
-Checked on 2026-10-12. This records a release candidate; 0.3.0 has not yet been published. Native acceptance, updated screenshots, deployment and the new community automatic scan are pending because the Mac is locked.
+Checked on 2026-10-12. This records a release candidate; 0.3.0 has not yet been published. Native acceptance and updated settings screenshots are complete. Deployment and the new community automatic scan remain pending.
 
 | Check | Result |
 | --- | --- |
@@ -13,9 +13,15 @@ Checked on 2026-10-12. This records a release candidate; 0.3.0 has not yet been 
 | Script-resource policy | All three renderer script entry points reject execution; version/source mismatch aborts building |
 | Reproducible build | Independent build processes produce identical installation bytes |
 | Clean Git clones | Standalone `1d547cd` on Node 24.19.0 and 26.8.1: all checks and 133 tests pass; host `f49675d` on Node 24.19.0: full workspace CI path and 251 tests pass; all three installation files match the candidates |
-| Native Obsidian acceptance and community scan | Pending; no new scan or native pass is claimed |
+| Native Obsidian acceptance and actual process restart | Pass; 22 / 22 on macOS with Obsidian 1.14.4, Magical Cards 0.3.0 and compatible host 0.1.33 |
+| Actual settings search | Manually confirmed; “翻面” finds “图片橱窗 · 允许翻面” |
+| Deployment and new community scan | Pending; no 0.3.0 release or new scan is claimed |
 
 Clean clone evidence: [verification/clean-0.3.0.json](verification/clean-0.3.0.json). Candidate file hashes: [verification/candidate-0.3.0.json](verification/candidate-0.3.0.json).
+
+Native acceptance covers the five layouts, image import retries, shared Markdown rendering, retained fields and surrounding text, settings save-failure drafts, IME save guards, name and flip controls, module restoration, both plugin loading orders, reading/Live Preview for both block languages, popout cleanup and open-view restoration. An actual application quit and new process launch preceded the final cold check at 2026-10-12T06:06:35.083Z; module settings, note bytes and image hashes remained unchanged. Sanitized results and the six bundled-cover hashes are recorded in [verification/native-0.3.0.json](verification/native-0.3.0.json).
+
+The native WebGL loss/restoration case dispatches synthetic context events. It verifies the handlers and fallback lifecycle, without establishing a physical GPU failure. Bundled local covers are verified without remote image dependencies; system-level disconnected-network testing is not claimed. The native helper and acceptance-vault records are excluded from the public plugin.
 
 New regression coverage includes native-readable showcase notes, image import identity and partial retries, safe SVGs, target-field merging, literal description newlines and repeated saves, damaged and duplicate markers, native unsaved-editor protection, retained names/descriptions and interrupted IME input, shared import/sort retries across view remounts, per-module appearance and three-card limits, read-only settings previews, hidden-module restoration, and real 0.2.1 final-release closures preserving showcase recovery drafts.
 

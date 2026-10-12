@@ -81,7 +81,11 @@ Settings are ordered as **Card directory → Examples → Add cards module → E
 
 Enter a **module name**, choose its **aspect ratio**, then click **保存** (Save). Click the purple stacked-card ribbon icon to experience the module in the **Magical Cards** tab. Settings previews support browsing and sliding only; they cannot flip or start editing sessions.
 
+![Basic module settings with name, aspect ratio, save controls and collapsed advanced settings](previews/settings.png)
+
 **高级设置** (Advanced settings) contains **card style → image fit → material → layout → three-card limit**. Direction appears only for the curved gallery. New modules default to **full cover, fill and crop, paper, 2:3, skewed carousel, three-card limit off**. Reading/film examples and existing modules keep their appearance. The three-card option is per module and does not remove any images.
+
+![Showcase advanced settings with layout, three-card limit, flipping, name position and a read-only preview](previews/settings-advanced.png)
 
 The trash icon beside an expanded module's heading removes its **display only**, preserving its configuration, order, notes and images. Expand **已移除模块** (Removed modules) to restore it. Failed saves and source conflicts retain your draft for retry or explicit reload.
 
@@ -90,6 +94,10 @@ Enter a directory relative to the current vault, such as `卡片库`. Work notes
 ### Image showcases
 
 While creating a module, expand **Advanced settings → Card style** and select **橱窗式卡片** (Showcase cards). Its storage type becomes fixed after saving; existing work modules cannot be converted.
+
+| Image front | Description on the back |
+| --- | --- |
+| ![An image-only showcase front with an optional empty name](previews/showcase-front.png) | ![The showcase back provides a plain-text description editor and a shared-note control](previews/showcase-back.png) |
 
 - Select multiple images or drag images into the showcase. Folders are never scanned automatically. PNG, JPEG, WebP, GIF and SVG are supported, up to 10 MB per image.
 - Each showcase has its own folder containing one `橱窗.md` note and all imported images. The note uses local embeds to show every image, optional name and description. Names may be empty.

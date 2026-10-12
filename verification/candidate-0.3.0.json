@@ -3,7 +3,7 @@
   "date": "2026-10-12",
   "status": "candidate",
   "tests": 133,
-  "native": "pending",
+  "native": "22 / 22 passed, including actual application quit and cold restart",
   "community": "draft; new scan pending",
   "files": {
     "main.js": {
@@ -35,5 +35,6 @@
     "tests": 251,
     "artifactsMatch": true,
     "ganttWIPExcluded": true
-  }
+  },
+  "nativeEvidence": "verification/native-0.3.0.json"
 }

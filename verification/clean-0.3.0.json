@@ -1,5 +1,5 @@
 {
-  "status": "candidate; native acceptance and release pending",
+  "status": "candidate; native acceptance passed, deployment and new community scan pending",
   "date": "2026-10-12",
   "standalone": {
     "head": "1d547cd081579d895b66a1f7dee191394d76c536",

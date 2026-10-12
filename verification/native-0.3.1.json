@@ -1,0 +1,135 @@
+{
+  "date": "2026-10-12",
+  "at": "2026-10-12T07:56:43.552Z",
+  "platform": "macOS",
+  "obsidianVersion": "1.14.4",
+  "pluginVersion": "0.3.1",
+  "sourceCommit": "bb34c362c2dcec353e04c7633484ef3fc01e3a55",
+  "phase": "patch-regression",
+  "passed": 13,
+  "failed": 0,
+  "results": [
+    {
+      "name": "首次自动打开作者说明，无一级标题或展示代码块，可见字节完全一致",
+      "ok": true
+    },
+    {
+      "name": "六张普通示例及离线原图完整",
+      "ok": true
+    },
+    {
+      "name": "初始卡片标签和非零视口",
+      "ok": true
+    },
+    {
+      "name": "通过真实设置控件创建普通模块并显示一张图片",
+      "ok": true
+    },
+    {
+      "name": "真实设置保存 阅读 第1轮，五字段且原标签持续存在",
+      "ok": true
+    },
+    {
+      "name": "真实设置保存 阅读 第2轮，五字段且原标签持续存在",
+      "ok": true
+    },
+    {
+      "name": "真实设置保存 阅读 第3轮，五字段且原标签持续存在",
+      "ok": true
+    },
+    {
+      "name": "真实设置保存 普通模块 第1轮，五字段且原标签持续存在",
+      "ok": true
+    },
+    {
+      "name": "真实设置保存 普通模块 第2轮，五字段且原标签持续存在",
+      "ok": true
+    },
+    {
+      "name": "真实设置保存 普通模块 第3轮，五字段且原标签持续存在",
+      "ok": true
+    },
+    {
+      "name": "第二弹出视图使用所属窗口，真实设置保存保留两个 CardsSurface",
+      "ok": true
+    },
+    {
+      "name": "恢复示例预设与新模块初始外观，作者说明正文保持不变",
+      "ok": true
+    },
+    {
+      "name": "QA 所属窗口和 React 报告无异常",
+      "ok": true
+    }
+  ],
+  "installationFiles": {
+    "main.js": {
+      "bytes": 4715979,
+      "sha256": "9e3bc9d5c080d2ec37c8f7d8159a70dd8100112e55dda7a1c9212b2dfe757d7b",
+      "matchesTestedCandidate": true
+    },
+    "manifest.json": {
+      "bytes": 285,
+      "sha256": "c5826fe5d68f6692bc7768e244b2d9b383341a448dd6d9d52ed8a084d88c8439",
+      "matchesTestedCandidate": true
+    },
+    "styles.css": {
+      "bytes": 31284,
+      "sha256": "77f96dbb9398a792db7694ab36e784e95947e92db5c32fc2c1c969326b4bcddc",
+      "matchesTestedCandidate": true
+    }
+  },
+  "coverHashes": [
+    {
+      "asset": "demo-film-odyssey",
+      "sha256": "b8f84421015f84429a040ac4f9167d416c2428b95f281228a69e1a475560ecd4",
+      "matchesOriginal": true
+    },
+    {
+      "asset": "demo-film-lost",
+      "sha256": "feca6ee14e0727f5d73f0313ae496da28034e1c226ce7ffd245f9735731c1ba3",
+      "matchesOriginal": true
+    },
+    {
+      "asset": "demo-film-whitedeer",
+      "sha256": "4ea1a60747622a5d730c80a022d9ff058f7499e29c1869447bf0534794f65efe",
+      "matchesOriginal": true
+    },
+    {
+      "asset": "demo-book-educated",
+      "sha256": "0f2dac5a9a8a4b140e792d78a918c3dae177d70c585c830619940bf42e47ed06",
+      "matchesOriginal": true
+    },
+    {
+      "asset": "demo-book-thinking",
+      "sha256": "b9daa9e42c1814a741ec061b8396d6e4c1c7a15a118bcc4da932930004e554f6",
+      "matchesOriginal": true
+    },
+    {
+      "asset": "demo-book-mimetic",
+      "sha256": "8dad2679a64f448ad87894092fd79708913a156d230aa5500b94ee9f6032e096",
+      "matchesOriginal": true
+    }
+  ],
+  "authoredGuide": {
+    "visibleBytes": 4691,
+    "visibleSha256": "e3b634382687709fbece31eabf21570235dc688b501b75291e3d7ae0ad3ecab2",
+    "matchesAuthorSource": true,
+    "firstAutomaticOpen": {
+      "evidenceMode": "previous-success-checkpoint",
+      "recordedAt": "2026-10-12T07:52:03.613Z",
+      "note": "The final run reuses this explicit earlier successful checkpoint; it is not counted as another fresh auto-open."
+    }
+  },
+  "diagnostics": {
+    "errors": 0,
+    "resizeObserverWarnings": 3,
+    "warning": "ResizeObserver loop completed with undelivered notifications."
+  },
+  "limitations": [
+    "A whole-tab black screen was not reproduced; this run does not establish its root cause or resolution.",
+    "No new cold-restart acceptance is claimed for this patch run; the actual restart evidence for 0.3.0 remains historical.",
+    "Bundled covers use local files; system-level disconnected-network testing is not claimed.",
+    "The acceptance helper, note contents, local paths and session identities are excluded from this summary."
+  ]
+}

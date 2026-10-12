@@ -157,7 +157,8 @@ test('bundles evaluated in main and popout realms share the fixed main-window ru
       await app.vault.create('工作台/封面.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>');
       assert.equal(await second.api.readCoverSvg!('工作台/封面.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
       await first.release(); assert.equal(session.getSnapshot().dirty, true); assert.equal(runtime.Plugin.languages.size, 3);
-      await second.propertiesManager.flush(work.id); assert.equal(second.api.getSnapshot().entities[0].summary, '不同窗口之间保留的草稿');
+      await second.propertiesManager.flush(work.id); assert.equal(second.api.getSnapshot().entities[0].summary, ''); assert.equal(session.getSnapshot().dirty, true);
+      session.endComposition(); await second.propertiesManager.flush(work.id); assert.equal(second.api.getSnapshot().entities[0].summary, '不同窗口之间保留的草稿');
       await second.release(); assert.equal(runtime.Plugin.languages.size, 0);
     } finally { await first.release(); await second?.release(); }
   }
@@ -202,7 +203,8 @@ test('old and new bundles load in either order without replacing roots, sessions
         await first.release(); await first.release();
         assert.equal(original.root.unmounted, false); assert.equal(magical.root.unmounted, false); assert.equal(runtime.Plugin.languages.size, 3);
         assert.equal(second.propertiesManager.getSession(film.id), session); assert.equal(session.getSnapshot().dirty, true); assert.equal(session.getSnapshot().values?.summary, '加载第二个插件前的未保存草稿');
-        await second.propertiesManager.flush(film.id); assert.equal(second.api.getSnapshot().entities[0].summary, '加载第二个插件前的未保存草稿');
+        await second.propertiesManager.flush(film.id); assert.equal(second.api.getSnapshot().entities[0].summary, ''); assert.equal(session.getSnapshot().dirty, true);
+        session.endComposition(); await second.propertiesManager.flush(film.id); assert.equal(second.api.getSnapshot().entities[0].summary, '加载第二个插件前的未保存草稿');
         await second.release();
         assert.equal(original.root.unmounted, true); assert.equal(remounted.root.unmounted, true); assert.equal(magical.root.unmounted, true); assert.equal(runtime.Plugin.languages.size, 0);
         await assert.rejects(second.api.save(createWork('film')), /停用/);

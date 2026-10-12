@@ -11,6 +11,7 @@ const FOLDERS={book:'书籍',film:'观影'};
 const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 export class CardsStore implements CardsAPI {
  readonly showcase:ShowcaseAPI;
+ readonly supportsDashboards=true;
  private snapshot:CardsSnapshot;
  private listeners=new Set<()=>void>(); private queue:Promise<unknown>=Promise.resolve(); private timer:number|undefined;
  private destroyed=false; private refreshRevision=0; private orderPath=''; private initialization?:Promise<void>;
@@ -375,7 +376,8 @@ export class CardsStore implements CardsAPI {
    this.active();assertOwner();assertEditors(text);const parts=this.noteParts(text),current=this.settingsFrom(text);
    for(const key of Object.keys(patch) as Array<keyof CardsSettings>)if(JSON.stringify(current[key])!==JSON.stringify(expected[key]))throw new Error('所编辑的卡片设置已在其他窗口更新，请重新载入后修改。');
    const stored=parts.fields.bw_card_settings as Record<string,unknown>;
-   const values={...stored,...patch,...('workbenchText' in patch?{workbenchText:{...(record(stored.workbenchText)?stored.workbenchText:{}),...patch.workbenchText}}:{})};
+   const dashboards=patch.dashboards?.map(board=>({...current.dashboards?.find(item=>item.id===board.id),...board,moduleIds:[...board.moduleIds]}));
+   const values={...stored,...patch,...('workbenchText' in patch?{workbenchText:{...(record(stored.workbenchText)?stored.workbenchText:{}),...patch.workbenchText}}:{}),...(dashboards?{dashboards}:{})};
    settings=readCardsSettings(values);parts.fields.bw_card_settings=values;
    return `---\n${stringifyYaml(parts.fields)}---\n${parts.body}`;
   });

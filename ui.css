@@ -1,4 +1,21 @@
 .bw-cards-surface { width:100%; max-width:1400px; padding:16px; box-sizing:border-box; }
+.bw-dashboard-view { width:100%; max-width:1400px; padding:16px; }
+.bw-dashboard-view .bw-cards-surface { padding:0; }
+.bw-dashboard-toolbar { display:flex; align-items:center; gap:8px; margin-bottom:20px; min-width:0; }
+.bw-dashboard-tabs { display:flex; gap:4px; flex:1; min-width:0; overflow-x:auto; padding:4px; }
+.bw-dashboard-tabs > button { flex-shrink:0; white-space:nowrap; border-color:transparent; }
+.bw-dashboard-tabs > button[aria-selected="true"] { color:var(--bw-ink); background:var(--bw-soft); border-color:var(--bw-accent); font-weight:600; }
+.bw-dashboard-error { color:var(--text-error, #b44937); margin-bottom:16px; overflow-wrap:anywhere; }
+.bw-dashboard-editor fieldset { border:0; padding:0; margin:0; min-width:0; }
+.bw-dashboard-help { color:var(--bw-muted); margin-block:16px 12px; line-height:1.7; }
+.bw-dashboard-choices { display:flex; flex-direction:column; gap:4px; }
+.bw-dashboard-choice { display:flex; align-items:flex-start; gap:10px; padding:9px 0; cursor:pointer; overflow-wrap:anywhere; }
+.bw-dashboard-choice > input { flex-shrink:0; margin-top:4px; }
+.bw-dashboard-choice small { display:block; color:var(--bw-muted); margin-top:3px; }
+.bw-dashboard-editor-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:20px; }
+.bw-dashboard-delete { border-top:1px solid var(--bw-line); margin-top:20px; padding-top:16px; }
+.bw-dashboard-delete > p { margin-bottom:10px; }
+.bw-dashboard-delete > button + button { margin-left:8px; }
 .bw-cards-modules { position:relative; display:grid; gap:20px; }
 .bw-cards-module-slot { position:relative; min-width:0; }
 .bw-cards-module-slot.is-drop-before::before,.bw-cards-modules.is-drop-end::after { content:""; position:absolute; top:-11px; left:0; right:0; height:3px; background:var(--interactive-accent); pointer-events:none; z-index:10; }
@@ -25,6 +42,8 @@
 .magical-cards-brand { color: var(--color-purple, #9162d5); }
 .magical-cards-ribbon:focus-visible { outline: 2px solid var(--color-purple, #9162d5); outline-offset: 3px; }
 .bw-cards-settings-module > summary { display: flex; align-items: center; gap: 10px; }
+.bw-cards-settings-module > summary::before { content:"▸"; flex-shrink:0; }
+.bw-cards-settings-module[open] > summary::before { content:"▾"; }
 .bw-cards-settings-remove { margin-left: auto; border: 0; padding: 0; }
 .bw-cards-settings-remove .setting-item-info { display: none; }
 .bw-cards-settings-module:not([open]) .bw-cards-settings-remove { display: none; }

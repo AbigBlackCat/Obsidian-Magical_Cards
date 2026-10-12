@@ -1,3 +1,30 @@
+# Magical Cards 0.3.1 verification
+
+Checked on 2026-10-12. [Magical Cards 0.3.1](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.3.1) is released from commit `bb34c362c2dcec353e04c7633484ef3fc01e3a55`; compatible host 0.1.34 is released from `f935506e2adc2355b526db77276df4254f18f89f`. This patch preserves the author's welcome-guide text, adds the appearance-save recovery hint and retires WebGL contexts when their canvases exit. Release provenance, community review and deployment evidence are recorded separately.
+
+| Check | Result |
+| --- | --- |
+| Standalone clean Git clone | Node 24.19.0 / npm 11.17.0; npm ci, TypeScript, 138 / 138 tests, resource checks, reproducible builds and release checks pass; all three files match the tested candidate |
+| Compatible host clean release export | Root workspace npm ci only; TypeScript, build and 251 / 251 host tests pass, with 138 / 138 cards tests and all cards checks; no `bw-gantt-order` work-in-progress selector in generated styles |
+| Dependency audit and official typed lint | 0 vulnerabilities; 0 lint errors and the three existing compatibility/fixture warnings |
+| Installation bytes | main.js: 4,715,979 bytes; manifest.json: 285 bytes; styles.css: 31,284 bytes |
+| Original covers and generated guide | Six original cover hashes match; the generated template matches its source; default visible guide text is 4,691 bytes and custom roots change only five path prefixes |
+| Guide retry and user-edit protection | Tests pass for the hidden identity marker, old heading/UUID identity, progress-write failures, edited pages and reuse without duplicate creation |
+| Native patch regression | 13 / 13 pass on macOS / Obsidian 1.14.4; 0 errors and 3 ResizeObserver warnings |
+| Browser appearance stress | 200 updates preserve the root and three stages; 120 instrumented main contexts created and 120 retired, none active at finish; 0 WebGL context warnings |
+| Browser ratio/direction reuse | 200 saves keep the same three main canvas contexts; all three retire after layout exit; current-card selection is retained |
+| Tag CI | [Public workflow passed](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/actions/runs/38220785507); compatible host tag workflow also passed |
+
+Sanitized records: [clean-0.3.1.json](verification/clean-0.3.1.json), [native-0.3.1.json](verification/native-0.3.1.json) and [browser-0.3.1.json](verification/browser-0.3.1.json). The native installation's three files were checked against the clean artifacts. main.js SHA-256 is `9e3bc9d5c080d2ec37c8f7d8159a70dd8100112e55dda7a1c9212b2dfe757d7b`; compatible host main.js is 714,312 bytes with SHA-256 `788134d737b0071b34c2c2addc7546646603e05a93d1c50ccc62f0475554590b`.
+
+The final native run at 2026-10-12T07:56:43.552Z reuses the explicit successful first-auto-open checkpoint from 2026-10-12T07:52:03.613Z. It does not count this as another fresh auto-open or claim a new cold-restart acceptance run for 0.3.1. The three reported ResizeObserver loop warnings are retained in the evidence, rather than treating the run as warning-free.
+
+The browser probes use isolated live React surfaces and a separate settings preview in a srcdoc iframe. They establish context retirement and reuse after the resource fix. The earlier before-probe used terminal Chromium and the after-probe used CUA Chrome; their diagnostic environments differ. A whole-tab native black screen was not reproduced, so these checks do not establish its root cause or claim it resolved. The recovery hint appears only after an existing module's appearance changes save successfully; ordinary saves retain their original notice and failures retain drafts. The creation option is labelled “添加图片橱窗”. System-level disconnected-network testing and physical Windows testing are not claimed.
+
+All earlier release evidence is preserved below.
+
+---
+
 # Magical Cards 0.3.0 verification
 
 Checked on 2026-10-12. [Magical Cards 0.3.0](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.3.0) is released from commit `5aae52cd6aa457611eed9408f823843c6c9afb2d`. Native acceptance, screenshots and both release workflows are complete. The community automatic scan completed with no Failed/Error findings, four recommendations and one README English-language warning. Deployment to the existing user vault remains pending.

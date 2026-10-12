@@ -1,9 +1,10 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Plugin, ItemView, PluginSettingTab, Notice, Platform, requireApiVersion } from 'obsidian';
-import type { SettingDefinitionItem, WorkspaceLeaf } from 'obsidian';
+import type { SettingDefinitionItem, ViewStateResult, WorkspaceLeaf } from 'obsidian';
 import { acquireCards, type CardsLease } from './runtime';
-import CardsSurface from './CardsSurface';
+import CardsDashboardView, { flushDashboardEdits } from './CardsDashboardView';
+import { ALL_DASHBOARD_ID } from './dashboards';
 import { newCardsBlock } from './embed-source';
 import { chooseCardsModules } from './module-choice';
 import { CardsSettingsController } from './settings-tab';
@@ -15,11 +16,20 @@ const VIEW = 'barry-cards';
 class CardsView extends ItemView {
   private root?: Root;
   private lease: CardsLease;
+  private dashboardId = ALL_DASHBOARD_ID;
   constructor(leaf: WorkspaceLeaf, plugin: MagicalCardsPlugin, private closed: () => void) { super(leaf); this.lease = plugin.cardsLease; }
   getViewType() { return VIEW; }
   getDisplayText() { return 'Magical Cards'; }
   getIcon() { return MAGICAL_CARDS_ICON; }
-  async onOpen() { this.contentEl.empty(); this.root = createRoot(this.contentEl); this.root.render(<CardsSurface api={this.lease.api} manager={this.lease.propertiesManager} />); }
+  private render() { this.root?.render(<CardsDashboardView api={this.lease.api} manager={this.lease.propertiesManager} dashboardId={this.dashboardId} onDashboardChange={id => { this.dashboardId = id; this.render(); void this.app.workspace.requestSaveLayout(); }} />); }
+  getState() { return { ...super.getState(), dashboardId: this.dashboardId }; }
+  async setState(state: unknown, result: ViewStateResult) {
+    const next = state && typeof state === 'object' && 'dashboardId' in state && typeof state.dashboardId === 'string' ? state.dashboardId : ALL_DASHBOARD_ID;
+    if (this.root && next !== this.dashboardId) await flushDashboardEdits(this.lease.api, this.lease.propertiesManager, this.contentEl);
+    this.dashboardId = next;
+    await super.setState(state, result); this.render();
+  }
+  async onOpen() { this.contentEl.empty(); this.root = createRoot(this.contentEl); this.render(); }
   async onClose() { if (this.root) { try { await this.lease.propertiesManager.flushAll(); await getShowcaseManager(this.lease.api)?.flushAll(); } catch (error) { new Notice(`卡片草稿已保留：${(error as Error).message}`); } this.dispose(); } this.closed(); }
   dispose() { this.root?.unmount(); this.root = undefined; }
 }

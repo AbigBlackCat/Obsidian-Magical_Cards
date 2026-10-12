@@ -84,10 +84,11 @@ export default function EditableText(props: EditableTextProps) {
     const next = editableTextValue(target.textContent ?? '', committed.current, kind);
     target.textContent = next;
     dirty.current = next !== committed.current;
-    if (!dirty.current && pending.current === 0) { setStatus('idle'); return; }
+    if (!dirty.current && pending.current === 0) { target.dataset.editableError = 'false'; setStatus('idle'); return; }
     dirty.current = true;
     const id = ++request.current;
     pending.current += 1;
+    target.dataset.editableSaving = 'true'; target.dataset.editableError = 'false';
     setStatus('saving');
     // A second edit can finish while the first save is pending; preserve their order.
     saves.current = saves.current.then(async () => {
@@ -101,6 +102,7 @@ export default function EditableText(props: EditableTextProps) {
         if (focused.current) moveCaretToEnd(element.current);
       }
       dirty.current = composing.current || synced.dirty;
+      if (element.current) { element.current.dataset.editableSaving = String(pending.current > 0); element.current.dataset.editableError = String(pending.current === 0 && !saved && dirty.current); }
       if (id === request.current) setStatus(saved || !dirty.current ? 'idle' : 'error');
     });
   };
@@ -117,8 +119,8 @@ export default function EditableText(props: EditableTextProps) {
     title: status === 'error' ? '未保存。点击文字重新编辑，离开后重试。' : '点击编辑，离开或按 Enter 保存，Esc 取消',
     onFocus: () => { focused.current = true; skipBlur.current = false; },
     onInput: (event: React.SyntheticEvent<HTMLElement, InputEvent>) => { if (!composing.current && !event.nativeEvent.isComposing) readDraft(event.currentTarget); },
-    onCompositionStart: () => { composing.current = true; dirty.current = true; },
-    onCompositionEnd: (event: React.CompositionEvent<HTMLElement>) => { composing.current = false; readDraft(event.currentTarget); },
+    onCompositionStart: (event: React.CompositionEvent<HTMLElement>) => { composing.current = true; dirty.current = true; event.currentTarget.dataset.editableComposing = 'true'; },
+    onCompositionEnd: (event: React.CompositionEvent<HTMLElement>) => { composing.current = false; event.currentTarget.dataset.editableComposing = 'false'; readDraft(event.currentTarget); },
     onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
       // Legacy composition key 229 is still emitted by some IMEs before isComposing.
       if (event.nativeEvent.isComposing || composing.current || event.keyCode === 229) return;
@@ -126,6 +128,7 @@ export default function EditableText(props: EditableTextProps) {
       if (event.key === 'Escape') {
         event.preventDefault(); event.stopPropagation(); skipBlur.current = true;
         event.currentTarget.textContent = committed.current; dirty.current = false;
+        event.currentTarget.dataset.editableError = 'false';
         setStatus(pending.current ? 'saving' : 'idle'); event.currentTarget.blur();
       }
     },
@@ -153,6 +156,7 @@ export default function EditableText(props: EditableTextProps) {
     },
     onBlur: (event: React.FocusEvent<HTMLElement>) => {
       focused.current = false; composing.current = false;
+      event.currentTarget.dataset.editableComposing = 'false';
       if (skipBlur.current) { skipBlur.current = false; return; }
       commit(event.currentTarget);
     },

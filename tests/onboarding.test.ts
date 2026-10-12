@@ -105,7 +105,10 @@ test('fresh onboarding creates six ordinary works with fresh UUIDs, byte-exact o
 test('the generated guide preserves the authored visible bytes, substitutes only root paths and has a unique invisible identity', async () => {
   const template = await readFile(resolve(directory, '../examples/Magical_Cards示例及用法说明.md'), 'utf8');
   const authored = template.replaceAll('{{rootFolder}}', () => '卡片库');
-  assert.equal(createHash('sha256').update(authored).digest('hex'), 'e3b634382687709fbece31eabf21570235dc688b501b75291e3d7ae0ad3ecab2');
+  assert.equal(createHash('sha256').update(authored).digest('hex'), 'df914b6da3532f73b52c62610004001e788ffa0dfa12e01fd9cf4a76b416cefa');
+  // Keep the author's introduction byte-exact while the usage instructions evolve.
+  const introduction = template.split('## 打开和编辑卡片', 1)[0];
+  assert.equal(createHash('sha256').update(introduction).digest('hex'), 'ade9cca52edac606a23cfde8526188319798d04be86a04d135709fab9b241ff7');
   const ids = [crypto.randomUUID(), crypto.randomUUID()]; assert.notEqual(ids[0], ids[1]);
   const notes = ids.map(id => runtime.guideMarkdown('卡片库', id));
   for (const [index, note] of notes.entries()) {

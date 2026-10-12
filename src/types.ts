@@ -20,7 +20,8 @@ export type CardLayoutPatch = Partial<Pick<WorkPropertyValues, 'cardTitleAlign' 
 export interface CardLayoutResult { updated: number; skipped: number; failed: Array<{ id: string; path: string; title: string; error: string }>; }
 export type WorkbenchAnchor = 'reflection' | 'actions' | 'gantt' | 'quadrants' | 'collections' | 'end' | 'inside-collections';
 export interface WorkbenchCardPlacement { module: string; before: WorkbenchAnchor; }
-export interface CardsSettings { bookCardAppearance: WorkCardAppearance; filmCardAppearance: WorkCardAppearance; customModules: CustomCardModule[]; threeCardView: boolean; workbenchText: Record<string, string>; workbenchCards: WorkbenchCardPlacement[]; standaloneOrder: string[]; hiddenModuleIds?: string[]; }
+export interface CardsDashboard { id: string; title: string; moduleIds: string[]; }
+export interface CardsSettings { bookCardAppearance: WorkCardAppearance; filmCardAppearance: WorkCardAppearance; customModules: CustomCardModule[]; threeCardView: boolean; workbenchText: Record<string, string>; workbenchCards: WorkbenchCardPlacement[]; standaloneOrder: string[]; hiddenModuleIds?: string[]; dashboards?: CardsDashboard[]; }
 export interface CardsSnapshot { entities: Work[]; workOrder: WorkOrder | null; settings: CardsSettings; loading: boolean; error: string; }
 export interface ShowcaseCard { id: string; image: string; name: string; description: string; }
 export interface ShowcaseDocument { moduleId: string; path: string; cards: ShowcaseCard[]; revision: string; }
@@ -35,6 +36,7 @@ export interface ShowcaseAPI {
 }
 export interface CardsAPI {
   showcase?: ShowcaseAPI;
+  supportsDashboards?: true;
   getSnapshot: () => CardsSnapshot; subscribe: (listener: () => void) => () => void;
   save(work: Work): Promise<void>; deleteWork(id: string): Promise<void>;
   readWorkProperties(id: string): Promise<WorkProperties>; patchWorkProperties(id: string, patch: Partial<WorkPropertyValues>, expected: WorkProperties): Promise<WorkProperties>;

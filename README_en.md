@@ -66,8 +66,17 @@ The **查看示例及用法说明** (Open examples and guide) command reopens th
 | Browse and search | Swipe, scroll, or use arrow keys. Click the magnifying glass to search. |
 | Manage works | Add or edit covers and details, link notes, delete works, and change their order. |
 | Back-of-card summaries | Flip the card and write. Switching layouts preserves the current card and summary draft. |
+| Dashboards | Switch between 全部 (All) and custom categories, manually select existing modules, and keep a separate order for each category. |
 | Reorder modules | Drag the title handle, or focus it and press Alt / Option + ↑ / ↓. |
 | Embed collections | Use reading mode or Live Preview; the same collection can appear in multiple notes. |
+
+### Dashboards
+
+The **全部** (All) tab at the top of Magical Cards shows every module that is not hidden. Click `+` to create a Dashboard, enter its name, select existing modules, and click **保存 Dashboard** (Save Dashboard). Every checkbox starts unchecked, and new modules are never assigned automatically. A module appears in multiple Dashboards only when you manually select it; its notes and images remain shared.
+
+In a category, use **编辑 Dashboard** (Edit Dashboard) to change its name or membership. Deleting a Dashboard removes only the category, preserving its modules, notes and images. Each Dashboard saves its own module order, independently of All. Categories reference stable existing module IDs and do not change work notes or the collection references and local ordering of note embeds.
+
+The settings trash icon **hides a module globally**, from All and every Dashboard. Restoring it retains its previous category membership and order. If the shared runtime does not support Dashboards, upgrade the enabled compatible cards plugins and restart the vault; existing modules and data remain intact.
 
 ### Five layouts
 
@@ -83,11 +92,13 @@ The cylindrical layout is shown at the top of this page. The curved gallery also
 
 Layouts do not autoplay. Album rail displays sleeves without playback controls or a spinning record. The curved gallery provides an **打开笔记** (Open note) control for the current card and a summary editor. It falls back to ordinary cards if WebGL or texture loading fails. The system's reduced-motion preference disables bending and transitions.
 
+![Dashboard categories reference shared modules and save their own order](previews/dashboards.png)
+
 ## Appearance and settings
 
-Settings are ordered as **Card directory → Examples → Add cards module → Existing modules → Removed modules → Note code generator**. Examples, existing modules, removed modules and advanced settings start collapsed.
+Settings are ordered as **Card directory → Examples → Add cards module → Add image showcase → Existing modules → Removed modules → Note code generator**. Both creation groups, examples, existing modules, removed modules and advanced settings start collapsed.
 
-Enter a **module name**, choose its **aspect ratio**, then click **保存** (Save). Click the purple stacked-card ribbon icon to experience the module in the **Magical Cards** tab. Settings previews support browsing and sliding only; they cannot flip or start editing sessions.
+Expand **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add image showcase), enter a **module name**, choose its **aspect ratio**, then click **保存并收起** (Save and collapse). Each creator keeps its own draft and a fixed storage type; advanced card style offers full cover or minimal without converting the module type. Click the purple stacked-card ribbon icon to experience the module in the **Magical Cards** tab. Settings previews support browsing and sliding only; they cannot flip or start editing sessions.
 
 ![Basic module settings with name, aspect ratio, save controls and collapsed advanced settings](previews/settings.png)
 
@@ -101,7 +112,7 @@ Enter a directory relative to the current vault, such as `卡片库`. Work notes
 
 ### Image showcases
 
-While creating a module, expand **Advanced settings → Card style** and select **添加图片橱窗** (Add image showcase). Its storage type becomes fixed after saving; existing work modules cannot be converted.
+Expand the separate **添加图片橱窗** (Add image showcase) settings group, enter a name, choose the aspect ratio, and save. This creator always creates a showcase; existing work modules cannot be converted. Failed saves keep the draft and any already-created showcase note, so retry does not create another note.
 
 | Image front | Description on the back |
 | --- | --- |
@@ -178,6 +189,8 @@ Compatible hosts share the existing runtime. New versions add missing block lang
 **0.3.0 changes:** image showcases add batch import, optional names and editable back descriptions. Basic module settings are now name and aspect ratio, with advanced options collapsed and a three-card limit per module. Reading, film and custom modules can be hidden and restored without losing data or order. Settings previews only browse; use the purple cards ribbon icon to open the Magical Cards tab for editing.
 
 **0.3.1 changes:** curved galleries retire unused WebGL contexts and reuse their canvas for ratio and direction changes; the first-run guide uses the author's revised text; the new showcase option is named “添加图片橱窗” (Add image showcase); appearance saves include a recovery hint for a black tab.
+
+**0.4.0 changes:** cards modules and image showcases have separate collapsed creators with independent drafts. The cards view adds All and named Dashboards with manual existing-module selection, editing, deletion and independent module ordering. Categories share existing data, new modules are not assigned automatically, and module hiding remains global.
 
 ## Development and license
 

@@ -1,4 +1,5 @@
 import { DEFAULT_CARD_SETTINGS, type CardLayout, type CardRatio, type CardsAPI, type CardsSettings, type CustomCardModule, type WorkCardAppearance, type WorkbenchCardPlacement } from './types';
+import { readDashboards, validDashboards } from './dashboards';
 
 export const CARD_RATIOS: Record<CardRatio, string> = { '1:1': '1:1 方图', '4:3': '4:3 横向照片', '3:4': '3:4 竖向照片', '2:3': '2:3 番剧／海报', '16:9': '16:9 横向画面' };
 export const CARD_LAYOUTS: Record<CardLayout, string> = { cylinder: '圆柱弧面', 'coverflow-carousel': '封面流轮播', 'album-rail': '黑胶专辑架', 'scroll-bend': '滚动弯曲画廊', 'skewed-carousel': '倾斜轮播' };
@@ -10,7 +11,7 @@ export const CARD_APPEARANCE_FIELDS = [
   { field: 'layout', name: '动效布局', options: CARD_LAYOUTS, fallback: 'cylinder' },
   { field: 'orientation', name: '画廊方向', options: { horizontal: '横向', vertical: '竖向' }, fallback: 'horizontal' },
 ] as const;
-export const CARD_SETTING_KEYS = ['bookCardAppearance', 'filmCardAppearance', 'customModules', 'threeCardView', 'workbenchText', 'workbenchCards', 'standaloneOrder', 'hiddenModuleIds'] as const;
+export const CARD_SETTING_KEYS = ['bookCardAppearance', 'filmCardAppearance', 'customModules', 'threeCardView', 'workbenchText', 'workbenchCards', 'standaloneOrder', 'hiddenModuleIds', 'dashboards'] as const;
 export const FRESH_CARD_APPEARANCE: Readonly<WorkCardAppearance> = { material: 'paper', style: 'cover', layout: 'cylinder', ratio: '2:3', imageFit: 'cover' };
 export const NEW_MODULE_APPEARANCE: Readonly<WorkCardAppearance> = { material: 'paper', style: 'cover', layout: 'skewed-carousel', ratio: '2:3', imageFit: 'cover', threeCardView: false };
 export function freshCardsSettings(): CardsSettings {
@@ -61,8 +62,8 @@ export function readModuleDraft(settings: CardsSettings, id: string): CardModule
     ...(custom?.mode === 'showcase' ? { flipEnabled: original.flipEnabled ?? true, namePosition: original.namePosition ?? 'back' } : {}),
   } };
 }
-export function newModuleDraft(): CardModuleDraft {
-  return { id: crypto.randomUUID(), title: '', appearance: { ...NEW_MODULE_APPEARANCE, orientation: 'horizontal' } };
+export function newModuleDraft(mode?: 'showcase'): CardModuleDraft {
+  return { id: crypto.randomUUID(), title: '', ...(mode ? { mode } : {}), appearance: { ...NEW_MODULE_APPEARANCE, orientation: 'horizontal', ...(mode === 'showcase' ? { flipEnabled: true, namePosition: 'back' as const } : {}) } };
 }
 const sameModuleDraft = (left: CardModuleDraft | null, right: CardModuleDraft | null) => {
   const values = (draft: CardModuleDraft | null) => draft && [draft.id, draft.title.trim(), draft.mode, draft.showcaseNote, draft.appearance.style, draft.appearance.imageFit, draft.appearance.material, draft.appearance.ratio, draft.appearance.layout, draft.appearance.orientation, draft.appearance.threeCardView, draft.appearance.flipEnabled, draft.appearance.namePosition];
@@ -112,7 +113,7 @@ export function validWorkbenchCards(value: unknown): value is WorkbenchCardPlace
 export function readCardsSettings(value: unknown): CardsSettings {
   const saved = record(value) ? value : {};
   const text = record(saved.workbenchText) ? Object.fromEntries(Object.entries(saved.workbenchText).filter(([key, value]) => ['book.title', 'film.title'].includes(key) && typeof value === 'string')) : {};
-  return { bookCardAppearance: readCardAppearance(saved.bookCardAppearance, DEFAULT_CARD_SETTINGS.bookCardAppearance), filmCardAppearance: readCardAppearance(saved.filmCardAppearance, DEFAULT_CARD_SETTINGS.filmCardAppearance), customModules: readCustomModules(saved.customModules), threeCardView: typeof saved.threeCardView === 'boolean' ? saved.threeCardView : false, workbenchText: text as Record<string, string>, workbenchCards: validWorkbenchCards(saved.workbenchCards) ? saved.workbenchCards.map(item => ({ ...item })) : [], standaloneOrder: ids(saved.standaloneOrder) ? [...saved.standaloneOrder] : [], ...(ids(saved.hiddenModuleIds) ? { hiddenModuleIds: [...saved.hiddenModuleIds] } : {}) };
+  return { bookCardAppearance: readCardAppearance(saved.bookCardAppearance, DEFAULT_CARD_SETTINGS.bookCardAppearance), filmCardAppearance: readCardAppearance(saved.filmCardAppearance, DEFAULT_CARD_SETTINGS.filmCardAppearance), customModules: readCustomModules(saved.customModules), threeCardView: typeof saved.threeCardView === 'boolean' ? saved.threeCardView : false, workbenchText: text as Record<string, string>, workbenchCards: validWorkbenchCards(saved.workbenchCards) ? saved.workbenchCards.map(item => ({ ...item })) : [], standaloneOrder: ids(saved.standaloneOrder) ? [...saved.standaloneOrder] : [], ...(ids(saved.hiddenModuleIds) ? { hiddenModuleIds: [...saved.hiddenModuleIds] } : {}), ...(Object.hasOwn(saved, 'dashboards') ? { dashboards: readDashboards(saved.dashboards) } : {}) };
 }
 export function validateCardsPatch(patch: Partial<CardsSettings>): void {
   for (const key of Object.keys(patch)) if (!(CARD_SETTING_KEYS as readonly string[]).includes(key)) throw new Error(`不能修改卡片设置：${key}`);
@@ -122,5 +123,6 @@ export function validateCardsPatch(patch: Partial<CardsSettings>): void {
   if ('workbenchCards' in patch && !validWorkbenchCards(patch.workbenchCards)) throw new Error('工作台卡片位置无效。');
   if ('standaloneOrder' in patch && !ids(patch.standaloneOrder)) throw new Error('卡片模块顺序无效。');
   if ('hiddenModuleIds' in patch && !ids(patch.hiddenModuleIds)) throw new Error('已移除模块标识无效。');
+  if ('dashboards' in patch && !validDashboards(patch.dashboards)) throw new Error('看板设置无效，请检查名称、唯一标识和模块顺序。原内容已保留。');
   if ('workbenchText' in patch && (!record(patch.workbenchText) || Object.entries(patch.workbenchText).some(([key, value]) => !['book.title', 'film.title'].includes(key) || typeof value !== 'string'))) throw new Error('卡片模块文字无效。');
 }

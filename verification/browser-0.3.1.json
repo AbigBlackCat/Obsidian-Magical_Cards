@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-12",
+  "targetPluginVersion": "0.3.1",
+  "sourceCommit": "bb34c362c2dcec353e04c7633484ef3fc01e3a55",
+  "environment": "Chrome driven through CUA; isolated live React card surfaces with an independent SettingsCardPreview in a srcdoc iframe",
+  "appearanceStress": {
+    "updates": 200,
+    "rootPresentOnEveryUpdate": true,
+    "stageCountOnEveryUpdate": 3,
+    "pluginErrors": 0,
+    "mainCanvasContextsCreated": 120,
+    "mainCanvasContextsRetired": 120,
+    "activeMainCanvasContextsAtFinish": 0,
+    "webglContextWarnings": 0,
+    "unrelatedChromeExtensionErrors": 2
+  },
+  "ratioOrientationReuse": {
+    "updates": 200,
+    "live": {
+      "roots": 1,
+      "stages": 3,
+      "renderers": [
+        "webgl",
+        "webgl",
+        "webgl"
+      ],
+      "createdContexts": 3,
+      "retiredContexts": 0
+    },
+    "afterLayoutExit": {
+      "roots": 1,
+      "stages": 3,
+      "createdContexts": 3,
+      "retiredContexts": 3
+    },
+    "pluginErrorsWhileLive": 0,
+    "pluginErrorsAfterExit": 0,
+    "assertions": {
+      "sameCanvasContextsReused": true,
+      "currentFilmStillSecondCard": true,
+      "allMainContextsRetiredOnLayoutExit": true
+    }
+  },
+  "limitations": [
+    "Before probe used terminal Chromium; after probe used CUA Chrome. Both were isolated live React surfaces, not native Obsidian.",
+    "A full-page native black screen was not reproduced; resource pressure is confirmed independently.",
+    "Isolated browser diagnostic; does not prove the native full-tab black-screen root cause.",
+    "Context counts in these probes cover the instrumented main gallery canvases.",
+    "The browser resource-pressure result is separate from native Obsidian acceptance and does not prove the cause of the whole-tab black screen."
+  ]
+}

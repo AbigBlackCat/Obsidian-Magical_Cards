@@ -19,9 +19,9 @@ interface EditorState {
   draft: CardModuleDraft;
   baseline: CardModuleDraft | null;
   creating: boolean;
+  creator?: 'add-module' | 'add-showcase';
   busy: boolean;
   fields: Map<string, { setValue: (value: string | boolean) => unknown }>;
-  style?: DropdownComponent;
   error: string;
   errorEl?: HTMLElement;
   preview?: HTMLElement;
@@ -60,16 +60,18 @@ export class CardsSettingsController {
     this.unsubscribe = api.subscribe(this.sync);
   }
   private structureKey() { const settings = this.api.getSnapshot().settings; return JSON.stringify([cardModuleChoices(settings, true), settings.hiddenModuleIds ?? []]); }
-  private editor(key: string, creating = false): EditorState {
+  private editor(key: string, creator?: EditorState['creator']): EditorState {
     let state = this.editors.get(key);
     if (!state) {
-      const draft = creating ? newModuleDraft() : readModuleDraft(this.api.getSnapshot().settings, key);
+      const draft = creator ? newModuleDraft(creator === 'add-showcase' ? 'showcase' : undefined) : readModuleDraft(this.api.getSnapshot().settings, key);
       if (!draft) throw new Error('模块已移除，请重新打开设置。');
-      state = { key, draft, baseline: creating ? null : structuredClone(draft), creating, busy: false, fields: new Map(), error: '' };
+      state = { key, draft, baseline: creator ? null : structuredClone(draft), creating: Boolean(creator), creator, busy: false, fields: new Map(), error: '' };
       this.editors.set(key, state);
     }
     return state;
   }
+  private editorLabel(state: EditorState) { return state.creating ? state.creator === 'add-showcase' ? '添加图片橱窗' : '添加卡片模块' : state.draft.title; }
+  private resetCreator(state: EditorState) { return newModuleDraft(state.creator === 'add-showcase' ? 'showcase' : undefined); }
   private row(name: string, section: string | undefined, render: (setting: Setting) => void | (() => void), extras: Pick<SettingDefinitionRender, 'desc' | 'aliases' | 'searchable' | 'visible'> = {}): CardSettingRow {
     return { name, ...extras, render: (setting, group) => {
       if (this.disposed) return;
@@ -144,9 +146,9 @@ export class CardsSettingsController {
         }
         this.wraps.set(list, { outer: examples.outer, cleanup: () => cleanups.forEach(cleanup => cleanup()) });
       } else {
-        const state = this.editors.get(section), label = section === 'code' ? '笔记代码块生成' : section === 'removed' ? '已移除模块' : state?.creating ? '添加卡片模块' : state?.draft.title ?? section;
+        const state = this.editors.get(section), label = section === 'code' ? '笔记代码块生成' : section === 'removed' ? '已移除模块' : state ? this.editorLabel(state) : section;
         const wrapped = this.details(list, section, label);
-        if (section === 'code' || section === 'removed' || state?.creating) wrapped.outer.dataset.settingsGroup = state?.creating ? 'add-module' : section;
+        if (section === 'code' || section === 'removed' || state?.creating) wrapped.outer.dataset.settingsGroup = state?.creator ?? section;
         else wrapped.outer.dataset.cardCollection = section;
         const cleanup = state ? this.placeEditorRows(wrapped.body, rows, state) : undefined;
         if (!state) for (const row of rows) wrapped.body.append(row.element);
@@ -203,11 +205,10 @@ export class CardsSettingsController {
   };
   private refreshFields(state: EditorState) {
     state.fields.get('title')?.setValue(state.draft.title);
-    for (const field of CARD_APPEARANCE_FIELDS) state.fields.get(field.field)?.setValue(field.field === 'style' && state.creating && state.draft.mode === 'showcase' && !state.draft.showcaseNote ? 'showcase' : String(state.draft.appearance[field.field] ?? field.fallback));
+    for (const field of CARD_APPEARANCE_FIELDS) state.fields.get(field.field)?.setValue(String(state.draft.appearance[field.field] ?? field.fallback));
     state.fields.get('threeCardView')?.setValue(state.draft.appearance.threeCardView ?? this.api.getSnapshot().settings.threeCardView);
     state.fields.get('flipEnabled')?.setValue(state.draft.appearance.flipEnabled ?? true);
     state.fields.get('namePosition')?.setValue(state.draft.appearance.namePosition ?? 'back');
-    state.style?.setDisabled(state.creating && !!state.draft.showcaseNote);
     this.refreshConditionalRows(state);
   }
   private setError(state: EditorState, failure: unknown) {
@@ -217,7 +218,7 @@ export class CardsSettingsController {
   private closeEditor(state: EditorState) {
     this.opened.set(state.key, false);
     for (const wrap of this.wraps.values()) {
-      const group = wrap.outer.dataset.cardCollection === state.key || wrap.outer.dataset.settingsGroup === 'add-module' && state.creating ? wrap.outer : wrap.outer.querySelector<HTMLDetailsElement>(`[data-card-collection="${state.key}"]`);
+      const group = wrap.outer.dataset.cardSettingsKey === state.key ? wrap.outer : wrap.outer.querySelector<HTMLDetailsElement>(`[data-card-collection="${state.key}"]`);
       if (group) { group.open = false; group.querySelector<HTMLElement>('summary')?.focus(); }
     }
     this.syncPreviews();
@@ -241,7 +242,7 @@ export class CardsSettingsController {
   }
   private editorRows(state: EditorState): CardSettingRow[] {
     const section = state.key === 'book' || state.key === 'film' ? `examples/${state.key}` : state.key;
-    const label = state.creating ? '添加卡片模块' : state.draft.title, rows: CardSettingRow[] = [];
+    const label = this.editorLabel(state), rows: CardSettingRow[] = [];
     rows.push(this.row(`${label} · 模块名称`, section, setting => {
       setting.settingEl.dataset.cardField = 'title';
       setting.setName('模块名称').addText(control => { this.bindField(state, 'title', control); control.inputEl.setAttribute('aria-label', '模块名称'); control.setValue(state.draft.title).onChange(title => { state.draft = { ...state.draft, title }; this.syncPreviews(); }); });
@@ -251,30 +252,17 @@ export class CardsSettingsController {
       setting.setName(field.name).addDropdown(control => {
         this.bindField(state, field.field, control); control.selectEl.setAttribute('aria-label', field.name);
         control.addOptions(field.options);
-        if (field.field === 'style') {
-          state.style = control;
-          if (state.creating) control.addOptions({ showcase: '添加图片橱窗' });
-          if (state.draft.mode === 'showcase') setting.setDesc('橱窗式模块；保存后类型固定，可继续调整外观。');
-          control.setDisabled(state.creating && !!state.draft.showcaseNote);
-        }
-        control.setValue(field.field === 'style' && state.creating && state.draft.mode === 'showcase' && !state.draft.showcaseNote ? 'showcase' : String(state.draft.appearance[field.field] ?? field.fallback)).onChange(value => {
-          if (field.field === 'style' && state.creating && !state.draft.showcaseNote) {
-            if (value === 'showcase') {
-              if (!this.api.showcase) { control.setValue(state.draft.appearance.style); new Notice('请升级已启用的卡片插件后再创建橱窗式模块。'); return; }
-              state.draft = { ...state.draft, mode: 'showcase', appearance: { ...state.draft.appearance, style: 'cover', flipEnabled: true, namePosition: 'back' } };
-            } else {
-              const appearance = { ...state.draft.appearance, style: value as 'cover' | 'minimal' }; delete appearance.flipEnabled; delete appearance.namePosition;
-              state.draft = { ...state.draft, mode: undefined, showcaseNote: undefined, appearance };
-            }
-          } else if (value !== 'showcase') state.draft = { ...state.draft, appearance: { ...state.draft.appearance, [field.field]: value } };
+        if (field.field === 'style' && state.draft.mode === 'showcase') setting.setDesc('图片橱窗模块；卡片类型固定，可继续调整外观。');
+        control.setValue(String(state.draft.appearance[field.field] ?? field.fallback)).onChange(value => {
+          state.draft = { ...state.draft, appearance: { ...state.draft.appearance, [field.field]: value } };
           this.refreshConditionalRows(state); this.syncPreviews();
         });
       });
       setting.settingEl.dataset.cardField = field.field;
       if (field.field !== 'ratio') setting.settingEl.dataset.cardSettingsLevel = 'advanced';
       if (field.field === 'orientation') setting.settingEl.hidden = state.draft.appearance.layout !== 'scroll-bend';
-      return () => { state.fields.delete(field.field); if (field.field === 'style') state.style = undefined; };
-    }, { aliases: [...Object.values(field.options), ...(field.field === 'imageFit' ? ['贴满卡片', '封面裁切'] : []), ...(field.field === 'style' && state.creating ? ['添加图片橱窗', '橱窗式卡片'] : [])], ...(field.field === 'orientation' ? { visible: () => state.draft.appearance.layout === 'scroll-bend' } : {}) });
+      return () => { state.fields.delete(field.field); };
+    }, { aliases: [...Object.values(field.options), ...(field.field === 'imageFit' ? ['贴满卡片', '封面裁切'] : []), ...(field.field === 'style' && state.creator === 'add-showcase' ? ['添加图片橱窗', '橱窗式卡片'] : [])], ...(field.field === 'orientation' ? { visible: () => state.draft.appearance.layout === 'scroll-bend' } : {}) });
     rows.push(dropdown(CARD_APPEARANCE_FIELDS.find(field => field.field === 'ratio')!));
     rows.push(this.row(`${label} · 保存并收起`, section, setting => {
       setting.setName('').setDesc('点击左侧紫色卡片图标，在 Magical Cards 标签页体验。高级选项与基本设置一起保存。');
@@ -285,7 +273,7 @@ export class CardsSettingsController {
         try {
           await saveModuleDraft(this.api, state.draft, state.baseline);
           if (this.disposed) return;
-          if (state.creating) { state.draft = newModuleDraft(); state.baseline = null; this.refreshFields(state); }
+          if (state.creating) { state.draft = this.resetCreator(state); state.baseline = null; this.refreshFields(state); }
           else { const current = readModuleDraft(this.api.getSnapshot().settings, state.key); if (current) { state.baseline = current; state.draft = structuredClone(current); } }
           this.closeEditor(state);
           new Notice(appearanceChanged
@@ -318,7 +306,7 @@ export class CardsSettingsController {
       setting.setName('').setDesc('替换此处未保存的选择。'); setting.settingEl.dataset.cardSettingsLevel = 'advanced';
       setting.addButton(control => control.setButtonText('重新载入').setTooltip('替换此处未保存的选择').onClick(() => {
         if (state.creating && state.draft.showcaseNote) { this.setError(state, '橱窗笔记已创建，请保留当前模块并重试保存。'); return; }
-        const current = state.creating ? newModuleDraft() : readModuleDraft(this.api.getSnapshot().settings, state.key);
+        const current = state.creating ? this.resetCreator(state) : readModuleDraft(this.api.getSnapshot().settings, state.key);
         if (!current) { this.setError(state, '模块已移除，当前草稿仍保留。'); return; }
         state.draft = structuredClone(current); state.baseline = state.creating ? null : structuredClone(current); this.setError(state, ''); this.refreshFields(state); this.syncPreviews();
       }));
@@ -354,7 +342,8 @@ export class CardsSettingsController {
     const settings = this.api.getSnapshot().settings, hidden = new Set(settings.hiddenModuleIds ?? []);
     const defaults = ['book', 'film'].filter(id => !hidden.has(id));
     if (defaults.length) definitions.push(group(defaults.flatMap(id => this.editorRows(this.editor(id)))));
-    definitions.push(group(this.editorRows(this.editor('add-module', true))));
+    definitions.push(group(this.editorRows(this.editor('creator:add-module', 'add-module'))));
+    definitions.push(group(this.editorRows(this.editor('creator:add-showcase', 'add-showcase'))));
     for (const module of settings.customModules) if (!hidden.has(module.id)) definitions.push(group(this.editorRows(this.editor(module.id))));
     const removed = cardModuleChoices(settings, true).filter(module => hidden.has(module.id));
     if (removed.length) definitions.push(group(removed.map(module => this.row(`已移除模块 · 恢复${module.label}`, 'removed', setting => {

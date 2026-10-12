@@ -238,10 +238,14 @@ test('settings groups preserve requested order and mount previews only while ope
   let managerDisposals=0;const manager={dispose(){managerDisposals++;}} as unknown as WorkPropertiesManager;
   const start=ui.renderedRoots.length,cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{},manager);
   const examples=el.all().find(child=>child.dataset.settingsGroup==='examples')!,reading=el.all().find(child=>child.dataset.cardCollection==='book')!;
-  const add=el.all().find(child=>child.dataset.settingsGroup==='add-module')!;
+  const add=el.all().find(child=>child.dataset.settingsGroup==='add-module')!,showcase=el.all().find(child=>child.dataset.settingsGroup==='add-showcase')!;
   const advanced=reading.all().find(child=>child.dataset.settingsGroup==='advanced')!;
   assert.equal(examples.open,false);assert.equal(reading.open,true);assert.equal(ui.renderedRoots.length,start);
-  assert.equal(advanced.open,false);assert.equal(add.open,false);
+  assert.equal(advanced.open,false);assert.equal(add.open,false);assert.equal(showcase.open,false);
+  assert.deepEqual(el.all().filter(child=>['examples','add-module','add-showcase','code'].includes(child.dataset.settingsGroup)).map(child=>child.dataset.settingsGroup),['examples','add-module','add-showcase','code']);
+  assert.equal(showcase.children[0].textContent,'添加图片橱窗');
+  assert.deepEqual(showcase.all().find(child=>child.tagName==='FIELDSET')!.children.map(child=>child.dataset.settingName),['模块名称','比例','']);
+  assert.equal(showcase.all().find(child=>child.dataset.settingsGroup==='advanced')!.open,false);
   const basic=reading.all().find(child=>child.tagName==='FIELDSET')!;
   assert.deepEqual(basic.children.map(child=>child.dataset.settingName),['模块名称','比例','']);
   assert.deepEqual(advanced.all().filter(child=>child.dataset.settingName).map(child=>child.dataset.settingName),['卡片样式','显示方式','材质','动效布局','仅显示三张卡片','画廊方向','允许翻面','名称位置']);
@@ -391,28 +395,104 @@ test('default and custom header trash retains failed drafts and restoration uses
   }finally{cleanup();}
 });
 
-test('showcase selection only lives in the creation advanced style field, locks after note creation and retries one configuration',async()=>{
+test('the separate showcase creator keeps its fixed mode and created note through failures and retry',async()=>{
   const {api,patches,creates,fail}=fixture(freshCardsSettings()),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
   const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
   try{
-    const add=el.all().find(child=>child.dataset.settingsGroup==='add-module')!,advanced=add.all().find(child=>child.dataset.settingsGroup==='advanced')!;
+    const add=el.all().find(child=>child.dataset.settingsGroup==='add-showcase')!,ordinary=el.all().find(child=>child.dataset.settingsGroup==='add-module')!,advanced=add.all().find(child=>child.dataset.settingsGroup==='advanced')!;
     const basic=add.all().find(child=>child.tagName==='FIELDSET')!;
     assert.deepEqual(basic.children.map(child=>child.dataset.settingName),['模块名称','比例','']);assert.equal(advanced.open,false);
-    const style=row(add,'卡片样式').children[0].control!;assert.equal(style.inputEl.options.showcase,'添加图片橱窗');
+    const style=row(add,'卡片样式').children[0].control!;assert.deepEqual(style.inputEl.options,{cover:'整幅封面',minimal:'简约'});
     const reading=el.all().find(child=>child.dataset.cardCollection==='book')!;assert.equal(row(reading,'卡片样式').children[0].options.showcase,undefined);
-    assert.equal(row(add,'允许翻面').hidden,true);assert.equal(row(add,'名称位置').hidden,true);
+    assert.equal(row(ordinary,'允许翻面').hidden,true);assert.equal(row(ordinary,'名称位置').hidden,true);
+    assert.equal(row(add,'允许翻面').hidden,false);assert.equal(row(add,'允许翻面').children[0].checked,true);assert.equal(row(add,'名称位置').children[0].value,'back');
     add.open=true;advanced.open=true;await row(add,'模块名称').children[0].control!.choose('照片橱窗');
-    await style.choose('showcase');assert.equal(row(add,'允许翻面').hidden,false);assert.equal(row(add,'名称位置').children[0].value,'back');
-    await style.choose('minimal');assert.equal(row(add,'允许翻面').hidden,true);await style.choose('showcase');
+    await style.choose('minimal');assert.equal(row(add,'允许翻面').hidden,false);
     fail('配置暂不可写');await button(add,'保存并收起').click!();
-    assert.equal(creates.length,1);assert.equal(style.inputEl.disabled,true);assert.equal(row(add,'模块名称').children[0].value,'照片橱窗');
+    assert.equal(creates.length,1);assert.equal(style.inputEl.disabled,false);assert.equal(row(add,'模块名称').children[0].value,'照片橱窗');
     await button(add,'重新载入').click!();assert.equal(row(add,'模块名称').children[0].value,'照片橱窗');
     assert.ok(add.all().some(child=>child.attributes.get('role')==='alert'&&child.textContent.includes('橱窗笔记已创建')));
     await button(add,'保存并收起').click!();assert.equal(creates.length,1);assert.equal(patches.length,2);assert.equal(add.open,false);
     const saved=api.getSnapshot().settings.customModules[0];assert.equal(saved.id,creates[0].id);assert.equal(saved.showcaseNote,creates[0].note);
-    assert.equal(saved.appearance.threeCardView,false);assert.equal(saved.appearance.flipEnabled,true);assert.equal(saved.appearance.namePosition,'back');
+    assert.equal(saved.mode,'showcase');assert.equal(saved.appearance.style,'minimal');assert.equal(saved.appearance.threeCardView,false);assert.equal(saved.appearance.flipEnabled,true);assert.equal(saved.appearance.namePosition,'back');
+    const reset=el.all().find(child=>child.dataset.settingsGroup==='add-showcase')!;assert.equal(row(reset,'模块名称').children[0].value,'');assert.equal(row(reset,'卡片样式').children[0].value,'cover');
+    assert.equal(row(reset,'允许翻面').hidden,false);assert.equal(row(reset,'允许翻面').children[0].checked,true);assert.equal(row(reset,'名称位置').children[0].value,'back');
     const existing=el.all().find(child=>child.dataset.cardCollection===saved.id)!;assert.equal(row(existing,'卡片样式').children[0].options.showcase,undefined);
     assert.equal(row(existing,'允许翻面').hidden,false);assert.equal(row(existing,'名称位置').hidden,false);
+  }finally{cleanup();}
+});
+
+test('both creator drafts survive host refresh and failed saves, then each successful save closes only its own group',async()=>{
+  const {api,creates,fail,replace}=fixture(freshCardsSettings()),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const controller=new ui.CardsSettingsController(api);let cleanup=await renderDeclared(controller,el);
+  const group=(kind:string)=>el.all().find(child=>child.dataset.settingsGroup===kind)!;
+  const open=(element:Element)=>{element.open=true;element.dispatchEvent(new Event('toggle'));};
+  try{
+    let ordinary=group('add-module'),showcase=group('add-showcase');open(ordinary);open(showcase);
+    await row(ordinary,'模块名称').children[0].control!.choose('普通草稿');await row(ordinary,'比例').children[0].control!.choose('4:3');await row(ordinary,'卡片样式').children[0].control!.choose('minimal');
+    await row(showcase,'模块名称').children[0].control!.choose('橱窗草稿');await row(showcase,'比例').children[0].control!.choose('1:1');await row(showcase,'名称位置').children[0].control!.choose('front');
+    fail('橱窗配置暂不可写');await button(showcase,'保存并收起').click!();const created=creates[0];assert.equal(creates.length,1);
+    replace({...api.getSnapshot().settings,workbenchText:{...api.getSnapshot().settings.workbenchText,'film.title':'外部改名'}});
+    cleanup=await renderDeclared(controller,el,cleanup);ordinary=group('add-module');showcase=group('add-showcase');
+    assert.equal(ordinary.open,true);assert.equal(showcase.open,true);
+    assert.equal(row(ordinary,'模块名称').children[0].value,'普通草稿');assert.equal(row(ordinary,'比例').children[0].value,'4:3');assert.equal(row(ordinary,'卡片样式').children[0].value,'minimal');
+    assert.equal(row(showcase,'模块名称').children[0].value,'橱窗草稿');assert.equal(row(showcase,'比例').children[0].value,'1:1');assert.equal(row(showcase,'名称位置').children[0].value,'front');
+    assert.ok(showcase.all().some(child=>child.attributes.get('role')==='alert'&&child.textContent==='橱窗配置暂不可写'&&!child.hidden));
+    fail('普通配置暂不可写');await button(ordinary,'保存并收起').click!();assert.equal(ordinary.open,true);assert.equal(showcase.open,true);
+    await button(ordinary,'保存并收起').click!();assert.equal(ordinary.open,false);assert.equal(showcase.open,true);assert.equal(creates.length,1);
+    const savedOrdinary=api.getSnapshot().settings.customModules[0];assert.equal(savedOrdinary.title,'普通草稿');assert.equal(savedOrdinary.mode,undefined);assert.equal(savedOrdinary.ratio,'4:3');
+    assert.equal(row(ordinary,'模块名称').children[0].value,'');assert.equal(row(ordinary,'允许翻面').hidden,true);
+    open(ordinary);await row(ordinary,'模块名称').children[0].control!.choose('下一张普通卡');
+    await button(showcase,'保存并收起').click!();assert.equal(showcase.open,false);assert.equal(ordinary.open,true);assert.equal(row(ordinary,'模块名称').children[0].value,'下一张普通卡');
+    const savedShowcase=api.getSnapshot().settings.customModules[1];assert.equal(savedShowcase.id,created.id);assert.equal(savedShowcase.showcaseNote,created.note);assert.equal(savedShowcase.mode,'showcase');assert.equal(savedShowcase.appearance.namePosition,'front');assert.equal(creates.length,1);
+    cleanup=await renderDeclared(controller,el,cleanup);ordinary=group('add-module');showcase=group('add-showcase');
+    assert.equal(ordinary.open,true);assert.equal(showcase.open,false);assert.equal(row(ordinary,'模块名称').children[0].value,'下一张普通卡');
+    assert.equal(row(showcase,'模块名称').children[0].value,'');assert.equal(row(showcase,'比例').children[0].value,'2:3');assert.equal(row(showcase,'名称位置').children[0].value,'back');
+    open(showcase);await row(showcase,'模块名称').children[0].control!.choose('下一张橱窗');await button(showcase,'保存并收起').click!();
+    assert.equal(creates.length,2);assert.notEqual(creates[1].id,created.id);assert.equal(api.getSnapshot().settings.customModules[2].mode,'showcase');assert.equal(ordinary.open,true);
+  }finally{for(const dispose of cleanup)dispose();controller.dispose();}
+  assert.equal(doc.observers.size,0);
+});
+
+test('creator reloads retain the originating type and native search reveals only the matching creator',async()=>{
+  const {api,creates,failCreate}=fixture(freshCardsSettings()),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const start=ui.renderedRoots.length,controller=new ui.CardsSettingsController(api,{} as WorkPropertiesManager);let cleanup=await renderDeclared(controller,el);
+  const group=(kind:string)=>el.all().find(child=>child.dataset.settingsGroup===kind)!;
+  const draftFor=(kind:string)=>ui.renderedRoots.slice(start).reverse().find(root=>!root.unmounted&&Boolean(root.element.props.draft.mode)===(kind==='add-showcase'))!.element.props.draft;
+  try{
+    const metadata=controller.getDefinitions().flatMap(def=>'type' in def?def.items:[def]);
+    assert.ok(metadata.some(def=>def.name==='添加图片橱窗 · 模块名称'));
+    assert.ok(metadata.some(def=>def.name==='添加卡片模块 · 卡片样式'));
+    let ordinary=group('add-module'),showcase=group('add-showcase');
+    row(showcase,'模块名称').classList.add('is-flashing');assert.equal(showcase.open,true);assert.equal(ordinary.open,false);assert.equal(showcase.all().find(child=>child.dataset.settingsGroup==='advanced')!.open,false);assert.equal(doc.activeElement,row(showcase,'模块名称').children[0]);
+    row(showcase,'卡片样式').classList.add('is-flashing');assert.equal(showcase.all().find(child=>child.dataset.settingsGroup==='advanced')!.open,true);assert.equal(ordinary.open,false);
+    const firstShowcase=draftFor('add-showcase');assert.equal(firstShowcase.mode,'showcase');assert.equal(firstShowcase.appearance.flipEnabled,true);assert.equal(firstShowcase.appearance.namePosition,'back');
+    await row(showcase,'模块名称').children[0].control!.choose('未建笔记的橱窗');failCreate('笔记创建失败');await button(showcase,'保存并收起').click!();
+    assert.equal(draftFor('add-showcase').id,firstShowcase.id);assert.equal(creates.length,0);assert.equal(row(showcase,'模块名称').children[0].value,'未建笔记的橱窗');
+    await button(showcase,'重新载入').click!();const resetShowcase=draftFor('add-showcase');assert.notEqual(resetShowcase.id,firstShowcase.id);assert.equal(resetShowcase.mode,'showcase');assert.equal(resetShowcase.title,'');
+    row(ordinary,'卡片样式').classList.add('is-flashing');const firstOrdinary=draftFor('add-module');assert.equal(firstOrdinary.mode,undefined);
+    await row(ordinary,'模块名称').children[0].control!.choose('普通未保存');await row(ordinary,'卡片样式').children[0].control!.choose('minimal');await button(ordinary,'重新载入').click!();
+    assert.notEqual(draftFor('add-module').id,firstOrdinary.id);assert.equal(draftFor('add-module').mode,undefined);assert.equal(draftFor('add-module').title,'');assert.equal(draftFor('add-module').appearance.style,'cover');assert.equal(row(ordinary,'允许翻面').hidden,true);
+    controller.hide();assert.ok(ui.renderedRoots.slice(start).every(root=>root.unmounted));cleanup=await renderDeclared(controller,el,cleanup);ordinary=group('add-module');showcase=group('add-showcase');
+    assert.equal(ordinary.open,true);assert.equal(showcase.open,true);assert.equal(draftFor('add-showcase').id,resetShowcase.id);assert.equal(draftFor('add-showcase').mode,'showcase');
+  }finally{for(const dispose of cleanup)dispose();controller.dispose();}
+  assert.ok(ui.renderedRoots.slice(start).every(root=>root.unmounted));assert.equal(doc.observers.size,0);
+});
+
+test('creator state keys do not collide with existing modules whose valid IDs match the creation group names',async()=>{
+  const settings=freshCardsSettings();settings.customModules=[{...newCustomModule('已有普通模块'),id:'add-module'},{...newCustomModule('已有另一个模块'),id:'add-showcase'}];
+  const {api}=fixture(settings),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
+  try{
+    const ordinary=el.all().find(child=>child.dataset.settingsGroup==='add-module')!,showcase=el.all().find(child=>child.dataset.settingsGroup==='add-showcase')!;
+    const existing=el.all().find(child=>child.dataset.cardCollection==='add-module')!;
+    assert.notEqual(existing,ordinary);assert.equal(row(existing,'模块名称').children[0].value,'已有普通模块');
+    ordinary.open=true;showcase.open=true;await row(ordinary,'模块名称').children[0].control!.choose('新普通草稿');await row(showcase,'模块名称').children[0].control!.choose('新橱窗草稿');
+    await row(existing,'模块名称').children[0].control!.choose('已有模块改名');await button(existing,'保存并收起').click!();
+    assert.equal(api.getSnapshot().settings.customModules.length,2);assert.equal(api.getSnapshot().settings.customModules[0].title,'已有模块改名');assert.equal(api.getSnapshot().settings.customModules[1].title,'已有另一个模块');
+    const currentOrdinary=el.all().find(child=>child.dataset.settingsGroup==='add-module')!,currentShowcase=el.all().find(child=>child.dataset.settingsGroup==='add-showcase')!;
+    assert.equal(row(currentOrdinary,'模块名称').children[0].value,'新普通草稿');assert.equal(row(currentShowcase,'模块名称').children[0].value,'新橱窗草稿');
+    await button(currentOrdinary,'保存并收起').click!();assert.equal(api.getSnapshot().settings.customModules.length,3);assert.notEqual(api.getSnapshot().settings.customModules[2].id,'add-module');
   }finally{cleanup();}
 });
 

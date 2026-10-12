@@ -21,6 +21,7 @@ export class WorkPropertiesSession {
   private writing?: Promise<void>;
 
   constructor(private api: PropertiesAPI, readonly id: string, private timerWindow?: Window) { void this.refresh(); }
+  get isComposing(): boolean { return this.composing > 0; }
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private emit(patch: Partial<WorkPropertiesState>) { this.state = { ...this.state, ...patch }; if (!this.disposed) for (const listener of [...this.listeners]) listener(); }
@@ -86,11 +87,12 @@ export class WorkPropertiesSession {
     if (this.disposed) return Promise.resolve();
     const write = async () => {
       if (this.reading) await this.reading;
-      if (!this.state.properties) return;
+      if (!this.state.properties || this.composing) return;
       this.blocked = false;
       let attempted: Field[] = [], attemptedVersions = new Map<Field, number>();
       try {
         for (let patch = this.patch(); keys(patch).length; patch = this.patch()) {
+          if (this.composing) return;
           const expected = clone(this.state.properties), versions = new Map(this.versions);
           attempted = keys(patch); attemptedVersions = versions;
           this.epoch++;
@@ -138,9 +140,11 @@ export class WorkPropertiesManager {
   }
   flush(id: string) { return this.sessions.get(id)?.flush() ?? Promise.resolve(); }
   async flushAll() {
+    if ([...this.sessions.values()].some(session => session.isComposing)) throw new Error('输入法仍在编辑，请完成输入后重试。卡片草稿已保留。');
     const results = await Promise.allSettled([...this.sessions.values()].map(session => session.flush()));
     const failure = results.find(result => result.status === 'rejected');
     if (failure?.status === 'rejected') throw failure.reason;
+    if ([...this.sessions.values()].some(session => session.isComposing || session.getSnapshot().dirty)) throw new Error('卡片仍有未保存的输入，请完成输入后重试。草稿已保留。');
   }
   recoveryDrafts() {
     const drafts: Array<{ id: string; path: string; values: WorkPropertyValues }> = [];

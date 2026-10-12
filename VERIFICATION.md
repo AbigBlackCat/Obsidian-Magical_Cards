@@ -1,3 +1,28 @@
+# Magical Cards 0.3.0 candidate verification
+
+Checked on 2026-10-12. This records a release candidate; 0.3.0 has not yet been published. Native acceptance, updated screenshots, deployment and the new community automatic scan are pending because the Mac is locked.
+
+| Check | Result |
+| --- | --- |
+| Standalone TypeScript and automated tests | Pass; 133 / 133 |
+| Compatible host 0.1.33, clean release export | Pass; TypeScript, build and 251 / 251 tests |
+| Host development tree with existing Gantt work | Pass; TypeScript and 255 / 255 tests; Gantt work is excluded from official release source |
+| Official type-aware lint | 0 errors; the same three documented compatibility/fixture warnings |
+| Candidate package | 4,714,582-byte main.js; three installation files |
+| Lossless cover packing | Six original SHA-256 hashes match |
+| Script-resource policy | All three renderer script entry points reject execution; version/source mismatch aborts building |
+| Reproducible build | Independent build processes produce identical installation bytes |
+| Native Obsidian acceptance and community scan | Pending; no new scan or native pass is claimed |
+
+New regression coverage includes native-readable showcase notes, image import identity and partial retries, safe SVGs, target-field merging, literal description newlines and repeated saves, damaged and duplicate markers, native unsaved-editor protection, retained names/descriptions and interrupted IME input, shared import/sort retries across view remounts, per-module appearance and three-card limits, read-only settings previews, hidden-module restoration, and real 0.2.1 final-release closures preserving showcase recovery drafts.
+
+Import retry Files and stable IDs are retained while the shared library remains open. Closing a view or removing/restoring a module keeps this queue. A full application restart does not serialize File objects; already written images and note blocks remain on disk. Missing showcase notes are never automatically recreated.
+
+Windows has not been tested on physical hardware. The community entry remains a draft; the previous completed scan below applies to 0.2.1 only.
+
+<details>
+<summary>Previous verified releases</summary>
+
 # Magical Cards 0.2.1 verification
 
 Checked on 2026-10-11 with macOS and Obsidian 1.14.4. New installations include three books and three films; existing eight-item installations retain their works and import progress.
@@ -55,5 +80,7 @@ The final native results are recorded in [verification/native-0.2.0.json](verifi
 The native acceptance helper runs in a separate empty vault with startup synchronization disabled for the compatible host. It is not bundled in the public plugin or the example vault. No personal vault records, account settings or recovery drafts are published.
 
 Windows has not been verified on a physical machine. No mobile support is claimed. Community submission materials are prepared, but the plugin has not been submitted or listed.
+
+</details>
 
 </details>

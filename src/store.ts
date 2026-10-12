@@ -1,14 +1,16 @@
 import { App,TFile,normalizePath,parseYaml,stringifyYaml } from 'obsidian';
 import { createCoverSvg,sanitizeSvg } from './covers';
 import { readCoverSvg } from './cover-reader';
+import { createShowcaseService } from './showcase';
 import { validateWork } from './domain';
 import { entityFields,entityFromFields,replaceManaged,sourceMarkdown,validFolder,safeFilePart,contentRevision,coverPath,prepareNativeWrite } from './persistence';
 import { orderedWorks,readWorkOrder,reconcileWorkOrder,moveWorkOrder } from './work-order';
 import { CARD_SETTING_KEYS,readCardsSettings,validateCardsPatch } from './settings';
-import { type Book,type Film,type Work,type CardsAPI,type CardsSnapshot,type CardsSettings,type WorkKind,type WorkOrder,type WorkProperties,type WorkPropertyValues,type CardLayoutPatch,type CardLayoutResult,type CoverTemplate } from './types';
+import { type Book,type Film,type Work,type CardsAPI,type CardsSnapshot,type CardsSettings,type WorkKind,type WorkOrder,type WorkProperties,type WorkPropertyValues,type CardLayoutPatch,type CardLayoutResult,type CoverTemplate,type ShowcaseAPI } from './types';
 const FOLDERS={book:'书籍',film:'观影'};
 const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 export class CardsStore implements CardsAPI {
+ readonly showcase:ShowcaseAPI;
  private snapshot:CardsSnapshot;
  private listeners=new Set<()=>void>(); private queue:Promise<unknown>=Promise.resolve(); private timer:number|undefined;
  private destroyed=false; private refreshRevision=0; private orderPath=''; private initialization?:Promise<void>;
@@ -20,6 +22,7 @@ export class CardsStore implements CardsAPI {
   if(!validFolder(rootFolder))throw new Error('卡片目录无效，请使用笔记库内的普通目录。');
   this.rootFolder=normalizePath(rootFolder);
   this.snapshot={entities:[],workOrder:null,settings:readCardsSettings(migrationSettings),loading:true,error:''};
+  this.showcase=createShowcaseService({app,rootFolder:this.rootFolder,getModule:id=>this.snapshot.settings.customModules.find(module=>module.id===id),notify:this.invalidate,assertActive:()=>this.active(),serialize:task=>this.serial(task)});
  }
  getSnapshot=()=>this.snapshot;
  subscribe=(listener:()=>void)=>{this.listeners.add(listener);return()=>{this.listeners.delete(listener);};};
@@ -45,6 +48,7 @@ export class CardsStore implements CardsAPI {
   if(fields.bw_view!=='cards-config'||!record(fields.bw_card_settings))throw new Error('卡片配置笔记格式无效，原内容已保留，请先检查。');
   const saved=fields.bw_card_settings;
   const known=Object.fromEntries(CARD_SETTING_KEYS.filter(key=>Object.hasOwn(saved,key)).map(key=>[key,saved[key]]));
+  if(record(known.workbenchText))known.workbenchText=Object.fromEntries(Object.entries(known.workbenchText).filter(([key])=>['book.title','film.title'].includes(key)));
   validateCardsPatch(known);
   return readCardsSettings(fields.bw_card_settings);
  }
@@ -371,7 +375,7 @@ export class CardsStore implements CardsAPI {
    this.active();assertOwner();assertEditors(text);const parts=this.noteParts(text),current=this.settingsFrom(text);
    for(const key of Object.keys(patch) as Array<keyof CardsSettings>)if(JSON.stringify(current[key])!==JSON.stringify(expected[key]))throw new Error('所编辑的卡片设置已在其他窗口更新，请重新载入后修改。');
    const stored=parts.fields.bw_card_settings as Record<string,unknown>;
-   const values={...stored,...patch,...('workbenchText' in patch?{workbenchText:{...current.workbenchText,...patch.workbenchText}}:{})};
+   const values={...stored,...patch,...('workbenchText' in patch?{workbenchText:{...(record(stored.workbenchText)?stored.workbenchText:{}),...patch.workbenchText}}:{})};
    settings=readCardsSettings(values);parts.fields.bw_card_settings=values;
    return `---\n${stringifyYaml(parts.fields)}---\n${parts.body}`;
   });

@@ -1,14 +1,29 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
-import type { Book, CardRatio, Film, WorkCardAppearance } from './types';
+import type { CardRatio, WorkCardAppearance } from './types';
 import { advanceCarousel, carouselIndex, carouselLimit, carouselOffset, carouselOpacity, carouselSlots, constrainPosition, type CarouselMotion } from './carousel-motion';
 import { cardGeometry, cardTransform } from './layouts/geometry';
 import { createScrollBend } from './layouts/scroll-bend';
 import { useOwnerWindow } from './owner-window';
 
-type Work = Book | Film;
+export interface CarouselCard { id: string; title?: string; summary?: string; }
+export interface CarouselFrontText { title: string; summary: string; }
+export interface WorkCarouselProps<Card extends CarouselCard> {
+  works: Card[]; label: string; appearance: WorkCardAppearance; ratio?: CardRatio; imageFit?: 'contain' | 'cover'; threeCardView?: boolean;
+  renderWork: (card: Card) => React.ReactNode;
+  renderBack?: (card: Card, active: boolean, flip: () => void, open: () => void) => React.ReactNode;
+  open?: (card: Card) => void; empty: React.ReactNode; onActiveChange?: (id: string | null) => void;
+  canFlip?: boolean; getFrontText?: (card: Card) => CarouselFrontText; backActionLabel?: string;
+}
+export function carouselCardLabel(card: CarouselCard, index: number): string { return card.title?.trim() || `图片 ${index + 1}`; }
+
 type Press = { id: number; x: number; y: number; position: number; moved: boolean; samples: { time: number; position: number }[] };
 
-export default function WorkCarousel({ works, label, appearance, ratio = '2:3', imageFit, threeCardView = false, renderWork, renderBack, open, empty, onActiveChange }: { works: Work[]; label: string; appearance: WorkCardAppearance; ratio?: CardRatio; imageFit?: 'contain' | 'cover'; threeCardView?: boolean; renderWork: (work: Work) => React.ReactNode; renderBack: (work: Work, active: boolean, flip: () => void, open: () => void) => React.ReactNode; open: (work: Work) => void; empty: React.ReactNode; onActiveChange?: (id: string | null) => void }) {
+export default function WorkCarousel<Card extends CarouselCard>({ works, label, appearance, ratio = '2:3', imageFit, threeCardView = false, renderWork, renderBack, open, empty, onActiveChange, canFlip: requestedFlip = true, getFrontText, backActionLabel = '编辑摘要' }: WorkCarouselProps<Card>) {
+  const canFlip = requestedFlip && appearance.flipEnabled !== false && Boolean(renderBack);
+  const canOpen = Boolean(open);
+  const frontText = (card: Card): CarouselFrontText => getFrontText ? getFrontText(card) : { title: card.title ?? '', summary: card.summary ?? '' };
+  const frontTextRef = useRef(frontText);
+  frontTextRef.current = frontText;
   const layout = appearance.layout ?? 'cylinder';
   const vertical = layout === 'scroll-bend' && appearance.orientation === 'vertical';
   const [ratioWidth, ratioHeight] = ratio.split(':').map(Number);
@@ -33,7 +48,7 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
   const [anchor, setAnchor] = useState(0);
   const [flippedId, setFlippedId] = useState<string | null>(null);
   const flippedRef = useRef(flippedId);
-  flippedRef.current = flippedId;
+  flippedRef.current = canFlip ? flippedId : null;
   const previousFlip = useRef<string | null>(null);
   const anchorRef = useRef(0);
   const paintRef = useRef<() => void>(() => {});
@@ -112,7 +127,7 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
           const position = center + slot - 3;
           if (count < 3 && (position < 0 || position >= count)) return null;
           const work = worksRef.current[carouselIndex(position, count)];
-          return work ? { id: work.id, title: work.title, summary: work.summary, node: cards.current.get(work.id) } : null;
+          return work ? { id: work.id, ...frontTextRef.current(work), node: cards.current.get(work.id) } : null;
         }) }, now);
       }
       return false;
@@ -277,14 +292,14 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
     motion.current.velocity = velocity;
     focusRef.current(Math.round(motion.current.position + velocity * 0.16));
   };
-  const openCurrent = () => { const item = worksRef.current[carouselIndex(motion.current.position, worksRef.current.length)]; if (item) openRef.current(item); };
+  const openCurrent = () => { const item = worksRef.current[carouselIndex(motion.current.position, worksRef.current.length)]; if (item) openRef.current?.(item); };
   const activeIndex = carouselIndex(anchor, works.length);
   const active = works[activeIndex];
-  useLayoutEffect(() => { if (flippedId && flippedId !== active?.id) setFlippedId(null); }, [active?.id, flippedId]);
+  useLayoutEffect(() => { if (flippedId && (!canFlip || flippedId !== active?.id)) setFlippedId(null); }, [active?.id, flippedId, canFlip]);
   useLayoutEffect(() => { onActiveChange?.(active?.id ?? null); }, [active?.id, onActiveChange]);
   if (!hasWorks) return <>{empty}</>;
 
-  return <><div ref={root} className="bw-paper-stage" data-layout={layout} data-orientation={vertical ? 'vertical' : 'horizontal'} data-scroll-renderer={layout === 'scroll-bend' ? 'fallback' : undefined} data-material={appearance.material} data-card-style={appearance.style} data-ratio={ratio} data-image-fit={imageFit} data-three-card-view={threeCardView} role="region" aria-roledescription="轮播" aria-label={label} tabIndex={0}
+  return <><div ref={root} className="bw-paper-stage" data-layout={layout} data-orientation={vertical ? 'vertical' : 'horizontal'} data-scroll-renderer={layout === 'scroll-bend' ? 'fallback' : undefined} data-material={appearance.material} data-card-style={appearance.style} data-ratio={ratio} data-image-fit={imageFit} data-three-card-view={threeCardView} data-flip-enabled={canFlip} role="region" aria-roledescription="轮播" aria-label={label} tabIndex={0}
     onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={event => release(event)} onPointerCancel={event => release(event, true)} onLostPointerCapture={event => release(event, true)}
     onPointerLeave={() => { if (!interaction.current.press?.moved) interaction.current.press = null; }}
     onClickCapture={event => { if (interaction.current.suppressClick && event.detail !== 0) { event.preventDefault(); event.stopPropagation(); interaction.current.suppressClick = false; } }}
@@ -296,7 +311,7 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
       if (event.key === previous || event.key === next) focusRef.current((state.target ?? Math.round(state.position)) + (event.key === previous ? -1 : 1));
       else if (event.key === 'Home' || event.key === 'End') { const index = event.key === 'Home' ? 0 : works.length - 1; focusRef.current(state.position + carouselOffset(index, state.position, works.length)); }
       else if (event.key === 'Enter' || event.key === ' ') openCurrent();
-      else if (event.key.toLowerCase() === 'f' && active) setFlippedId(current => current === active.id ? null : active.id);
+      else if (event.key.toLowerCase() === 'f' && active && canFlip) setFlippedId(current => current === active.id ? null : active.id);
       else if (event.key === 'Escape' && flippedId) setFlippedId(null);
       else return;
       event.preventDefault();
@@ -305,9 +320,10 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
     {layout === 'scroll-bend' && <canvas ref={canvas} className="bw-scroll-bend-canvas" aria-hidden="true" />}
     {carouselSlots(anchor, works.length).map(index => {
       const work = works[index];
-      const flipped = flippedId === work.id;
+      const flipped = canFlip && flippedId === work.id;
+      const cardLabel = carouselCardLabel(work, index);
       const central = index === activeIndex;
-      const flip = () => setFlippedId(current => current === work.id ? null : work.id);
+      const flip = () => { if (canFlip) setFlippedId(current => current === work.id ? null : work.id); };
       return <article className="bw-paper" key={work.id} data-work-id={work.id} data-flipped={flipped} ref={node => { if (node) cards.current.set(work.id, node); else cards.current.delete(work.id); }} onPointerMove={event => {
         if (flipped || interaction.current.press?.moved || !central || reducedRef.current || layout === 'scroll-bend') return;
         const rect = event.currentTarget.getBoundingClientRect();
@@ -318,28 +334,28 @@ export default function WorkCarousel({ works, label, appearance, ratio = '2:3', 
       }} onPointerLeave={event => { event.currentTarget.style.removeProperty('--bw-tilt-x'); event.currentTarget.style.removeProperty('--bw-tilt-y'); event.currentTarget.style.removeProperty('--bw-light-x'); event.currentTarget.style.removeProperty('--bw-light-y'); }}>
        <div className="bw-card-rotor">
         <div className="bw-card-face bw-card-front" inert={flipped} aria-hidden={flipped}>
-        <button className="bw-paper-open" tabIndex={central && !flipped ? 0 : -1} aria-label={central ? `打开笔记：${work.title}` : `居中：${work.title}`} onClick={() => {
+        <button className="bw-paper-open" tabIndex={central && !flipped ? 0 : -1} aria-label={central && canOpen ? `打开笔记：${cardLabel}` : central ? cardLabel : `居中：${cardLabel}`} onClick={() => {
           const currentIndex = worksRef.current.findIndex(item => item.id === work.id);
           if (currentIndex < 0) return;
           const offset = carouselOffset(currentIndex, motion.current.position, worksRef.current.length);
-          if (Math.abs(offset) < 0.08) openRef.current(worksRef.current[currentIndex]);
+          if (Math.abs(offset) < 0.08) openRef.current?.(worksRef.current[currentIndex]);
           else focusRef.current(motion.current.position + offset);
         }}>{renderWork(work)}</button>
-        {central && <button type="button" className="bw-card-flip" data-card-control aria-label={`翻到背面：${work.title}`} title="翻到背面 · F" onClick={flip}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M16 4H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V9M16 3v6h6M20 4l-4 5" /></svg></button>}
+        {central && canFlip && <button type="button" className="bw-card-flip" data-card-control aria-label={`翻到背面：${cardLabel}`} title="翻到背面 · F" onClick={flip}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M16 4H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V9M16 3v6h6M20 4l-4 5" /></svg></button>}
         </div>
-        <div className="bw-card-face bw-card-back" inert={!flipped} aria-hidden={!flipped}>{flipped && renderBack(work, central && flipped, flip, () => openRef.current(work))}</div>
+        {canFlip && <div className="bw-card-face bw-card-back" inert={!flipped} aria-hidden={!flipped}>{flipped && renderBack?.(work, central && flipped, flip, () => openRef.current?.(work))}</div>}
        </div>
       </article>;
     })}
-    <span className="bw-sr-only" aria-live="polite" aria-atomic="true">{activeIndex + 1} / {works.length}，{active?.title}</span>
+    <span className="bw-sr-only" aria-live="polite" aria-atomic="true">{activeIndex + 1} / {works.length}，{active ? carouselCardLabel(active, activeIndex) : ''}</span>
   </div>{layout === 'scroll-bend' && active && <div className="bw-scroll-bend-current" data-card-control>
-    <div><strong>{active.title}</strong>{active.summary && <p>{active.summary}</p>}</div>
+    <div>{frontText(active).title && <strong>{frontText(active).title}</strong>}{frontText(active).summary && <p>{frontText(active).summary}</p>}</div>
     <div className="bw-scroll-bend-actions">
       <button type="button" aria-label="上一张卡片" disabled={works.length < 2 || (works.length === 2 && activeIndex === 0)} onClick={() => focusRef.current((motion.current.target ?? Math.round(motion.current.position)) - 1)}>‹</button>
       <span>{activeIndex + 1} / {works.length}</span>
       <button type="button" aria-label="下一张卡片" disabled={works.length < 2 || (works.length === 2 && activeIndex === works.length - 1)} onClick={() => focusRef.current((motion.current.target ?? Math.round(motion.current.position)) + 1)}>›</button>
-      <button type="button" onClick={openCurrent}>打开笔记</button>
-      <button type="button" aria-pressed={flippedId === active.id} onClick={() => setFlippedId(current => current === active.id ? null : active.id)}>{flippedId === active.id ? '回到正面' : '编辑摘要'}</button>
+      {canOpen && <button type="button" onClick={openCurrent}>打开笔记</button>}
+      {canFlip && <button type="button" aria-pressed={flippedId === active.id} onClick={() => setFlippedId(current => current === active.id ? null : active.id)}>{flippedId === active.id ? '回到正面' : backActionLabel}</button>}
     </div>
   </div>}</>;
 }

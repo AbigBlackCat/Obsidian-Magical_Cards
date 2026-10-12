@@ -6,7 +6,7 @@ import {build} from 'esbuild';
 import {createRequire} from 'node:module';
 import {dirname,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {freshCardsSettings,newCustomModule,newModuleDraft,readCardsSettings,readModuleDraft,saveModuleDraft,validateCardsPatch} from '../src/settings';
+import {freshCardsSettings,newCustomModule,newModuleDraft,readCardsSettings,readModuleDraft,saveModuleDraft,setModuleHidden,validateCardsPatch} from '../src/settings';
 import {createWork} from '../src/domain';
 import CardsSurface from '../src/CardsSurface';
 import {WorkPropertiesManager} from '../src/WorkPropertiesSessions';
@@ -15,19 +15,21 @@ import type {CardsAPI,CardsSettings,CardsSnapshot,WorkProperties} from '../src/t
 function fixture(settings=readCardsSettings(undefined)) {
   let snapshot:CardsSnapshot={settings,entities:[{...createWork('book'),id:'reading',title:'示例书籍'}],workOrder:null,loading:false,error:''};
   const listeners=new Set<()=>void>(),patches:Partial<CardsSettings>[]=[];
-  let failure='';
+  let failure='',createFailure='';
+  const creates:Array<{id:string;title:string;note:string}>=[];
   const api={
     getSnapshot:()=>snapshot,subscribe:(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};},coverUrl:(value:string)=>value,
     saveSettings:async(patch:Partial<CardsSettings>)=>{
       patches.push(structuredClone(patch));if(failure){const error=failure;failure='';throw new Error(error);}
       validateCardsPatch(patch);snapshot={...snapshot,settings:readCardsSettings({...snapshot.settings,...patch})};for(const listener of listeners)listener();
     },
+    showcase:{create:async(id:string,title:string)=>{if(createFailure){const error=createFailure;createFailure='';throw new Error(error);}const note=`橱窗/${id}.md`;creates.push({id,title,note});return note;}},
     readWorkProperties:async(id:string)=>({id,kind:'book',path:'书籍.md',coverPresent:false,values:{...snapshot.entities[0]}} as WorkProperties),
   } as unknown as CardsAPI;
-  return {api,patches,listeners,fail:(message:string)=>{failure=message;},replace:(next:CardsSettings)=>{snapshot={...snapshot,settings:next};for(const listener of listeners)listener();}};
+  return {api,patches,listeners,creates,failCreate:(message:string)=>{createFailure=message;},fail:(message:string)=>{failure=message;},replace:(next:CardsSettings)=>{snapshot={...snapshot,settings:next};for(const listener of listeners)listener();}};
 }
 
-test('fresh settings and new modules share neutral defaults without changing legacy rendering defaults',()=>{
+test('new modules use skewed defaults while fresh example presets and legacy rendering stay unchanged',()=>{
   const old=readCardsSettings({bookCardAppearance:{material:'matte',style:'minimal'},customModules:[{id:'old',title:'旧模块',kind:'film',appearance:{material:'foil',style:'cover'}}]});
   assert.deepEqual(old.bookCardAppearance,{material:'matte',style:'minimal'});
   assert.equal(readModuleDraft(old,'book')!.appearance.imageFit,'cover');assert.equal(readModuleDraft(old,'book')!.appearance.ratio,'2:3');
@@ -36,6 +38,7 @@ test('fresh settings and new modules share neutral defaults without changing leg
   assert.deepEqual(first.bookCardAppearance,{material:'paper',style:'cover',layout:'cylinder',ratio:'2:3',imageFit:'cover'});
   assert.equal(first.threeCardView,true);assert.deepEqual(first.workbenchText,{'book.title':'阅读','film.title':'影视'});
   first.bookCardAppearance.material='foil';assert.equal(second.bookCardAppearance.material,'paper');assert.equal(custom.appearance.material,'paper');assert.equal(custom.imageFit,'cover');
+  assert.equal(custom.appearance.layout,'skewed-carousel');assert.equal(custom.appearance.threeCardView,false);
   assert.throws(()=>validateCardsPatch({bookCardAppearance:{material:'paper',style:'cover',ratio:'9:9' as '2:3'}}),/比例/);
   assert.throws(()=>validateCardsPatch({filmCardAppearance:{material:'paper',style:'cover',imageFit:'stretch' as 'cover'}}),/显示方式/);
 });
@@ -84,10 +87,70 @@ test('external changes to the edited module block overwrites while other module 
   assert.deepEqual(draft,before);assert.equal(patches.length,count);assert.equal(api.getSnapshot().settings.customModules[0].ratio,'1:1');
 });
 
+test('default names and per-module three-card choices save once without changing legacy fallback or unrelated modules',async()=>{
+  const settings=freshCardsSettings();settings.customModules=[newCustomModule('保留')];
+  const {api,patches}=fixture(settings),before=structuredClone(settings),baseline=readModuleDraft(settings,'book')!,draft=structuredClone(baseline);
+  assert.equal(baseline.appearance.threeCardView,true);assert.equal(readModuleDraft(settings,'film')!.appearance.threeCardView,true);
+  draft.title='我的阅读';draft.appearance.threeCardView=false;draft.appearance.ratio='3:4';
+  await saveModuleDraft(api,draft,baseline);
+  assert.equal(patches.length,1);assert.equal(api.getSnapshot().settings.workbenchText['book.title'],'我的阅读');
+  assert.equal(api.getSnapshot().settings.workbenchText['film.title'],'影视');
+  assert.equal(api.getSnapshot().settings.threeCardView,true);assert.equal(api.getSnapshot().settings.bookCardAppearance.threeCardView,false);
+  assert.equal(readModuleDraft(api.getSnapshot().settings,'film')!.appearance.threeCardView,true);
+  assert.deepEqual(api.getSnapshot().settings.filmCardAppearance,before.filmCardAppearance);assert.deepEqual(api.getSnapshot().settings.customModules,before.customModules);
+});
+
+test('soft removal and restoration only change hidden IDs and preserve collections, layout, order and work data',async()=>{
+  const settings=freshCardsSettings(),custom=newCustomModule('照片');settings.customModules=[custom];
+  settings.standaloneOrder=[custom.id,'film','book'];settings.workbenchCards=[{module:custom.id,before:'gantt'}];
+  settings.workbenchText['book.title']='书架';
+  const {api,patches}=fixture(settings),before=structuredClone(api.getSnapshot());
+  for(const id of ['book','film',custom.id])await setModuleHidden(api,id,true);
+  assert.deepEqual(api.getSnapshot().settings.hiddenModuleIds,['book','film',custom.id]);
+  for(const patch of patches)assert.deepEqual(Object.keys(patch),['hiddenModuleIds']);
+  const {hiddenModuleIds:_hidden,...remaining}=api.getSnapshot().settings;
+  assert.deepEqual(remaining,before.settings);assert.deepEqual(api.getSnapshot().entities,before.entities);
+  await setModuleHidden(api,'book',false);await setModuleHidden(api,custom.id,false);
+  assert.deepEqual(api.getSnapshot().settings.hiddenModuleIds,['film']);assert.equal(readModuleDraft(api.getSnapshot().settings,'book')!.title,'书架');
+  assert.equal(api.getSnapshot().settings.customModules[0].id,custom.id);
+});
+
+test('showcase creation preserves ID and created note across failed config saves and never creates twice',async()=>{
+  const {api,patches,creates,fail,failCreate}=fixture(freshCardsSettings()),draft=newModuleDraft();
+  draft.title='橱窗';draft.mode='showcase';draft.appearance.flipEnabled=true;draft.appearance.namePosition='back';
+  const id=draft.id;failCreate('创建笔记失败');await assert.rejects(saveModuleDraft(api,draft,null),/创建笔记失败/);
+  assert.equal(draft.id,id);assert.equal(draft.showcaseNote,undefined);assert.equal(creates.length,0);assert.equal(patches.length,0);
+  fail('配置未能写入');await assert.rejects(saveModuleDraft(api,draft,null),/配置未能写入/);
+  assert.equal(creates.length,1);assert.equal(draft.id,id);assert.equal(draft.showcaseNote,creates[0].note);assert.equal(api.getSnapshot().settings.customModules.length,0);
+  const note=draft.showcaseNote;await saveModuleDraft(api,draft,null);await saveModuleDraft(api,draft,null);
+  assert.equal(creates.length,1);assert.equal(patches.length,2);assert.equal(api.getSnapshot().settings.customModules.length,1);
+  const saved=api.getSnapshot().settings.customModules[0];assert.equal(saved.id,id);assert.equal(saved.mode,'showcase');assert.equal(saved.showcaseNote,note);
+  assert.equal(saved.appearance.flipEnabled,true);assert.equal(saved.appearance.namePosition,'back');
+  const baseline=readModuleDraft(api.getSnapshot().settings,id)!,converted=structuredClone(baseline);delete converted.mode;
+  await assert.rejects(saveModuleDraft(api,converted,baseline),/不能转换/);assert.equal(patches.length,2);
+});
+
+test('showcase async creation merges unrelated settings changes but rejects concurrent changes of its own collection',async()=>{
+  const first=fixture(freshCardsSettings()),draft=newModuleDraft();draft.title='橱窗';draft.mode='showcase';
+  first.api.showcase!.create=async id=>{first.replace({...first.api.getSnapshot().settings,filmCardAppearance:{material:'foil',style:'minimal'}});return `橱窗/${id}.md`;};
+  await saveModuleDraft(first.api,draft,null);assert.equal(first.api.getSnapshot().settings.filmCardAppearance.material,'foil');
+  const second=fixture(freshCardsSettings()),otherDraft=newModuleDraft();otherDraft.title='冲突橱窗';otherDraft.mode='showcase';
+  second.api.showcase!.create=async id=>{second.replace({...second.api.getSnapshot().settings,customModules:[{...newCustomModule('外部模块'),id}]});return `橱窗/${id}.md`;};
+  await assert.rejects(saveModuleDraft(second.api,otherDraft,null),/其他位置修改/);
+  assert.ok(otherDraft.showcaseNote);assert.equal(second.patches.length,0);assert.equal(second.api.getSnapshot().settings.customModules[0].title,'外部模块');
+});
+
+test('old runtimes refuse unsupported showcase and hide writes without losing the draft',async()=>{
+  const {api,patches}=fixture(freshCardsSettings());delete api.showcase;
+  const draft=newModuleDraft();draft.title='橱窗';draft.mode='showcase';const before=structuredClone(draft);
+  await assert.rejects(saveModuleDraft(api,draft,null),/升级/);await assert.rejects(setModuleHidden(api,'book',true),/升级/);
+  assert.deepEqual(draft,before);assert.equal(patches.length,0);
+});
+
 class Element extends EventTarget {
   children:Element[]=[];parentElement:Element|null=null;dataset:Record<string,string>={};attributes=new Map<string,string>();
   textContent='';className='';open=false;hidden=false;disabled=false;readOnly=false;rows=0;value='';checked=false;connected=false;scrolls=0;
-  control?:Control;
+  control?:Control;options:Record<string,string>={};
   constructor(public tagName:string,public ownerDocument:DocumentStub){super();}
   get isConnected():boolean{return this.connected||!!this.parentElement?.isConnected;}
   append(...nodes:Element[]){for(const node of nodes){node.remove();node.parentElement=this;this.children.push(node);}}
@@ -128,7 +191,8 @@ class Control {
   get toggleEl(){return this.inputEl;}
   setValue(value:any){if(typeof value==='boolean')this.inputEl.checked=value;else this.inputEl.value=value;return this;}
   setDisabled(value:boolean){this.inputEl.disabled=value;return this;}
-  addOptions(_options:unknown){return this;}
+  addOptions(options:Record<string,string>){Object.assign(this.inputEl.options,options);return this;}
+  setIcon(icon:string){this.inputEl.dataset.icon=icon;return this;}
   setButtonText(text:string){this.inputEl.textContent=text;return this;}
   setTooltip(_text:string){return this;}
   setCta(){return this;}
@@ -154,10 +218,10 @@ class SettingTabStub {
   refreshDomState(){this.domRefreshes++;}
 }
 const directory=dirname(fileURLToPath(import.meta.url));
-const uiBundle=await build({stdin:{contents:"export {addCardsSettings,CardsSettingsController} from '../src/settings-tab';export {CardsSettingsTab,default as MagicalCardsPlugin} from '../src/main';export {renderedRoots} from 'react-dom/client';",resolveDir:directory,loader:'ts'},bundle:true,platform:'node',format:'cjs',write:false,external:['react'],plugins:[{
+const uiBundle=await build({stdin:{contents:"export {addCardsSettings,CardsSettingsController} from '../src/settings-tab';export {cardModuleChoices} from '../src/module-choice';export {CardsSettingsTab,default as MagicalCardsPlugin} from '../src/main';export {renderedRoots} from 'react-dom/client';",resolveDir:directory,loader:'ts'},bundle:true,platform:'node',format:'cjs',write:false,external:['react'],plugins:[{
   name:'settings-platform',setup(builder){
     builder.onResolve({filter:/^obsidian$/},()=>({path:'platform',namespace:'settings-platform'}));
-    builder.onLoad({filter:/.*/,namespace:'settings-platform'},()=>({contents:`export * from ${JSON.stringify(resolve(directory,'obsidian-mock.ts'))};export const Setting=globalThis.__settingsSetting;export const PluginSettingTab=globalThis.__settingsTab;export const Platform={isDesktopApp:true};export const requireApiVersion=()=>Boolean(globalThis.__settingsModern);export class ItemView {} export class Modal {}`,resolveDir:directory,loader:'js'}));
+    builder.onLoad({filter:/.*/,namespace:'settings-platform'},()=>({contents:`export * from ${JSON.stringify(resolve(directory,'obsidian-mock.ts'))};export const Setting=globalThis.__settingsSetting;export const PluginSettingTab=globalThis.__settingsTab;export const Platform={isDesktopApp:true};export const requireApiVersion=()=>Boolean(globalThis.__settingsModern);export function addIcon(){} export class ItemView {} export class Modal {}`,resolveDir:directory,loader:'js'}));
     builder.onResolve({filter:/^react-dom\/client$/},()=>({path:'client',namespace:'settings-roots'}));
     builder.onLoad({filter:/.*/,namespace:'settings-roots'},()=>({contents:'export const renderedRoots=[];export function createRoot(){const root={element:null,unmounted:false,render(element){this.element=element;},unmount(){this.unmounted=true;}};renderedRoots.push(root);return root;}',loader:'js'}));
   },
@@ -165,7 +229,7 @@ const uiBundle=await build({stdin:{contents:"export {addCardsSettings,CardsSetti
 (globalThis as any).__settingsSetting=SettingStub;
 (globalThis as any).__settingsTab=SettingTabStub;
 const bundledModule={exports:{}};new Function('require','module','exports',uiBundle.outputFiles[0].text)(createRequire(import.meta.url),bundledModule,bundledModule.exports);
-const ui=bundledModule.exports as {addCardsSettings:typeof import('../src/settings-tab').addCardsSettings;CardsSettingsController:typeof import('../src/settings-controller').CardsSettingsController;CardsSettingsTab:typeof import('../src/main').CardsSettingsTab;MagicalCardsPlugin:typeof import('../src/main').default;renderedRoots:Array<{element:{props:{draft:import('../src/settings').CardModuleDraft}};unmounted:boolean}>};
+const ui=bundledModule.exports as {cardModuleChoices:typeof import('../src/module-choice').cardModuleChoices;addCardsSettings:typeof import('../src/settings-tab').addCardsSettings;CardsSettingsController:typeof import('../src/settings-controller').CardsSettingsController;CardsSettingsTab:typeof import('../src/main').CardsSettingsTab;MagicalCardsPlugin:typeof import('../src/main').default;renderedRoots:Array<{element:{props:{draft:import('../src/settings').CardModuleDraft}};unmounted:boolean}>};
 const button=(element:Element,text:string)=>element.all().find(child=>child.tagName==='BUTTON'&&child.textContent===text)!.control!;
 const row=(element:Element,name:string)=>element.all().find(child=>child.dataset.settingName===name)!;
 
@@ -175,11 +239,16 @@ test('settings groups preserve requested order and mount previews only while ope
   const start=ui.renderedRoots.length,cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{},manager);
   const examples=el.all().find(child=>child.dataset.settingsGroup==='examples')!,reading=el.all().find(child=>child.dataset.cardCollection==='book')!;
   const add=el.all().find(child=>child.dataset.settingsGroup==='add-module')!;
+  const advanced=reading.all().find(child=>child.dataset.settingsGroup==='advanced')!;
   assert.equal(examples.open,false);assert.equal(reading.open,true);assert.equal(ui.renderedRoots.length,start);
-  assert.deepEqual(reading.all().filter(child=>child.dataset.settingName?.match(/^\d\./)).map(child=>child.dataset.settingName),['1. 卡片样式','2. 显示方式','3. 卡片材质','4. 比例','5. 动效布局']);
-  const previous=el.children[el.children.indexOf(add.parentElement!)-1];assert.equal(previous.all()[0].dataset.settingName,'仅显示三张卡片');assert.ok(previous.all()[0].dataset.description.includes('全部作品'));
-  examples.open=true;examples.dispatchEvent(new Event('toggle'));assert.equal(ui.renderedRoots.length,start+2);
-  await row(reading,'5. 动效布局').children[0].control!.choose('scroll-bend');assert.equal(row(reading,'画廊方向').hidden,false);
+  assert.equal(advanced.open,false);assert.equal(add.open,false);
+  const basic=reading.all().find(child=>child.tagName==='FIELDSET')!;
+  assert.deepEqual(basic.children.map(child=>child.dataset.settingName),['模块名称','比例','']);
+  assert.deepEqual(advanced.all().filter(child=>child.dataset.settingName).map(child=>child.dataset.settingName),['卡片样式','显示方式','材质','动效布局','仅显示三张卡片','画廊方向','允许翻面','名称位置']);
+  assert.ok(row(advanced,'仅显示三张卡片').dataset.description.includes('作品数量不会改变'));
+  examples.open=true;examples.dispatchEvent(new Event('toggle'));assert.equal(ui.renderedRoots.length,start);
+  advanced.open=true;advanced.dispatchEvent(new Event('toggle'));assert.equal(ui.renderedRoots.length,start+1);
+  await row(reading,'动效布局').children[0].control!.choose('scroll-bend');assert.equal(row(reading,'画廊方向').hidden,false);
   assert.equal(ui.renderedRoots[start].element.props.draft.appearance.layout,'scroll-bend');assert.equal(api.getSnapshot().settings.bookCardAppearance.layout,'cylinder');
   examples.open=false;examples.dispatchEvent(new Event('toggle'));assert.ok(ui.renderedRoots.slice(start).every(root=>root.unmounted));
   examples.open=true;examples.dispatchEvent(new Event('toggle'));doc.hidden=true;doc.dispatchEvent(new Event('visibilitychange'));assert.ok(ui.renderedRoots.slice(start).every(root=>root.unmounted));
@@ -192,7 +261,7 @@ test('creation form retains failed draft, commits once on retry, collapses, and 
   const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
   try {
     const add=el.all().find(child=>child.dataset.settingsGroup==='add-module')!;add.open=true;
-    await row(add,'模块名称').children[0].control!.choose('我的照片');await row(add,'4. 比例').children[0].control!.choose('4:3');
+    await row(add,'模块名称').children[0].control!.choose('我的照片');await row(add,'比例').children[0].control!.choose('4:3');
     fail('磁盘暂不可用');await button(add,'保存并收起').click!();assert.equal(add.open,true);assert.equal(api.getSnapshot().settings.customModules.length,0);assert.equal(row(add,'模块名称').children[0].value,'我的照片');
     assert.ok(add.all().some(child=>child.attributes.get('role')==='alert'&&child.textContent==='磁盘暂不可用'&&!child.hidden));
     await button(add,'保存并收起').click!();assert.equal(add.open,false);assert.equal(patches.length,2);const module=api.getSnapshot().settings.customModules[0];assert.equal(module.ratio,'4:3');
@@ -209,13 +278,13 @@ test('an external module change preserves dirty settings controls and blocks sav
   const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
   try{
     const reading=el.all().find(child=>child.dataset.cardCollection==='book')!;reading.open=true;
-    await row(reading,'1. 卡片样式').children[0].control!.choose('minimal');
+    await row(reading,'卡片样式').children[0].control!.choose('minimal');
     await api.saveSettings({bookCardAppearance:{...api.getSnapshot().settings.bookCardAppearance,material:'foil'}});
-    assert.equal(row(reading,'1. 卡片样式').children[0].value,'minimal');assert.equal(row(reading,'3. 卡片材质').children[0].value,'paper');
+    assert.equal(row(reading,'卡片样式').children[0].value,'minimal');assert.equal(row(reading,'材质').children[0].value,'paper');
     const count=patches.length;await button(reading,'保存并收起').click!();
     assert.equal(reading.open,true);assert.equal(patches.length,count);assert.ok(reading.all().some(child=>child.attributes.get('role')==='alert'&&child.textContent.includes('其他位置修改')&&!child.hidden));
-    await button(reading,'重新载入').click!();assert.equal(row(reading,'1. 卡片样式').children[0].value,'cover');assert.equal(row(reading,'3. 卡片材质').children[0].value,'foil');
-    await row(reading,'4. 比例').children[0].control!.choose('1:1');await button(reading,'保存并收起').click!();
+    await button(reading,'重新载入').click!();assert.equal(row(reading,'卡片样式').children[0].value,'cover');assert.equal(row(reading,'材质').children[0].value,'foil');
+    await row(reading,'比例').children[0].control!.choose('1:1');await button(reading,'保存并收起').click!();
     assert.equal(reading.open,false);assert.equal(api.getSnapshot().settings.bookCardAppearance.ratio,'1:1');assert.equal(api.getSnapshot().settings.bookCardAppearance.material,'foil');
   }finally{cleanup();}
 });
@@ -239,15 +308,15 @@ test('modern definitions index real scoped fields without mounting any preview d
   const start=ui.renderedRoots.length,controller=new ui.CardsSettingsController(api,{} as WorkPropertiesManager,{directory:{get:()=> '卡片库',apply:async()=>{}}});
   const defs=controller.getDefinitions(),rows=defs.flatMap(def=>'type' in def?def.items:[def]);
   assert.equal(rows[0].name,'卡片目录');assert.ok(rows.every(def=>typeof def.render==='function'));
-  assert.ok(rows.some(def=>def.name==='阅读 · 2. 显示方式'&&def.aliases?.includes('贴满卡片')));
-  assert.ok(rows.some(def=>def.name==='影视 · 5. 动效布局'&&def.aliases?.includes('滚动弯曲画廊')));
+  assert.ok(rows.some(def=>def.name==='阅读 · 显示方式'&&def.aliases?.includes('贴满卡片')));
+  assert.ok(rows.some(def=>def.name==='影视 · 动效布局'&&def.aliases?.includes('滚动弯曲画廊')));
   const direction=rows.find(def=>def.name==='阅读 · 画廊方向')!;assert.equal(typeof direction.visible==='function'&&direction.visible(),false);
   assert.equal(ui.renderedRoots.length,start);assert.equal(doc.observers.size,0);
   const cleanup=await renderDeclared(controller,el),examples=el.all().find(child=>child.dataset.settingsGroup==='examples')!;
-  const reading=el.all().find(child=>child.dataset.cardCollection==='book')!,target=row(reading,'2. 显示方式');
+  const reading=el.all().find(child=>child.dataset.cardCollection==='book')!,target=row(reading,'显示方式');
   assert.equal(examples.open,false);assert.equal(ui.renderedRoots.length,start);
   target.classList.add('is-flashing');
-  assert.equal(examples.open,true);assert.equal(reading.open,true);assert.equal(target.scrolls,1);assert.equal(doc.activeElement,target.children[0]);assert.equal(ui.renderedRoots.length,start+2);
+  assert.equal(examples.open,true);assert.equal(reading.open,true);assert.equal(reading.all().find(child=>child.dataset.settingsGroup==='advanced')!.open,true);assert.equal(target.scrolls,1);assert.equal(doc.activeElement,target.children[0]);assert.equal(ui.renderedRoots.length,start+1);
   for(const dispose of cleanup)dispose();controller.hide();assert.ok(ui.renderedRoots.slice(start).every(root=>root.unmounted));assert.equal(doc.observers.size,0);
   controller.dispose();assert.equal(listeners.size,0);
 });
@@ -256,17 +325,86 @@ test('modern row updates retain failed draft and reveal state, commit choices on
   const {api,patches,fail}=fixture(freshCardsSettings()),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
   const controller=new ui.CardsSettingsController(api);let cleanup=await renderDeclared(controller,el);
   try{
-    let reading=el.all().find(child=>child.dataset.cardCollection==='book')!;row(reading,'1. 卡片样式').classList.add('is-flashing');
-    await row(reading,'1. 卡片样式').children[0].control!.choose('minimal');await row(reading,'4. 比例').children[0].control!.choose('4:3');
+    let reading=el.all().find(child=>child.dataset.cardCollection==='book')!;row(reading,'卡片样式').classList.add('is-flashing');
+    await row(reading,'卡片样式').children[0].control!.choose('minimal');await row(reading,'比例').children[0].control!.choose('4:3');
     fail('磁盘暂不可写');await button(reading,'保存并收起').click!();assert.equal(reading.open,true);assert.equal(patches.length,1);
     cleanup=await renderDeclared(controller,el,cleanup);reading=el.all().find(child=>child.dataset.cardCollection==='book')!;
     assert.equal(el.all().find(child=>child.dataset.settingsGroup==='examples')!.open,true);assert.equal(reading.open,true);
-    assert.equal(row(reading,'1. 卡片样式').children[0].value,'minimal');assert.equal(row(reading,'4. 比例').children[0].value,'4:3');
+    assert.equal(row(reading,'卡片样式').children[0].value,'minimal');assert.equal(row(reading,'比例').children[0].value,'4:3');
     assert.ok(reading.all().some(child=>child.attributes.get('role')==='alert'&&child.textContent==='磁盘暂不可写'&&!child.hidden));
     await button(reading,'保存并收起').click!();assert.equal(reading.open,false);assert.equal(patches.length,2);
     assert.equal(api.getSnapshot().settings.bookCardAppearance.style,'minimal');assert.equal(api.getSnapshot().settings.bookCardAppearance.ratio,'4:3');
   }finally{for(const dispose of cleanup)dispose();controller.dispose();}
   assert.equal(doc.observers.size,0);
+});
+
+test('default and custom header trash retains failed drafts and restoration uses the same saved module IDs',async()=>{
+  const settings=freshCardsSettings(),custom=newCustomModule('照片');settings.customModules=[custom];settings.standaloneOrder=[custom.id,'book','film'];
+  const {api,patches,fail}=fixture(settings),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
+  try{
+    let reading=el.all().find(child=>child.dataset.cardCollection==='book')!;
+    const trash=reading.all().find(child=>child.dataset.cardSettingsLevel==='header')!;
+    assert.equal(trash.parentElement!.tagName,'SUMMARY');assert.equal(trash.children[0].dataset.icon,'trash-2');
+    assert.ok(reading.classList.contains('bw-cards-settings-module'));
+    await row(reading,'模块名称').children[0].control!.choose('待保存名称');await row(reading,'比例').children[0].control!.choose('4:3');
+    fail('暂不能移除');await trash.children[0].control!.click!();
+    assert.equal(reading.open,true);assert.equal(row(reading,'模块名称').children[0].value,'待保存名称');assert.equal(api.getSnapshot().settings.hiddenModuleIds,undefined);
+    await trash.children[0].control!.click!();assert.deepEqual(api.getSnapshot().settings.hiddenModuleIds,['book']);
+    assert.equal(el.all().some(child=>child.dataset.cardCollection==='book'),false);
+    const removed=el.all().find(child=>child.dataset.settingsGroup==='removed')!;assert.equal(removed.open,false);
+    const code=el.all().find(child=>child.dataset.settingsGroup==='code')!;assert.equal(code.all().some(child=>child.dataset.settingName==='阅读'),false);
+    await button(removed,'恢复').click!();reading=el.all().find(child=>child.dataset.cardCollection==='book')!;
+    assert.equal(row(reading,'模块名称').children[0].value,'待保存名称');assert.equal(row(reading,'比例').children[0].value,'4:3');
+    assert.equal(api.getSnapshot().settings.workbenchText['book.title'],'阅读');assert.deepEqual(api.getSnapshot().settings.standaloneOrder,[custom.id,'book','film']);
+    const photograph=el.all().find(child=>child.dataset.cardCollection===custom.id)!;
+    await photograph.all().find(child=>child.dataset.cardSettingsLevel==='header')!.children[0].control!.click!();
+    assert.equal(api.getSnapshot().settings.customModules[0].id,custom.id);assert.equal(api.getSnapshot().settings.customModules[0].title,'照片');
+    assert.ok(patches.every(patch=>Object.keys(patch).join()==='hiddenModuleIds'));
+  }finally{cleanup();}
+});
+
+test('showcase selection only lives in the creation advanced style field, locks after note creation and retries one configuration',async()=>{
+  const {api,patches,creates,fail}=fixture(freshCardsSettings()),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
+  try{
+    const add=el.all().find(child=>child.dataset.settingsGroup==='add-module')!,advanced=add.all().find(child=>child.dataset.settingsGroup==='advanced')!;
+    const basic=add.all().find(child=>child.tagName==='FIELDSET')!;
+    assert.deepEqual(basic.children.map(child=>child.dataset.settingName),['模块名称','比例','']);assert.equal(advanced.open,false);
+    const style=row(add,'卡片样式').children[0].control!;assert.ok(style.inputEl.options.showcase);
+    const reading=el.all().find(child=>child.dataset.cardCollection==='book')!;assert.equal(row(reading,'卡片样式').children[0].options.showcase,undefined);
+    assert.equal(row(add,'允许翻面').hidden,true);assert.equal(row(add,'名称位置').hidden,true);
+    add.open=true;advanced.open=true;await row(add,'模块名称').children[0].control!.choose('照片橱窗');
+    await style.choose('showcase');assert.equal(row(add,'允许翻面').hidden,false);assert.equal(row(add,'名称位置').children[0].value,'back');
+    await style.choose('minimal');assert.equal(row(add,'允许翻面').hidden,true);await style.choose('showcase');
+    fail('配置暂不可写');await button(add,'保存并收起').click!();
+    assert.equal(creates.length,1);assert.equal(style.inputEl.disabled,true);assert.equal(row(add,'模块名称').children[0].value,'照片橱窗');
+    await button(add,'重新载入').click!();assert.equal(row(add,'模块名称').children[0].value,'照片橱窗');
+    assert.ok(add.all().some(child=>child.attributes.get('role')==='alert'&&child.textContent.includes('橱窗笔记已创建')));
+    await button(add,'保存并收起').click!();assert.equal(creates.length,1);assert.equal(patches.length,2);assert.equal(add.open,false);
+    const saved=api.getSnapshot().settings.customModules[0];assert.equal(saved.id,creates[0].id);assert.equal(saved.showcaseNote,creates[0].note);
+    assert.equal(saved.appearance.threeCardView,false);assert.equal(saved.appearance.flipEnabled,true);assert.equal(saved.appearance.namePosition,'back');
+    const existing=el.all().find(child=>child.dataset.cardCollection===saved.id)!;assert.equal(row(existing,'卡片样式').children[0].options.showcase,undefined);
+    assert.equal(row(existing,'允许翻面').hidden,false);assert.equal(row(existing,'名称位置').hidden,false);
+  }finally{cleanup();}
+});
+
+test('per-module names are searchable and code choices omit hidden modules then restore original stable collections',async()=>{
+  const settings=freshCardsSettings(),custom=newCustomModule('自定义');settings.customModules=[custom];settings.workbenchText={'book.title':'书架','film.title':'电影'};settings.hiddenModuleIds=['film',custom.id];
+  const {api}=fixture(settings);
+  assert.deepEqual(ui.cardModuleChoices(settings),[{id:'book',label:'书架'}]);assert.equal(ui.cardModuleChoices(settings,true).length,3);
+  const doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;const controller=new ui.CardsSettingsController(api);
+  const defs=controller.getDefinitions(),metadata=defs.flatMap(def=>'type' in def?def.items:[def]);assert.ok(metadata.some(def=>def.name==='书架 · 模块名称'));
+  let cleanup=await renderDeclared(controller,el);
+  try{
+    const reading=el.all().find(child=>child.dataset.cardCollection==='book')!,name=row(reading,'模块名称');assert.equal(name.dataset.cardField,'title');
+    name.classList.add('is-flashing');assert.equal(doc.activeElement,name.children[0]);assert.equal(reading.open,true);
+    assert.equal(reading.all().find(child=>child.dataset.settingsGroup==='advanced')!.open,false);
+    await setModuleHidden(api,'film',false);await setModuleHidden(api,custom.id,false);cleanup=await renderDeclared(controller,el,cleanup);
+    const code=el.all().find(child=>child.dataset.settingsGroup==='code')!;await row(code,'电影').children[0].control!.choose(true);await row(code,'自定义').children[0].control!.choose(true);await button(code,'生成代码').click!();
+    const output=code.all().find(child=>child.tagName==='TEXTAREA')!.value;assert.ok(output.includes('collection: film'));assert.ok(output.includes(`collection: ${custom.id}`));
+    assert.equal(output.includes('collection: 电影'),false);assert.equal(output.includes('layout:'),false);
+  }finally{for(const dispose of cleanup)dispose();controller.dispose();}
 });
 
 test('1.11.4 tab fallback renders the same rows without runtime SettingGroup and uses only version-supported refresh APIs',async()=>{

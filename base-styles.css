@@ -239,3 +239,12 @@
 .bw-paper-stage[data-ratio="4:3"] .bw-card-back-content, .bw-paper-stage[data-ratio="16:9"] .bw-card-back-content { gap: 12px; padding: 16px; }
 .bw-paper-stage[data-ratio="4:3"] .bw-card-back-header h3, .bw-paper-stage[data-ratio="16:9"] .bw-card-back-header h3 { font-size: 18px; -webkit-line-clamp: 1; }
 .bw-paper-stage[data-ratio="4:3"] .bw-card-summary-editor, .bw-paper-stage[data-ratio="16:9"] .bw-card-summary-editor { flex: 0 0 130px; }
+
+.bw-showcase-description { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.bw-showcase-description > [role="status"] { margin: 0; font-size: 12px; color: var(--bw-card-muted); }
+.bw-showcase-editor { display: flex; flex-direction: column; gap: 14px; }
+.bw-showcase-editor label { display: flex; flex-direction: column; gap: 6px; }
+.bw-showcase-order { padding: 12px; list-style: none; }
+.bw-showcase-order li { display: flex; gap: 8px; align-items: center; padding: 6px 0; }
+.bw-showcase-order li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.bw-settings-preview-notice { font-size: 12px; color: var(--bw-muted); margin: 0 0 12px; }

@@ -1,0 +1,22 @@
+{
+  "version": "0.3.0",
+  "date": "2026-10-12",
+  "status": "candidate",
+  "tests": 133,
+  "native": "pending",
+  "community": "draft; new scan pending",
+  "files": {
+    "main.js": {
+      "bytes": 4714582,
+      "sha256": "c9a5bb85fdc19a90cbe2630d5ccc3cdac77fa42cb20687d31e33a2ccf1a38a82"
+    },
+    "manifest.json": {
+      "bytes": 285,
+      "sha256": "0dbd358db5bfde5014de242768adeec6d75fb88e25e8372787b1be9b624860b8"
+    },
+    "styles.css": {
+      "bytes": 31284,
+      "sha256": "77f96dbb9398a792db7694ab36e784e95947e92db5c32fc2c1c969326b4bcddc"
+    }
+  }
+}

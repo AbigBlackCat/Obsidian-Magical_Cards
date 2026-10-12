@@ -14,10 +14,10 @@ import type { Book, CardsSettings } from '../src/types';
 import type * as Mock from './obsidian-mock';
 
 const directory = dirname(fileURLToPath(import.meta.url));
-const bundled = await build({ stdin: { contents: "export * from '../src/store'; export * from '../src/runtime'; export * from './obsidian-mock'; export { renderedRoots, createRoot } from 'react-dom/client';", resolveDir: directory, loader: 'ts' }, alias: { obsidian: resolve(directory, 'obsidian-mock.ts') }, bundle: true, platform: 'node', format: 'cjs', write: false, external: ['react'], plugins:[{name:'render-lifecycle',setup(build){build.onResolve({filter:/^react-dom\/client$/},()=>({path:'client',namespace:'render-lifecycle'}));build.onLoad({filter:/.*/,namespace:'render-lifecycle'},()=>({contents:'export const renderedRoots=[];export function createRoot(){const root={element:null,unmounted:false,render(element){this.element=element;},unmount(){this.unmounted=true;}};renderedRoots.push(root);return root;}',loader:'js'}));}}] });
+const bundled = await build({ stdin: { contents: "export * from '../src/store'; export * from '../src/runtime'; export * from '../src/showcase-sessions'; export { appendShowcaseMarkdown } from '../src/showcase-markdown'; export * from './obsidian-mock'; export { renderedRoots, createRoot } from 'react-dom/client';", resolveDir: directory, loader: 'ts' }, alias: { obsidian: resolve(directory, 'obsidian-mock.ts') }, bundle: true, platform: 'node', format: 'cjs', write: false, external: ['react'], plugins:[{name:'render-lifecycle',setup(build){build.onResolve({filter:/^react-dom\/client$/},()=>({path:'client',namespace:'render-lifecycle'}));build.onLoad({filter:/.*/,namespace:'render-lifecycle'},()=>({contents:'export const renderedRoots=[];export function createRoot(){const root={element:null,unmounted:false,render(element){this.element=element;},unmount(){this.unmounted=true;}};renderedRoots.push(root);return root;}',loader:'js'}));}}] });
 const module = { exports: {} }; new Function('require', 'module', 'exports', bundled.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
 interface RenderedRoot { element: { props: { saveOrder(order: string[]): Promise<void>; initialDraft?: string[]; retainDraft(draft: string[] | null): void; api: import('../src/store').CardsStore; manager: import('../src/WorkPropertiesSessions').WorkPropertiesManager } }; unmounted: boolean; render(element: RenderedRoot['element']): void; unmount(): void; }
-const runtime = module.exports as typeof Mock & typeof import('../src/store') & typeof import('../src/runtime') & {renderedRoots:Array<RenderedRoot>;createRoot():RenderedRoot};
+const runtime = module.exports as typeof Mock & typeof import('../src/store') & typeof import('../src/runtime') & typeof import('../src/showcase-sessions') & Pick<typeof import('../src/showcase-markdown'),'appendShowcaseMarkdown'> & {renderedRoots:Array<RenderedRoot>;createRoot():RenderedRoot};
 const fields = (text: string) => parse(text.match(/^---\n([\s\S]*?)\n---/)![1]) as Record<string, any>;
 const asApp = (app: Mock.App) => app as unknown as ObsidianApp;
 async function fixture(settings?: Partial<CardsSettings>) { const app = new runtime.App(), store = new runtime.CardsStore(asApp(app), '工作台', settings); await store.initialize(); return { app, store }; }
@@ -47,6 +47,15 @@ const legacyBundle = await build({ stdin: { contents: legacySource.replace(', ca
 const legacyModule = { exports: {} }, require = createRequire(import.meta.url);
 new Function('require', 'module', 'exports', legacyBundle.outputFiles[0].text)((name: string) => name === 'obsidian' ? runtime : name === 'react-dom/client' ? { createRoot: runtime.createRoot } : require(name), legacyModule, legacyModule.exports);
 const legacyRuntime = legacyModule.exports as Pick<typeof runtime, 'acquireCards'>;
+// Byte-for-byte runtime source from the 0.2.1 Git HEAD: its final release has no showcase hook.
+// Dependencies resolve to current modules because these tests deliberately give the old release
+// a library created by the new bundle, the actual mixed-version failure scenario.
+const deployedSource = await readFile(resolve(directory, 'fixtures/runtime-0.2.1.txt'), 'utf8');
+assert.equal(deployedSource.includes('getShowcaseManager'), false);
+const deployedBundle = await build({ stdin: { contents: deployedSource, resolveDir: resolve(directory, '../src'), loader: 'ts' }, bundle: true, platform: 'node', format: 'cjs', write: false, external: ['obsidian', 'react', 'react-dom/client'] });
+const deployedModule = { exports: {} };
+new Function('require', 'module', 'exports', deployedBundle.outputFiles[0].text)((name: string) => name === 'obsidian' ? runtime : name === 'react-dom/client' ? { createRoot: runtime.createRoot } : require(name), deployedModule, deployedModule.exports);
+const deployedRuntime = deployedModule.exports as Pick<typeof runtime, 'acquireCards'>;
 const popoutBundle = await build({ stdin: { contents: currentSource, resolveDir: resolve(directory, '../src'), loader: 'ts' }, bundle: true, platform: 'node', format: 'cjs', write: false, external: ['obsidian', 'react', 'react-dom/client'] });
 function popoutRuntime() {
   const module = { exports: {} }, globals = { module, exports: module.exports, require: (name: string) => name === 'obsidian' ? runtime : name === 'react-dom/client' ? { createRoot: runtime.createRoot } : require(name), window: { requestAnimationFrame: () => 2, cancelAnimationFrame() {} } };
@@ -226,6 +235,61 @@ test('mixed old and new runtime leases back up failed final-save drafts without 
       } finally { await first.release(); await second.release(); }
     }
   } finally { if (previous) Object.defineProperty(globalThis, 'window', previous); else Reflect.deleteProperty(globalThis, 'window'); }
+});
+
+test('deployed 0.2.1 final release flushes a new showcase manager once and disposes it after child cleanup', async () => {
+  const app = new runtime.App(), first = await runtime.acquireCards(asApp(app), '工作台', '.obsidian/plugins/new');
+  const second = await deployedRuntime.acquireCards(asApp(app), '工作台', '.obsidian/plugins/old');
+  try {
+    const note = await first.api.showcase.create('photos', '照片');
+    await first.api.saveSettings({ customModules: [{ id: 'photos', title: '照片', kind: 'film', mode: 'showcase', showcaseNote: note, appearance: { material: 'paper', style: 'cover' } }] });
+    const file = app.vault.getAbstractFileByPath(note) as Mock.TFile;
+    file.contents = runtime.appendShowcaseMarkdown(file.contents, note, 'photos', { id: 'a', image: '图片-a.png', name: '旧名称', description: '旧描述' });
+    const manager = runtime.getShowcaseManager(first.api)!, session = manager.getSession('photos', 'a'); await session.refresh();
+    session.startComposition(); session.updateName('保存名称'); session.update('保存描述'); session.endComposition();
+    let flushes = 0; const flush = manager.flushAll.bind(manager); manager.flushAll = () => { flushes++; return flush(); };
+    const registry = Reflect.get(globalThis, Symbol.for('barry-cards.runtime.v1')) as WeakMap<ObsidianApp, { libraries: Map<string, { children: Set<Mock.MarkdownRenderChild> }> }>;
+    const child = new runtime.MarkdownRenderChild({} as HTMLElement); let managerAtUnload: unknown;
+    child.onunload = () => { managerAtUnload = runtime.getShowcaseManager(first.api); };
+    child.load(); registry.get(asApp(app))!.libraries.get('工作台')!.children.add(child);
+    await first.release(); assert.equal(flushes, 0); assert.equal(session.getSnapshot().dirty, true);
+    await second.release(); assert.equal(flushes, 1); assert.equal(managerAtUnload, manager);
+    assert.ok(file.contents.includes('保存名称')); assert.ok(file.contents.includes('保存描述'));
+    assert.equal(session.getSnapshot().dirty, false); assert.deepEqual(manager.recoveryDrafts(), []);
+    assert.equal(Reflect.get(first.api.showcase, Symbol.for('magical-cards.showcase.sessions.v1')), undefined);
+    assert.equal(runtime.Plugin.languages.size, 0); await assert.rejects(first.api.showcase.read('photos'), /停用/);
+  } finally { await first.release(); await second.release(); }
+});
+
+test('deployed 0.2.1 final release separately backs up failed showcase writes and unfinished IME drafts', async () => {
+  for (const composing of [false, true]) {
+    const app = new runtime.App(), first = await runtime.acquireCards(asApp(app), '工作台', '.obsidian/plugins/new');
+    const second = await deployedRuntime.acquireCards(asApp(app), '工作台', '.obsidian/plugins/old');
+    const savedNow = Date.now; Date.now = () => 123456789;
+    try {
+      const note = await first.api.showcase.create('photos', '照片');
+      await first.api.saveSettings({ customModules: [{ id: 'photos', title: '照片', kind: 'film', mode: 'showcase', showcaseNote: note, appearance: { material: 'paper', style: 'cover' } }] });
+      const file = app.vault.getAbstractFileByPath(note) as Mock.TFile;
+      file.contents = runtime.appendShowcaseMarkdown(file.contents, note, 'photos', { id: 'a', image: '图片-a.png', name: '旧名称', description: '旧描述' }); const before = file.contents;
+      const showcase = runtime.getShowcaseManager(first.api)!, session = showcase.getSession('photos', 'a'); await session.refresh();
+      session.startComposition(); session.updateName('保留名称'); session.update(composing ? '输入法尚未结束的描述' : '磁盘失败的描述');
+      if (!composing) session.endComposition();
+      first.api.showcase.patchCard = async () => { throw new Error('橱窗磁盘失败'); };
+      const work = createWork('film'); await first.api.save(work);
+      const original = first.propertiesManager.getSession(work.id); await original.refresh(); original.startComposition(); original.update({ summary: '另一个作品草稿' });
+      first.api.patchWorkProperties = async () => { throw new Error('作品磁盘失败'); };
+      await first.release(); await second.release();
+      const paths = Object.keys(app.vault.dump()).filter(path => path.includes('-drafts-recovery-123456789.json'));
+      assert.equal(paths.length, 2, '同毫秒的作品和橱窗备份必须分别保留');
+      const showcasePath = paths.find(path => path.startsWith('.obsidian/plugins/new/showcase-drafts-recovery-'))!;
+      const workPath = paths.find(path => path.startsWith('.obsidian/plugins/old/card-drafts-recovery-'))!;
+      const backup = JSON.parse(app.vault.text(showcasePath)); assert.equal(backup.drafts[0].moduleId, 'photos'); assert.equal(backup.drafts[0].id, 'a');
+      assert.equal(backup.drafts[0].name, '保留名称'); assert.equal(backup.drafts[0].description, composing ? '输入法尚未结束的描述' : '磁盘失败的描述');
+      assert.equal(JSON.parse(app.vault.text(workPath)).drafts[0].values.summary, '另一个作品草稿');
+      assert.equal(file.contents, before); assert.deepEqual(showcase.recoveryDrafts(), []);
+      assert.equal(Reflect.get(first.api.showcase, Symbol.for('magical-cards.showcase.sessions.v1')), undefined);
+    } finally { Date.now = savedNow; await first.release(); await second.release(); }
+  }
 });
 
 test('new-language embeds preserve mixed note body and enforce native buffer and duplicate-ID protection', async () => {

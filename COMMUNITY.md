@@ -1,22 +1,26 @@
-# Community submission: Magical Cards 0.2.1
+# Community submission: Magical Cards 0.3.0
 
-The entry remains a **draft**, not a published community listing. On 2026-10-11, the automatic scan of 0.2.1 at commit `1c33e9c2aa4787332f322813c2b694c8468d7bd1` completed with status **Completed**, no Failed/Error findings and four recommendations. This records the completed automatic scan, not approval by a community human reviewer. The earlier automatic review of 0.2.0 failed on the same date.
+The entry remains a **Draft**, not a published community listing. The **0.3.0 automatic scan has not yet been run**; the completed 0.2.1 scan below is historical evidence only and does not establish a result for 0.3.0 or approval by a community human reviewer.
 
 | Field | Value |
 | --- | --- |
 | Name / ID | Magical Cards / magical-cards |
 | Repository | AbigBlackCat/Obsidian-Magical_Cards |
-| Version / release tag | 0.2.1 |
+| Version / target release tag | 0.3.0 |
 | Minimum app version | 1.11.4 |
-| Platforms | Desktop; native verification on macOS / Obsidian 1.14.4 |
-| Short description | Turn book and film collections into interactive cover cards with draggable modules and note embeds. |
+| Platforms | Desktop; macOS checks and their app version recorded in VERIFICATION.md; Windows not physically tested |
+| Short description | Browse book, film and image showcase cards with editable descriptions, draggable modules and note embeds. |
 | Payment | Free |
 
 ## Listing description
 
-Browse and edit book and film covers in Obsidian. Open a dedicated cards view or embed collections in notes, with reading mode and Live Preview support. Choose a cylindrical carousel, coverflow, album rail, horizontal or vertical curved gallery, or a skewed carousel. Drag modules to reorder them and use the keyboard to browse. New users start with six editable offline examples. Your collections and settings remain ordinary Markdown files in your vault.
+Browse and edit book, film and image showcase cards in Obsidian. Open a dedicated cards view or embed collections in notes, with reading mode and Live Preview support. Choose a cylindrical carousel, coverflow, album rail, horizontal or vertical curved gallery, or a skewed carousel. Drag modules to reorder them and use the keyboard to browse.
 
-The interface is currently in Chinese; both Chinese and English guides are provided. No account is required. The plugin does not sync data or play audio. User-supplied remote cover URLs load from their image servers. Built-in sample covers are bundled for offline use and are excluded from the code license; attribution is in examples/SOURCES.md.
+For an image collection, create a module and choose **橱窗式卡片** (Showcase cards) under Advanced → Card style. Select multiple images or drag images into it; each showcase has its own folder and one native-readable Markdown note with local image embeds, optional names and plain-text descriptions. Flipping and name position are configurable. Removing a module hides its display and keeps its notes, images, configuration and order for restoration.
+
+New users start with six editable offline examples: three books and three films. Existing collections are preserved and are not reseeded. Settings need only a module name and aspect ratio to start; advanced options are collapsed, and settings previews browse without flipping or editing. Collections and settings remain ordinary Markdown files in the vault.
+
+The interface is currently in Chinese; complete Chinese and English guides and a six-cover example vault are provided. No account is required. The plugin does not sync data or play audio. User-supplied remote cover URLs load from their image servers. Built-in sample covers are bundled for offline use and are excluded from the code license; attribution is in examples/SOURCES.md.
 
 ## Remediation of the 0.2.0 review
 
@@ -27,11 +31,11 @@ The interface is currently in Chinese; both Chinese and English guides are provi
 - Source checks use the official typed Obsidian lint configuration. Settings use searchable definitions on 1.13+ and retain a display fallback for 1.11.4.
 - Releases contain only main.js, manifest.json and styles.css. CI creates verifiable build attestations.
 
-Vault enumeration is used for card notes and the user-invoked linked-note picker. Clipboard writes occur when the user clicks Copy for generated embed code. These existing functions are described in both guides; no background clipboard reading or note-content upload is performed.
+Vault enumeration is used for card discovery and the user-invoked linked-note picker. Showcase imports copy only images explicitly selected or dropped by the user; folders are not scanned automatically. Clipboard writes occur when the user clicks Copy for generated embed code. No background clipboard reading or note-content upload is performed. Card and showcase edit failures retain drafts; final shutdown backs up drafts that cannot be saved into the local plugin directory and reports the recovery path.
 
-## Automatic scan of 0.2.1
+## Historical automatic scan of 0.2.1
 
-The status below was read from the existing [draft entry](https://community.obsidian.md/account/plugins/magical-cards) through native Chrome DOM on 2026-10-11.
+On 2026-10-11, the scan of **0.2.1** at commit `1c33e9c2aa4787332f322813c2b694c8468d7bd1` completed. The status below was read from the existing [draft entry](https://community.obsidian.md/account/plugins/magical-cards) through native Chrome DOM that day. The earlier automatic review of 0.2.0 failed on the same date. These results apply to 0.2.1, not the new 0.3.0 candidate.
 
 | Check | Result |
 | --- | --- |
@@ -42,7 +46,7 @@ The status below was read from the existing [draft entry](https://community.obsi
 | Build verification | Pass; main.js reproduced byte for byte |
 | Listing | Draft; no publication action taken |
 
-Four recommendations remain visible and are retained with their functional reasons:
+Four recommendations were reported in that scan and are retained with their functional reasons:
 
 | Recommendation | Functional reason |
 | --- | --- |
@@ -55,11 +59,11 @@ These recommendations are not reported as blocking failures by this scan. Comple
 
 ## Review and release checklist
 
-1. Verify the default branch manifest, package version and release tag match 0.2.1.
+1. Verify the default branch manifest, package version and release tag match 0.3.0.
 2. Verify the release's three files, build size, artifact attestations and reproducible clean build.
-3. Inspect the latest automatic review in the existing [draft entry](https://community.obsidian.md/account/plugins/magical-cards).
-4. Retain the completed scan and recommendation record above. Keep the entry a draft until publication is requested.
+3. Run and inspect the **0.3.0** automatic review in the existing [draft entry](https://community.obsidian.md/account/plugins/magical-cards); it has not yet been run. Record its own commit, result and recommendations without replacing the historical scan above.
+4. Keep the entry a Draft until publication is requested. Automatic scan completion alone does not establish human-review approval.
 
 ## Verification and limits
 
-See VERIFICATION.md for recorded checks. Windows has not been tested on a physical machine. No mobile compatibility is claimed. Full duplicate-ID checks across both block aliases require compatible host version 0.1.31 or later. Host 0.1.32 adds the reviewed cover-reading and lifecycle fixes. Original cover rights and source notices remain applicable and are not expanded by this release.
+See VERIFICATION.md for recorded checks. Windows has not been tested on a physical machine. No mobile compatibility is claimed. Compatible host **0.1.33** shares showcase editing, per-module settings and removed-module restoration. When an older host owns the shared runtime, the plugin preserves it and prompts an upgrade for unsupported showcase and restoration features. Original cover rights and source notices remain applicable and are not expanded by this release.

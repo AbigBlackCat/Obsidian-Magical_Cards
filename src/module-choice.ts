@@ -1,8 +1,9 @@
 import { Modal, Notice, Setting, type App } from 'obsidian';
 import type { CardsAPI, CardsSettings } from './types';
 
-export function cardModuleChoices(settings: CardsSettings): Array<{ id: string; label: string }> {
-  return [{ id: 'book', label: '阅读' }, { id: 'film', label: '影视' }, ...settings.customModules.map(module => ({ id: module.id, label: module.title }))];
+export function cardModuleChoices(settings: CardsSettings, includeHidden = false): Array<{ id: string; label: string }> {
+  return [{ id: 'book', label: settings.workbenchText['book.title']?.trim() || '阅读' }, { id: 'film', label: settings.workbenchText['film.title']?.trim() || '影视' }, ...settings.customModules.map(module => ({ id: module.id, label: module.title }))]
+    .filter(module => includeHidden || !settings.hiddenModuleIds?.includes(module.id));
 }
 
 export function addModuleChoices(el: HTMLElement, api: CardsAPI, selected: Set<string>, change: () => void): () => void {

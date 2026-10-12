@@ -185,3 +185,25 @@ test('the atlas uses the resolved DOM image and text and removes image listeners
     if (descriptor) Object.defineProperty(globalThis, 'getComputedStyle', descriptor); else Reflect.deleteProperty(globalThis, 'getComputedStyle');
   }
 });
+
+test('removing front text rebuilds the WebGL atlas without hidden name or description fallbacks', () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'getComputedStyle');
+  Object.defineProperty(globalThis, 'getComputedStyle', { configurable: true, value: () => ({ objectFit: 'cover', getPropertyValue: () => '#eee' }) });
+  const image = Object.assign(new EventTarget(), { complete: true, naturalWidth: 300, naturalHeight: 450, src: 'app://photo.png', currentSrc: 'app://photo.png' });
+  const node = { textContent: '', querySelector: (selector: string) => selector === '.bw-card-front img' ? image : selector === '.bw-paper-image' ? { offsetHeight: 450 } : null, closest: () => ({ getAttribute: () => 'cover' }) };
+  const fixture = gpuFixture();
+  const tile = { id: 'image', title: '正面名称', summary: '正面描述', node: node as unknown as HTMLElement };
+  const frame = { geometry: cardGeometry(800, 1.5, 'scroll-bend'), position: 0, anchor: 0, vertical: false, limit: 1.5, reduced: false, tiles: [tile] };
+  try {
+    fixture.renderer.draw(frame, 16);
+    assert.ok(fixture.texts.includes('正面名称')); assert.ok(fixture.texts.includes('正面描述'));
+    fixture.texts.length = 0;
+    tile.title = ''; tile.summary = '';
+    fixture.renderer.draw(frame, 32);
+    assert.deepEqual(fixture.texts, []);
+    assert.equal(fixture.imageDraws(), 2); assert.equal(fixture.renderer.mode, 'webgl');
+  } finally {
+    fixture.renderer.dispose();
+    if (descriptor) Object.defineProperty(globalThis, 'getComputedStyle', descriptor); else Reflect.deleteProperty(globalThis, 'getComputedStyle');
+  }
+});

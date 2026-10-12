@@ -8,10 +8,11 @@ import { WorkOrderList } from './WorkOrder';
 import { registerCardsEmbeds, type EmbeddedRuntime } from './embeds';
 import { CARD_LANGUAGES } from './embed-source';
 import { readCoverSvg } from './cover-reader';
+import { getShowcaseManager, releaseShowcaseManager } from './showcase-sessions';
 import type { CardsSettings, WorkKind } from './types';
 
 export interface CardsLease { api: CardsStore; propertiesManager: WorkPropertiesManager; ready: Promise<void>; release(): Promise<void>; }
-interface Library { api: CardsStore; component: Component; manager?: WorkPropertiesManager; host?: WorkPropertiesHost; references: number; ready: Promise<void>; closing?: Promise<void>; children: Set<MarkdownRenderChild>; }
+interface Library { api: CardsStore; component: Component; manager?: WorkPropertiesManager; host?: WorkPropertiesHost; references: number; ready: Promise<void>; closing?: Promise<void>; children: Set<MarkdownRenderChild>; showcaseStopAttached?: boolean; }
 interface AppRuntime { app: App; registrar: Plugin; libraries: Map<string, Library>; ready: Promise<void>; registered: boolean; cardLanguages?: Set<string>; processorError?: unknown; }
 const key = Symbol.for('barry-cards.runtime.v1');
 declare global { interface Window { [key]?: WeakMap<App, AppRuntime>; } }
@@ -53,12 +54,30 @@ function registerProcessors(runtime: AppRuntime) {
     runtime.registered = true;
   } catch (error) { if (!runtime.registered) runtime.processorError = error; throw error; }
 }
-async function backupDrafts(app: App, manager: WorkPropertiesManager, directory: string, error: unknown) {
+async function backupDrafts(app: App, manager: { recoveryDrafts(): unknown[] }, directory: string, error: unknown, prefix = 'card-drafts', label = '作品属性') {
   const drafts = manager.recoveryDrafts(), message = error instanceof Error ? error.message : String(error);
-  if (!drafts.length) { new Notice(`作品属性未能保存：${message}`); return; }
-  const path = normalizePath(`${directory}/card-drafts-recovery-${Date.now()}.json`);
-  try { await app.vault.adapter.write(path, JSON.stringify({ savedAt: new Date().toISOString(), drafts }, null, 2)); new Notice(`作品属性未能保存：${message}\n未保存文字已备份至 ${path}`); }
-  catch (failure) { new Notice(`作品属性未能保存：${message}\n恢复文件 ${path} 写入失败：${failure instanceof Error ? failure.message : String(failure)}`); }
+  if (!drafts.length) { new Notice(`${label}未能保存：${message}`); return; }
+  const path = normalizePath(`${directory}/${prefix}-recovery-${Date.now()}.json`);
+  try { await app.vault.adapter.write(path, JSON.stringify({ savedAt: new Date().toISOString(), drafts }, null, 2)); new Notice(`${label}未能保存：${message}\n未保存文字已备份至 ${path}`); }
+  catch (failure) { new Notice(`${label}未能保存：${message}\n恢复文件 ${path} 写入失败：${failure instanceof Error ? failure.message : String(failure)}`); }
+}
+
+/** Old release closures also await this shared host boundary before destroying the store. */
+function attachShowcaseCleanup(app: App, library: Library, recoveryDir: string): void {
+  if (!library.api.showcase || !library.host || library.showcaseStopAttached) return;
+  const manager = getShowcaseManager(library.api, app.workspace.containerEl.win);
+  if (!manager) return;
+  library.showcaseStopAttached = true;
+  library.component.register(() => releaseShowcaseManager(library.api));
+  const stop = library.host.stop.bind(library.host);
+  let stopping: Promise<void> | undefined;
+  library.host.stop = () => stopping ??= (async () => {
+    try { await stop(); }
+    finally {
+      try { await manager.flushAll(); }
+      catch (error) { await backupDrafts(app, manager, recoveryDir, error, 'showcase-drafts', '橱窗文字'); }
+    }
+  })();
 }
 
 export async function acquireCards(app: App, rootFolder: string, recoveryDir: string, migrationSettings?: Partial<CardsSettings>): Promise<CardsLease> {
@@ -94,6 +113,7 @@ export async function acquireCards(app: App, rootFolder: string, recoveryDir: st
   current.api.readCoverSvg ??= (path, sourcePath = '') => readCoverSvg(app, path, sourcePath);
   const manager = current.manager;
   if (!manager) throw new Error('共享卡片库尚未准备完成。');
+  attachShowcaseCleanup(app, current, recoveryDir);
   current.references++;
   try { await owner.ready; if(app.workspace.layoutReady!==false)await current.ready; registerProcessors(owner); }
   catch (error) {

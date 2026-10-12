@@ -118,7 +118,7 @@ export function createScrollBend(canvas: HTMLCanvasElement, changed: (mode: 'web
         context.fillStyle = ink; context.font = `${22 * scale}px "Songti SC", serif`;
         textLines(context, tile.title, 24 * scale, imageHeight / 2, cellWidth - 48 * scale, 29 * scale, 2);
       }
-      if (coverStyle) {
+      if (coverStyle && ((titleElement?.textContent ?? tile.title) || (summaryElement?.textContent ?? tile.summary))) {
         const gradient = context.createLinearGradient(0, cellHeight * 0.55, 0, cellHeight);
         gradient.addColorStop(0, 'transparent'); gradient.addColorStop(1, 'rgba(9,17,21,.94)');
         context.fillStyle = gradient; context.fillRect(0, cellHeight * 0.55, cellWidth, cellHeight * 0.45);
@@ -134,11 +134,11 @@ export function createScrollBend(canvas: HTMLCanvasElement, changed: (mode: 'web
       const titleY = coverStyle ? Math.max(imageHeight * 0.68, cellHeight - 118 * scale) : imageHeight + ((parseFloat(copyStyle?.paddingTop ?? '') || 19) + titleSize) * scale;
       const align = (value?: string) => { context.textAlign = value === 'center' || value === 'right' ? value : 'left'; return context.textAlign === 'center' ? cellWidth / 2 : context.textAlign === 'right' ? cellWidth - inset : inset; };
       context.fillStyle = coverStyle ? '#fff' : ink; context.font = `600 ${titleSize * scale}px "Songti SC", serif`;
-      const titleRows = textLines(context, titleElement?.textContent || tile.title, align(titleStyle?.textAlign), titleY, cellWidth - inset * 2, titleLineHeight * scale, Number(titleStyle?.webkitLineClamp) || 2);
+      const titleRows = textLines(context, titleElement?.textContent ?? tile.title, align(titleStyle?.textAlign), titleY, cellWidth - inset * 2, titleLineHeight * scale, Number(titleStyle?.webkitLineClamp) || 2);
       context.fillStyle = coverStyle ? '#e0e5e6' : style.getPropertyValue('--bw-card-muted').trim() || '#655541';
       const summarySize = parseFloat(summaryStyle?.fontSize ?? '') || 14, summaryLineHeight = parseFloat(summaryStyle?.lineHeight ?? '') || summarySize * 1.65;
       context.font = `${summarySize * scale}px "Songti SC", serif`;
-      if (tile.summary) textLines(context, summaryElement?.textContent || tile.summary, align(summaryStyle?.textAlign), titleY + (titleRows * titleLineHeight + 8) * scale, cellWidth - inset * 2, summaryLineHeight * scale, Number(summaryStyle?.webkitLineClamp) || 2);
+      if (tile.summary) textLines(context, summaryElement?.textContent ?? tile.summary, align(summaryStyle?.textAlign), titleY + (titleRows * titleLineHeight + 8) * scale, cellWidth - inset * 2, summaryLineHeight * scale, Number(summaryStyle?.webkitLineClamp) || 2);
       const footer = copy?.querySelector('footer')?.textContent?.trim();
       if (footer) { context.font = `${11 * scale}px system-ui`; context.textAlign = 'left'; textLines(context, footer, inset, cellHeight - 16 * scale, cellWidth - inset * 2, 14 * scale, 1); }
       context.restore();

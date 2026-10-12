@@ -15,7 +15,7 @@
 
 ![Book and film modules in Obsidian, using the cylindrical layout and three full-cover cards](previews/cylinder.png)
 
-Magical Cards is a desktop Obsidian plugin for browsing and editing book and film cover cards. Open a dedicated cards view or embed collections in your notes. Both use the same work notes, with search, sorting, linked notes, and editable summaries on the back of each card.
+Magical Cards is a desktop Obsidian plugin for browsing and editing book, film and image showcase cards. Open a dedicated cards view or embed collections in your notes. Both use the same work notes, with search, sorting, linked notes, and editable summaries on the back of each card.
 
 **The interface is currently in Chinese.** This guide includes the original labels so you can find the controls. The community entry is a draft under review; manual installation is available.
 
@@ -75,25 +75,28 @@ The cylindrical layout is shown at the top of this page. The curved gallery also
 
 Layouts do not autoplay. Album rail displays sleeves without playback controls or a spinning record. The curved gallery provides an **打开笔记** (Open note) control for the current card and a summary editor. It falls back to ordinary cards if WebGL or texture loading fails. The system's reduced-motion preference disables bending and transitions.
 
-## Settings
+## Appearance and settings
 
-![Native Magical Cards settings](previews/settings.png)
+Settings are ordered as **Card directory → Examples → Add cards module → Existing modules → Removed modules → Note code generator**. Examples, existing modules, removed modules and advanced settings start collapsed.
 
-Settings appear in this order: **卡片目录** (Card directory), **示例** (Examples), **仅显示三张卡片** (Show only three cards), **添加卡片模块** (Add a module), existing modules, and **笔记代码块生成** (Generate a note code block).
+Enter a **module name**, choose its **aspect ratio**, then click **保存** (Save). Click the purple stacked-card ribbon icon to experience the module in the **Magical Cards** tab. Settings previews support browsing and sliding only; they cannot flip or start editing sessions.
 
-Examples and module controls start collapsed. Expand them, make your choices, then click **保存并收起** (Save and collapse) to apply all choices together. A failed save keeps the form open and retains the draft.
+**高级设置** (Advanced settings) contains **card style → image fit → material → layout → three-card limit**. Direction appears only for the curved gallery. New modules default to **full cover, fill and crop, paper, 2:3, skewed carousel, three-card limit off**. Reading/film examples and existing modules keep their appearance. The three-card option is per module and does not remove any images.
 
-| Order | Control | Default for new users and modules |
-| --- | --- | --- |
-| 1 | 卡片样式 — Card style: full cover / minimal | Full cover |
-| 2 | 显示方式 — Image fit: show whole image / fill and crop | Fill and crop |
-| 3 | 卡片材质 — Material: paper / frosted / holographic | Paper |
-| 4 | 比例 — Aspect ratio: five available ratios | 2:3 |
-| 5 | 动效布局 — Layout: five available layouts | Cylindrical |
+The trash icon beside an expanded module's heading removes its **display only**, preserving its configuration, order, notes and images. Expand **已移除模块** (Removed modules) to restore it. Failed saves and source conflicts retain your draft for retry or explicit reload.
 
-Horizontal/vertical direction appears only for the curved gallery. A new module starts with these defaults; editing one module does not reset another module's appearance.
+Enter a directory relative to the current vault, such as `卡片库`. Work notes live under `书籍` (books) and `观影` (films); showcases live under `橱窗/<module ID>/`. Configuration is in `_数据/卡片配置.md`. Changing this setting does not move existing data. Absolute computer paths are rejected.
 
-**Card directory:** enter a path relative to the current vault, such as `卡片库`. Work notes are stored in its `书籍` (books) and `观影` (films) subdirectories. Configuration is stored in `_数据/卡片配置.md`. Changing the directory does not move existing works. Do not enter an absolute path on your computer.
+### Image showcases
+
+While creating a module, expand **Advanced settings → Card style** and select **橱窗式卡片** (Showcase cards). Its storage type becomes fixed after saving; existing work modules cannot be converted.
+
+- Select multiple images or drag images into the showcase. Folders are never scanned automatically. PNG, JPEG, WebP, GIF and SVG are supported, up to 10 MB per image.
+- Each showcase has its own folder containing one `橱窗.md` note and all imported images. The note uses local embeds to show every image, optional name and description. Names may be empty.
+- Advanced options enable flipping and place names on the front, back, or nowhere. Flipping is on and names are on the back by default. Front-name mode shows only the description on the back; hiding names preserves the stored text.
+- Descriptions are plain text, limited to 400 characters, and saved automatically. IME composition waits for confirmation; failed saves and conflicts retain the draft with retry controls. With flipping off, use **编辑当前图片** (Edit current image) or edit the shared note.
+- Removing a card removes only its note block and keeps the image file. Ordering and field edits preserve other blocks, unknown properties and surrounding text. Keep card IDs and management markers intact. Missing notes or damaged markers require repair; an empty replacement note is never generated.
+- Partial imports preserve saved files and stable IDs. Retry does not duplicate successful cards.
 
 ## Note embeds
 
@@ -151,6 +154,8 @@ Back up `.obsidian/plugins/barry-cards/` and your card directory, then disable t
 Compatible hosts share the existing runtime. New versions add missing block languages and cover-reading support without recreating collections or clearing editing and sorting drafts. If a draft cannot be saved during final shutdown, it is written to a recovery JSON file in the plugin directory and its location is shown.
 
 </details>
+
+**0.3.0 changes:** image showcases add batch import, optional names and editable back descriptions. Basic module settings are now name and aspect ratio, with advanced options collapsed and a three-card limit per module. Reading, film and custom modules can be hidden and restored without losing data or order. Settings previews only browse; use the purple cards ribbon icon to open the Magical Cards tab for editing.
 
 ## Development and license
 

@@ -1,0 +1,13 @@
+{
+  "version": "0.4.1",
+  "compatibleHost": "0.1.36",
+  "vaultCount": 2,
+  "installationFilesUpdated": 9,
+  "wholeVaultBackupsVerified": true,
+  "directoryAndDataAndRecoveryDraftsPreserved": true,
+  "enabledListsPreserved": true,
+  "originalGanttWorkingTreePreserved": true,
+  "originalVaultInstalledLocalGanttBuild": true,
+  "currentNativeReloadPendingUnlock": true,
+  "physicalWindowsNotTested": true
+}

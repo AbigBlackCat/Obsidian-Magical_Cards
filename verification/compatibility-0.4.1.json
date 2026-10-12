@@ -1,0 +1,1166 @@
+{
+  "at": "2026-10-12T15:17:04.261Z",
+  "vault": "Magical Cards 0.4.1 验收库-20261012",
+  "magicalCards": "0.4.1",
+  "workbench": "0.1.36",
+  "phase": "complete",
+  "passed": 10,
+  "failed": 0,
+  "errors": [],
+  "warnings": [],
+  "sourceFilesBefore": [
+    {
+      "path": "卡片库/Magical_Cards示例及用法说明.md",
+      "bytes": 6536,
+      "sha256": "e87c99c6b1b493e3a940c00ab83909f55ce3002a0d1e9dbc667577a9271df87e"
+    },
+    {
+      "path": "卡片库/_数据/卡片配置.md",
+      "bytes": 1608,
+      "sha256": "8fa306dcc974044a8c6b3a1f596cd0a70d7f787c441ace882213cc4d71b4b826"
+    },
+    {
+      "path": "卡片库/书籍/书籍-你当像鸟飞往你的山-f85-7b6941e7a69f.md",
+      "bytes": 554,
+      "sha256": "43faff064e59e8e51f3ae6fe82d3bca8fdab1e43c267138a04ea9ee2ea061f4f"
+    },
+    {
+      "path": "卡片库/书籍/书籍-思考，快与慢-074-ece1db3face2.md",
+      "bytes": 536,
+      "sha256": "503ff5b07a799d5ed924cab53333117a0fe7e20674dadd2a445df368d111f14a"
+    },
+    {
+      "path": "卡片库/书籍/书籍-模仿欲望-fd4-7eabf767c017.md",
+      "bytes": 524,
+      "sha256": "a8a1c6982f4164bc15e678d3a662e71072738f53235ac1025cf8babdc2beaaa0"
+    },
+    {
+      "path": "卡片库/橱窗/6da9e126-88de-4620-8543-36131192613c/图片-17bdcce5-ec56-4647-ada5-4e18be743b6a.png",
+      "bytes": 656513,
+      "sha256": "b8f84421015f84429a040ac4f9167d416c2428b95f281228a69e1a475560ecd4"
+    },
+    {
+      "path": "卡片库/橱窗/6da9e126-88de-4620-8543-36131192613c/图片-883d34ef-812e-4904-a0f8-20ac961adc73.png",
+      "bytes": 2435880,
+      "sha256": "4ea1a60747622a5d730c80a022d9ff058f7499e29c1869447bf0534794f65efe"
+    },
+    {
+      "path": "卡片库/橱窗/6da9e126-88de-4620-8543-36131192613c/橱窗.md",
+      "bytes": 499,
+      "sha256": "85e8b98c1b97d14ddb9aafd327d6a37a2bbe7d5206084a17bbf0efd637d73c0e"
+    },
+    {
+      "path": "卡片库/观影/观影-公共图片验收卡片-169-85cc0f9bd19f.md",
+      "bytes": 561,
+      "sha256": "484fb21647ac2f0aefcf517a828ec16dfb4423a68f8f5eb6f3a01114aed4aaf7"
+    },
+    {
+      "path": "卡片库/观影/观影-奥德赛-099-0d1b32e95a46.md",
+      "bytes": 482,
+      "sha256": "60742f6b6d6a432465e797acf155848f538919fd642555902ae7caa9207d6984"
+    },
+    {
+      "path": "卡片库/观影/观影-消失的她-484-d630486c6dc4.md",
+      "bytes": 488,
+      "sha256": "fd2880e47f77dc7a2632873e28915b879e280349c8ac0e78d2158d99f77ec906"
+    },
+    {
+      "path": "卡片库/观影/观影-白鹿原-921-25007cca54ec.md",
+      "bytes": 482,
+      "sha256": "cd65e30a2e08a083c04221c65a1ae0e03c06c071cc5aead7d143636ef151607b"
+    },
+    {
+      "path": "卡片库/附件/示例-2c02166a-4eb9-46a5-b921-25007cca54ec.png",
+      "bytes": 2435880,
+      "sha256": "4ea1a60747622a5d730c80a022d9ff058f7499e29c1869447bf0534794f65efe"
+    },
+    {
+      "path": "卡片库/附件/示例-77cded2d-efcb-4a08-bfd4-7eabf767c017.jpg",
+      "bytes": 61761,
+      "sha256": "8dad2679a64f448ad87894092fd79708913a156d230aa5500b94ee9f6032e096"
+    },
+    {
+      "path": "卡片库/附件/示例-78ea5e22-1da3-4e8e-9484-d630486c6dc4.svg",
+      "bytes": 957397,
+      "sha256": "feca6ee14e0727f5d73f0313ae496da28034e1c226ce7ffd245f9735731c1ba3"
+    },
+    {
+      "path": "卡片库/附件/示例-8c8e191f-6425-4732-9f85-7b6941e7a69f.jpg",
+      "bytes": 59936,
+      "sha256": "0f2dac5a9a8a4b140e792d78a918c3dae177d70c585c830619940bf42e47ed06"
+    },
+    {
+      "path": "卡片库/附件/示例-e9e30f38-9db9-448d-a074-ece1db3face2.jpg",
+      "bytes": 20839,
+      "sha256": "b9daa9e42c1814a741ec061b8396d6e4c1c7a15a118bcc4da932930004e554f6"
+    },
+    {
+      "path": "卡片库/附件/示例-ec81fe57-4bdb-4634-8099-0d1b32e95a46.png",
+      "bytes": 656513,
+      "sha256": "b8f84421015f84429a040ac4f9167d416c2428b95f281228a69e1a475560ecd4"
+    }
+  ],
+  "results": [
+    {
+      "name": "双插件共享 Store、编辑会话、两种语言注册与原选中分类",
+      "ok": true,
+      "detail": {
+        "aliases": [
+          "magical-cards",
+          "barry-cards"
+        ],
+        "references": 2,
+        "sameStore": true,
+        "sameSessions": true,
+        "dashboardCount": 2,
+        "standalone": {
+          "leafId": "f2d36b0e3152fa72",
+          "dashboardId": "all",
+          "bounds": {
+            "x": 356,
+            "y": 89.9375,
+            "width": 656,
+            "height": 1569.0234375,
+            "top": 89.9375,
+            "right": 1012,
+            "bottom": 1658.9609375,
+            "left": 356
+          },
+          "nativeSelectionBeforeFocus": {
+            "activeLeaf": {
+              "leafId": "f2d36b0e3152fa72",
+              "viewType": "barry-cards",
+              "constructorName": "gm",
+              "itemViewInstance": true,
+              "originalLeaf": true,
+              "selectedHeader": true,
+              "headerAriaSelected": null
+            },
+            "mostRecentLeaf": {
+              "leafId": "f2d36b0e3152fa72",
+              "viewType": "barry-cards",
+              "constructorName": "gm",
+              "itemViewInstance": true,
+              "originalLeaf": true,
+              "selectedHeader": true,
+              "headerAriaSelected": null
+            },
+            "activeItemView": {
+              "leafId": "f2d36b0e3152fa72",
+              "viewType": "barry-cards",
+              "constructorName": "gm",
+              "itemViewInstance": true,
+              "originalLeaf": true,
+              "selectedHeader": true,
+              "headerAriaSelected": null
+            },
+            "originalLeaf": {
+              "leafId": "f2d36b0e3152fa72",
+              "viewType": "barry-cards",
+              "constructorName": "gm",
+              "itemViewInstance": true,
+              "originalLeaf": true,
+              "selectedHeader": true,
+              "headerAriaSelected": null
+            },
+            "initialCardsLeafId": "f2d36b0e3152fa72",
+            "originalHeaderSelectedInParent": true,
+            "selectedHeaders": [
+              {
+                "text": "文件列表",
+                "classes": "workspace-tab-header tappable is-active",
+                "ariaSelected": null,
+                "leafId": "2ef78caac38e615d",
+                "originalHeader": false
+              },
+              {
+                "text": "Magical Cards",
+                "classes": "workspace-tab-header tappable is-active mod-active",
+                "ariaSelected": null,
+                "leafId": "f2d36b0e3152fa72",
+                "originalHeader": true
+              },
+              {
+                "text": "反向链接",
+                "classes": "workspace-tab-header tappable is-active",
+                "ariaSelected": null,
+                "leafId": "e20aa16012457eeb",
+                "originalHeader": false
+              }
+            ],
+            "documentHasFocus": true,
+            "workspaceFocused": true,
+            "documentActiveElement": {
+              "tag": "BODY",
+              "classes": "mod-macos is-frameless is-hidden-frameless obsidian-app theme-light show-inline-title is-floating-nav auto-full-screen show-ribbon show-view-header is-focused"
+            },
+            "originalState": {
+              "dashboardId": "all"
+            },
+            "bounds": {
+              "x": 344,
+              "y": 77.9375,
+              "width": 680,
+              "height": 722.0625,
+              "top": 77.9375,
+              "right": 1024,
+              "bottom": 800,
+              "left": 344
+            }
+          },
+          "simulatedUserFocus": true
+        },
+        "unchanged": {
+          "verifiedCardFiles": 18,
+          "configSha256": "8fa306dcc974044a8c6b3a1f596cd0a70d7f787c441ace882213cc4d71b4b826",
+          "fixtureNotes": 2,
+          "enabledListUnchanged": true
+        }
+      }
+    },
+    {
+      "name": "新旧语言分别在原生阅读与实时预览真实渲染且无分类导航栏",
+      "ok": true,
+      "detail": {
+        "views": [
+          {
+            "language": "magical-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "magical-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          }
+        ],
+        "unchanged": {
+          "verifiedCardFiles": 18,
+          "configSha256": "8fa306dcc974044a8c6b3a1f596cd0a70d7f787c441ace882213cc4d71b4b826",
+          "fixtureNotes": 2,
+          "enabledListUnchanged": true
+        }
+      }
+    },
+    {
+      "name": "停用工作台后独立卡片、原选中 leaf 与两种嵌入继续可用",
+      "ok": true,
+      "detail": {
+        "standalone": {
+          "leafId": "f2d36b0e3152fa72",
+          "dashboardId": "all",
+          "bounds": {
+            "x": 356,
+            "y": 89.9375,
+            "width": 656,
+            "height": 1569.0234375,
+            "top": 89.9375,
+            "right": 1012,
+            "bottom": 1658.9609375,
+            "left": 356
+          },
+          "nativeSelectionBeforeFocus": {
+            "activeLeaf": {
+              "leafId": "bc037a6a9dd4ac90",
+              "viewType": "markdown",
+              "constructorName": "t",
+              "itemViewInstance": true,
+              "originalLeaf": false,
+              "selectedHeader": false,
+              "headerAriaSelected": null
+            },
+            "mostRecentLeaf": {
+              "leafId": "f2d36b0e3152fa72",
+              "viewType": "barry-cards",
+              "constructorName": "gm",
+              "itemViewInstance": true,
+              "originalLeaf": true,
+              "selectedHeader": true,
+              "headerAriaSelected": null
+            },
+            "activeItemView": {
+              "leafId": "bc037a6a9dd4ac90",
+              "viewType": "markdown",
+              "constructorName": "t",
+              "itemViewInstance": true,
+              "originalLeaf": false,
+              "selectedHeader": false,
+              "headerAriaSelected": null
+            },
+            "originalLeaf": {
+              "leafId": "f2d36b0e3152fa72",
+              "viewType": "barry-cards",
+              "constructorName": "gm",
+              "itemViewInstance": true,
+              "originalLeaf": true,
+              "selectedHeader": true,
+              "headerAriaSelected": null
+            },
+            "initialCardsLeafId": "f2d36b0e3152fa72",
+            "originalHeaderSelectedInParent": true,
+            "selectedHeaders": [
+              {
+                "text": "文件列表",
+                "classes": "workspace-tab-header tappable is-active",
+                "ariaSelected": null,
+                "leafId": "2ef78caac38e615d",
+                "originalHeader": false
+              },
+              {
+                "text": "Magical Cards",
+                "classes": "workspace-tab-header tappable is-active is-flashing",
+                "ariaSelected": null,
+                "leafId": "f2d36b0e3152fa72",
+                "originalHeader": true
+              },
+              {
+                "text": "反向链接",
+                "classes": "workspace-tab-header tappable is-active",
+                "ariaSelected": null,
+                "leafId": "e20aa16012457eeb",
+                "originalHeader": false
+              }
+            ],
+            "documentHasFocus": true,
+            "workspaceFocused": true,
+            "documentActiveElement": {
+              "tag": "DIV",
+              "classes": "cm-content cm-lineWrapping"
+            },
+            "originalState": {
+              "dashboardId": "all"
+            },
+            "bounds": {
+              "x": 344,
+              "y": 77.9375,
+              "width": 680,
+              "height": 722.0625,
+              "top": 77.9375,
+              "right": 1024,
+              "bottom": 800,
+              "left": 344
+            }
+          },
+          "simulatedUserFocus": true
+        },
+        "views": [
+          {
+            "language": "magical-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "magical-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          }
+        ],
+        "unchanged": {
+          "verifiedCardFiles": 18,
+          "configSha256": "8fa306dcc974044a8c6b3a1f596cd0a70d7f787c441ace882213cc4d71b4b826",
+          "fixtureNotes": 2,
+          "enabledListUnchanged": true
+        }
+      }
+    },
+    {
+      "name": "重新启用工作台不会替换 Store 或重复注册别名",
+      "ok": true,
+      "detail": {
+        "shared": {
+          "aliases": [
+            "magical-cards",
+            "barry-cards"
+          ],
+          "references": 2,
+          "sameStore": true,
+          "sameSessions": true,
+          "dashboardCount": 2
+        },
+        "views": [
+          {
+            "language": "magical-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "magical-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          }
+        ],
+        "unchanged": {
+          "verifiedCardFiles": 18,
+          "configSha256": "8fa306dcc974044a8c6b3a1f596cd0a70d7f787c441ace882213cc4d71b4b826",
+          "fixtureNotes": 2,
+          "enabledListUnchanged": true
+        }
+      }
+    },
+    {
+      "name": "停用独立插件后工作台共享提供的两种嵌入继续可用",
+      "ok": true,
+      "detail": {
+        "views": [
+          {
+            "language": "magical-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "magical-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          }
+        ],
+        "unchanged": {
+          "verifiedCardFiles": 18,
+          "configSha256": "8fa306dcc974044a8c6b3a1f596cd0a70d7f787c441ace882213cc4d71b4b826",
+          "fixtureNotes": 2,
+          "enabledListUnchanged": true
+        }
+      }
+    },
+    {
+      "name": "重新启用独立插件沿用 Store 与原 leaf 及分类",
+      "ok": true,
+      "detail": {
+        "shared": {
+          "aliases": [
+            "magical-cards",
+            "barry-cards"
+          ],
+          "references": 2,
+          "sameStore": true,
+          "sameSessions": true,
+          "dashboardCount": 2
+        },
+        "standalone": {
+          "leafId": "f2d36b0e3152fa72",
+          "dashboardId": "all",
+          "bounds": {
+            "x": 356,
+            "y": 89.9375,
+            "width": 656,
+            "height": 1546.9296875,
+            "top": 89.9375,
+            "right": 1012,
+            "bottom": 1636.8671875,
+            "left": 356
+          },
+          "nativeSelectionBeforeFocus": {
+            "activeLeaf": {
+              "leafId": "bc037a6a9dd4ac90",
+              "viewType": "markdown",
+              "constructorName": "t",
+              "itemViewInstance": true,
+              "originalLeaf": false,
+              "selectedHeader": false,
+              "headerAriaSelected": null
+            },
+            "mostRecentLeaf": {
+              "leafId": "f2d36b0e3152fa72",
+              "viewType": "barry-cards",
+              "constructorName": "gm",
+              "itemViewInstance": true,
+              "originalLeaf": true,
+              "selectedHeader": true,
+              "headerAriaSelected": null
+            },
+            "activeItemView": {
+              "leafId": "bc037a6a9dd4ac90",
+              "viewType": "markdown",
+              "constructorName": "t",
+              "itemViewInstance": true,
+              "originalLeaf": false,
+              "selectedHeader": false,
+              "headerAriaSelected": null
+            },
+            "originalLeaf": {
+              "leafId": "f2d36b0e3152fa72",
+              "viewType": "barry-cards",
+              "constructorName": "gm",
+              "itemViewInstance": true,
+              "originalLeaf": true,
+              "selectedHeader": true,
+              "headerAriaSelected": null
+            },
+            "initialCardsLeafId": "f2d36b0e3152fa72",
+            "originalHeaderSelectedInParent": true,
+            "selectedHeaders": [
+              {
+                "text": "文件列表",
+                "classes": "workspace-tab-header tappable is-active",
+                "ariaSelected": null,
+                "leafId": "2ef78caac38e615d",
+                "originalHeader": false
+              },
+              {
+                "text": "Magical Cards",
+                "classes": "workspace-tab-header tappable is-active is-flashing",
+                "ariaSelected": null,
+                "leafId": "f2d36b0e3152fa72",
+                "originalHeader": true
+              },
+              {
+                "text": "反向链接",
+                "classes": "workspace-tab-header tappable is-active",
+                "ariaSelected": null,
+                "leafId": "e20aa16012457eeb",
+                "originalHeader": false
+              }
+            ],
+            "documentHasFocus": true,
+            "workspaceFocused": true,
+            "documentActiveElement": {
+              "tag": "BODY",
+              "classes": "mod-macos is-frameless is-hidden-frameless obsidian-app theme-light show-inline-title is-floating-nav auto-full-screen show-ribbon show-view-header is-focused"
+            },
+            "originalState": {
+              "dashboardId": "all"
+            },
+            "bounds": {
+              "x": 344,
+              "y": 77.9375,
+              "width": 680,
+              "height": 722.0625,
+              "top": 77.9375,
+              "right": 1024,
+              "bottom": 800,
+              "left": 344
+            }
+          },
+          "simulatedUserFocus": true
+        },
+        "views": [
+          {
+            "language": "magical-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "magical-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          }
+        ],
+        "unchanged": {
+          "verifiedCardFiles": 18,
+          "configSha256": "8fa306dcc974044a8c6b3a1f596cd0a70d7f787c441ace882213cc4d71b4b826",
+          "fixtureNotes": 2,
+          "enabledListUnchanged": true
+        }
+      }
+    },
+    {
+      "name": "草稿为空后双停，独立先加载再加载宿主沿用同一 Store",
+      "ok": true,
+      "detail": {
+        "stopped": {
+          "beforeDisableDrafts": {
+            "work": 0,
+            "showcase": 0
+          },
+          "checkedNativeViews": 2,
+          "differences": 0,
+          "runtimeReleased": true
+        },
+        "shared": {
+          "aliases": [
+            "magical-cards",
+            "barry-cards"
+          ],
+          "references": 2,
+          "sameStore": true,
+          "sameSessions": true,
+          "dashboardCount": 2
+        },
+        "views": [
+          {
+            "language": "magical-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "magical-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          }
+        ],
+        "unchanged": {
+          "verifiedCardFiles": 18,
+          "configSha256": "8fa306dcc974044a8c6b3a1f596cd0a70d7f787c441ace882213cc4d71b4b826",
+          "fixtureNotes": 2,
+          "enabledListUnchanged": true
+        }
+      }
+    },
+    {
+      "name": "草稿为空后反向双停，宿主先加载再加载独立沿用同一 Store",
+      "ok": true,
+      "detail": {
+        "stopped": {
+          "beforeDisableDrafts": {
+            "work": 0,
+            "showcase": 0
+          },
+          "checkedNativeViews": 2,
+          "differences": 0,
+          "runtimeReleased": true
+        },
+        "shared": {
+          "aliases": [
+            "magical-cards",
+            "barry-cards"
+          ],
+          "references": 2,
+          "sameStore": true,
+          "sameSessions": true,
+          "dashboardCount": 2
+        },
+        "views": [
+          {
+            "language": "magical-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "magical-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "ab24a7bd054aedd9",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "reading",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 201.265625,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 201.265625,
+              "right": 992,
+              "bottom": 1384.453125,
+              "left": 376
+            }
+          },
+          {
+            "language": "barry-cards",
+            "mode": "live-preview",
+            "surfaces": 1,
+            "modules": 2,
+            "leafId": "bc037a6a9dd4ac90",
+            "bounds": {
+              "x": 376,
+              "y": 270.109375,
+              "width": 616,
+              "height": 1183.1875,
+              "top": 270.109375,
+              "right": 992,
+              "bottom": 1453.296875,
+              "left": 376
+            }
+          }
+        ],
+        "unchanged": {
+          "verifiedCardFiles": 18,
+          "configSha256": "8fa306dcc974044a8c6b3a1f596cd0a70d7f787c441ace882213cc4d71b4b826",
+          "fixtureNotes": 2,
+          "enabledListUnchanged": true
+        }
+      }
+    },
+    {
+      "name": "恢复双插件及原选中标签后配置、作品、图片和启用清单逐字不变",
+      "ok": true,
+      "detail": {
+        "verifiedCardFiles": 18,
+        "configSha256": "8fa306dcc974044a8c6b3a1f596cd0a70d7f787c441ace882213cc4d71b4b826",
+        "fixtureNotes": 2,
+        "enabledListUnchanged": true,
+        "standalone": {
+          "leafId": "f2d36b0e3152fa72",
+          "dashboardId": "all",
+          "bounds": {
+            "x": 356,
+            "y": 89.9375,
+            "width": 656,
+            "height": 1546.9296875,
+            "top": 89.9375,
+            "right": 1012,
+            "bottom": 1636.8671875,
+            "left": 356
+          },
+          "nativeSelectionBeforeFocus": {
+            "activeLeaf": {
+              "leafId": "f2d36b0e3152fa72",
+              "viewType": "barry-cards",
+              "constructorName": "gm",
+              "itemViewInstance": true,
+              "originalLeaf": true,
+              "selectedHeader": true,
+              "headerAriaSelected": null
+            },
+            "mostRecentLeaf": {
+              "leafId": "f2d36b0e3152fa72",
+              "viewType": "barry-cards",
+              "constructorName": "gm",
+              "itemViewInstance": true,
+              "originalLeaf": true,
+              "selectedHeader": true,
+              "headerAriaSelected": null
+            },
+            "activeItemView": {
+              "leafId": "f2d36b0e3152fa72",
+              "viewType": "barry-cards",
+              "constructorName": "gm",
+              "itemViewInstance": true,
+              "originalLeaf": true,
+              "selectedHeader": true,
+              "headerAriaSelected": null
+            },
+            "originalLeaf": {
+              "leafId": "f2d36b0e3152fa72",
+              "viewType": "barry-cards",
+              "constructorName": "gm",
+              "itemViewInstance": true,
+              "originalLeaf": true,
+              "selectedHeader": true,
+              "headerAriaSelected": null
+            },
+            "initialCardsLeafId": "f2d36b0e3152fa72",
+            "originalHeaderSelectedInParent": true,
+            "selectedHeaders": [
+              {
+                "text": "文件列表",
+                "classes": "workspace-tab-header tappable is-active",
+                "ariaSelected": null,
+                "leafId": "2ef78caac38e615d",
+                "originalHeader": false
+              },
+              {
+                "text": "Magical Cards",
+                "classes": "workspace-tab-header tappable is-active mod-active",
+                "ariaSelected": null,
+                "leafId": "f2d36b0e3152fa72",
+                "originalHeader": true
+              },
+              {
+                "text": "反向链接",
+                "classes": "workspace-tab-header tappable is-active",
+                "ariaSelected": null,
+                "leafId": "e20aa16012457eeb",
+                "originalHeader": false
+              }
+            ],
+            "documentHasFocus": true,
+            "workspaceFocused": true,
+            "documentActiveElement": {
+              "tag": "BODY",
+              "classes": "mod-macos is-frameless is-hidden-frameless obsidian-app theme-light show-inline-title is-floating-nav auto-full-screen show-ribbon show-view-header is-focused"
+            },
+            "originalState": {
+              "dashboardId": "all"
+            },
+            "bounds": {
+              "x": 344,
+              "y": 77.9375,
+              "width": 680,
+              "height": 722.0625,
+              "top": 77.9375,
+              "right": 1024,
+              "bottom": 800,
+              "left": 344
+            }
+          },
+          "simulatedUserFocus": true
+        },
+        "drafts": {
+          "work": 0,
+          "showcase": 0
+        }
+      }
+    },
+    {
+      "name": "兼容切换无未处理或 React 生命周期异常",
+      "ok": true,
+      "detail": {
+        "warnings": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "version": "0.4.1",
+  "compatibleHost": "0.1.36",
+  "functionalGroupsVerified": 6,
+  "restorationVerified": true,
+  "compatibilityCasesPassed": 10,
+  "compatibilityCasesFailed": 0,
+  "unchangedCardFiles": 17,
+  "embeddedLanguages": [
+    "magical-cards",
+    "barry-cards"
+  ],
+  "embeddedModes": [
+    "reading",
+    "live-preview"
+  ],
+  "hiddenStateSurvivesBothPluginLoadingOrders": true,
+  "hostException": "window.error: Uncaught TypeError: t.webContents.getZoomFactor is not a function\nTypeError: t.webContents.getZoomFactor is not a function\n    at e.updateStatus (app://obsidian.md/app.js:1:1553212)\n    at c (app://obsidian.md/app.js:1:545214)\n    at u (app://obsidian.md/app.js:1:545326)",
+  "hostExceptionNotFixed": true,
+  "physicalWindowsNotTested": true,
+  "blackScreenInvestigationNotResumed": true
+}

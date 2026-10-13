@@ -1,12 +1,12 @@
-# Community submission: Magical Cards 0.4.0
+# Community submission: Magical Cards 0.4.1
 
-The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). On 2026-10-12, the **0.4.0 automatic scan completed with no Failed/Error findings**, four recommendations and one README English-language warning. The existing published entry displays 0.4.0; its publication state is preserved. Automatic scan completion does not establish approval by a community human reviewer.
+The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). On 2026-10-12, the **0.4.1 automatic scan completed with no Failed/Error findings**, four recommendations and one README English-language warning. Its existing publication state is preserved. Automatic scan completion does not establish approval by a community human reviewer.
 
 | Field | Value |
 | --- | --- |
 | Name / ID | Magical Cards / magical-cards |
 | Repository | AbigBlackCat/Obsidian-Magical_Cards |
-| Version / target release tag | 0.4.0 |
+| Version / target release tag | 0.4.1 |
 | Minimum app version | 1.11.4 |
 | Platforms | Desktop; macOS checks and their app version recorded in VERIFICATION.md; Windows not physically tested |
 | Short description | Browse book, film and image showcase cards with editable descriptions, draggable modules and note embeds. |
@@ -14,11 +14,11 @@ The entry is available in the [community directory](https://community.obsidian.m
 
 ## Listing description
 
-The text below fits the community form's 1,000-character limit (889 characters). The existing published form is not changed automatically:
+The text below fits the community form's 1,000-character limit. The existing published form is not changed automatically:
 
 Browse book, film and image showcase cards in a dedicated view or note embeds. Choose five layouts, including horizontal and vertical curved galleries. A showcase stores explicitly imported images, optional names and descriptions in one local folder and Markdown note.
 
-Start with six editable offline examples. Create card modules or image showcases with a name and aspect ratio; other options stay under Advanced. Manually place modules in Dashboards. One module can appear in several categories, each with its own order. Removing a module hides it and preserves its files and settings for restoration. Settings previews browse without flipping.
+Start with six editable offline examples. Create card modules or image showcases with a name and aspect ratio; other options stay under Advanced. Manually place modules in Dashboards, each with its own order. Move a module out of one Dashboard, or hide it across the standalone view and restore it later. Both actions preserve cards, files and settings; note embeds still display hidden modules. Settings previews browse without flipping.
 
 The interface is in Chinese, with full Chinese and English guides. No account, sync service or audio playback is required. Remote covers load from their image servers; built-in covers work offline and are excluded from the MIT code license.
 
@@ -31,9 +31,35 @@ The interface is in Chinese, with full Chinese and English guides. No account, s
 - Source checks use the official typed Obsidian lint configuration. Settings use searchable definitions on 1.13+ and retain a display fallback for 1.11.4.
 - Releases contain only main.js, manifest.json and styles.css. CI creates verifiable build attestations.
 
-Vault enumeration is used for card discovery and the user-invoked linked-note picker. Showcase imports copy only images explicitly selected or dropped by the user; folders are not scanned automatically. Clipboard writes occur when the user clicks Copy for generated embed code. No background clipboard reading or note-content upload is performed. Card and showcase edit failures retain drafts; final shutdown backs up drafts that cannot be saved into the local plugin directory and reports the recovery path.
+Vault file enumeration discovers card paths, but card content is read only after filtering paths to the configured card directory. The user-invoked linked-note picker searches Markdown paths across the vault to let users associate an existing note. Showcase imports copy only images explicitly selected or dropped by the user; folders are not scanned automatically. Clipboard writes occur when the user clicks Copy for generated embed code; editing reads plain text from a user-triggered paste event. No background clipboard reading or note-content upload is performed. Card and showcase edit failures retain drafts; final shutdown backs up drafts that cannot be saved into the local plugin directory and reports the recovery path.
 
-## Automatic scan of 0.4.0
+## Automatic scan of 0.4.1
+
+The [account entry](https://community.obsidian.md/account/plugins/magical-cards) reported **0.4.1**, released from commit `9e65579d2572e21ad46228eda75e5a9c55bd19fe`, as Completed on 2026-10-12. These results apply to that immutable release. Default-branch documentation or test changes do not alter its reviewed artifacts.
+
+| Check | Result |
+| --- | --- |
+| Overall scan | Completed; no Failed/Error findings |
+| Release attestations | main.js and styles.css: Pass |
+| Network | Pass; no suspicious network requests reported |
+| Dependencies | Pass; no vulnerabilities reported |
+| Build verification | Pass; main.js reproduced byte for byte |
+
+The scan retained exactly four recommendations and one warning:
+
+| Finding | Level | Functional reason or review evidence |
+| --- | --- | --- |
+| Vault Enumeration | Recommendation | Automatic card-content reads are restricted to the configured directory. The linked-note picker searches vault-wide Markdown paths only when the user invokes it. |
+| Clipboard Access | Recommendation | Copy writes generated embed code only on user action; paste reads only the event's plain text. There is no background clipboard read. |
+| keyCode | Recommendation | The `229` guard preserves IME composition when an Enter or Escape key event does not reliably expose `isComposing`; it does not trigger a save or cancel during composition. |
+| execCommand | Recommendation | `insertText` inserts plain text while retaining the editor's native undo history. The existing range fallback rejects clipboard HTML when that API is unavailable. |
+| README does not appear to contain English text | Warning | The Chinese main README already includes an English overview and explicit Installation / Usage sections; README_en.md is a complete English guide. These sections are evidence for human review. The warning is not claimed resolved, and no assumption is made about the check's detection rules. |
+
+Automatic completion does not establish approval by a human reviewer. Recommendations are reported with their functional reasons rather than removed by disabling existing editing or linked-note features.
+
+The [regression record](verification/review-remediation-0.4.1.md) covers IME event boundaries, plain-text paste, and real Chrome / Obsidian undo and redo. The compatibility choices follow the documented [IME event ordering](https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event) and [native undo history](https://developer.mozilla.org/en-US/docs/Web/API/Document/execCommand) limitations. This remediation changes documentation and tests; rebuilt installation files remain byte-identical to 0.4.1.
+
+## Historical automatic scan of 0.4.0
 
 The [account entry](https://community.obsidian.md/account/plugins/magical-cards) reported **0.4.0**, released from commit `93050e9b74b6a8d049de37cd14dfe89453e8507a`, as Completed on 2026-10-12. The result was read from Chrome DOM after requesting a release scan. [Captured scan result](verification/community-0.4.0.jpg).
 
@@ -98,11 +124,11 @@ These recommendations are not reported as blocking failures by this scan. Comple
 
 ## Review and release checklist
 
-1. Verify the default branch manifest, package version and release tag match 0.4.0.
+1. Verify the default branch manifest, package version and release tag match 0.4.1.
 2. Verify the release's three files, build size, artifact attestations and reproducible clean build.
-3. Record the actual scan result. The completed 0.4.0 release scan still contains the README English-language warning.
+3. Record the actual scan result and its release or branch commit. The completed 0.4.1 release scan still contains four recommendations and the README English-language warning.
 4. Preserve the entry’s existing publication state. Automatic scan completion alone does not establish human-review approval.
 
 ## Verification and limits
 
-See VERIFICATION.md for recorded checks. Windows has not been tested on a physical machine. No mobile compatibility is claimed. Compatible host **0.1.35** shares showcase editing, per-module settings, removed-module restoration and explicit Dashboard capability. Dashboard navigation appears only in the standalone Magical Cards view. When an older host owns the shared runtime, the plugin preserves it and prompts an upgrade for unsupported showcase and restoration features. Original cover rights and source notices remain applicable and are not expanded by this release.
+See VERIFICATION.md for recorded checks. Windows has not been tested on a physical machine. No mobile compatibility is claimed. Compatible host **0.1.36** shares showcase editing, per-module settings, removed-module restoration and explicit Dashboard and standalone-module-visibility capabilities. Dashboard navigation and the new standalone hiding rule appear only in the standalone Magical Cards view; note embeds retain their existing display rules. When an older host owns the shared runtime, the plugin preserves it and prompts an upgrade for unsupported capabilities. Original cover rights and source notices remain applicable and are not expanded by this release.

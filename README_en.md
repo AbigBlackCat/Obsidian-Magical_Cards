@@ -179,7 +179,7 @@ Wait for the save to finish, quit and restart Obsidian, then reopen the same vau
 
 **Does the plugin use the network or clipboard?**
 
-No account or data sync is required. Built-in examples work offline. User-supplied remote cover URLs load from their image servers. The Copy control writes generated code only after you click it. The linked-note picker searches note paths within your vault and does not send note content elsewhere.
+No account or data sync is required. Built-in examples work offline. User-supplied remote cover URLs load from their image servers. The Copy control writes generated code only after you click it. When editing a title, pasting reads only the plain text from that paste event; there is no background clipboard reading. The linked-note picker searches note paths within your vault and does not send note content elsewhere.
 
 <details>
 <summary>Upgrading from Barry Cards and recovering drafts</summary>

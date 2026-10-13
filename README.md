@@ -1,6 +1,10 @@
 简体中文 · [English](README_en.md)
 
+## English overview
+
 Magical Cards is a desktop Obsidian plugin for book, film, and image showcase cards, with draggable modules and note embeds. It works offline with six editable starter examples. The interface is currently in Chinese; see the [full English guide](README_en.md).
+
+Choose five layouts, organize modules into Dashboards, and edit summaries on the back of a card. Hiding a module preserves its notes and images. Works remain local Markdown notes; appearance and ordering are stored in the selected card directory. Remote covers load only from their image servers. The linked-note picker searches vault paths when invoked. Copy writes generated embed code only after a click, and pasting reads plain text from that paste event; the plugin does not monitor the clipboard or upload note contents.
 
 <h1 align="center">Magical Cards</h1>
 <p align="center">把阅读、观影与图片收藏，变成可以浏览、编辑、嵌入笔记的卡片。</p>
@@ -187,7 +191,7 @@ modules:
 
 **是否联网或读取剪贴板？**
 
-插件不连接账户，不执行联网同步。内置示例离线可用；自行填写远程封面 URL 时会向相应图片服务器加载资源。「复制」只在用户点击后写入生成的代码；关联笔记选择器搜索笔记库中的笔记路径，不向外发送笔记内容。
+插件不连接账户，不执行联网同步。内置示例离线可用；自行填写远程封面 URL 时会向相应图片服务器加载资源。「复制」只在用户点击后写入生成的代码；编辑标题时，主动粘贴仅读取该次粘贴的纯文本，不在后台读取剪贴板。关联笔记选择器搜索笔记库中的笔记路径，不向外发送笔记内容。
 
 **可以在手机上使用吗？**
 

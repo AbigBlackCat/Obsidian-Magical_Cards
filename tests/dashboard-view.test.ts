@@ -301,6 +301,117 @@ test('module title composition and cancellation set the same synchronous flags c
   } finally { hooks.dispose(); f.dispose(); }
 });
 
+for (const phase of ['before compositionstart', 'during composition', 'after compositionend'] as const) {
+  test(`editable title ignores IME Enter and Escape ${phase}, then handles confirmed keys`, async () => {
+    for (const key of ['Enter', 'Escape']) {
+      const hooks = new Hooks(), saves: string[] = [];
+      let title: React.ReactElement<any>, blurred = 0, prevented = 0, stopped = 0;
+      const element = {
+        textContent: '原模块', dataset: { editableError: 'true' } as Record<string, string>,
+        ownerDocument: { getSelection: () => null },
+        blur: () => { blurred++; title.props.onBlur({ currentTarget: element }); },
+      };
+      try {
+        title = nodes(hooks.render(ui.Text, { value: '原模块', onSave: async value => { saves.push(value); return true; } })).find(node => node.props.contentEditable)!;
+        title.props.ref.current = element; hooks.runEffects(); title.props.onFocus();
+        if (phase !== 'before compositionstart') title.props.onCompositionStart({ currentTarget: element });
+        element.textContent = '候选名称😀';
+        if (phase === 'after compositionend') title.props.onCompositionEnd({ currentTarget: element });
+        else title.props.onInput({ currentTarget: element, nativeEvent: { isComposing: false } });
+        const event = { key, keyCode: phase === 'during composition' ? (key === 'Enter' ? 13 : 27) : 229, nativeEvent: { isComposing: false }, currentTarget: element, preventDefault: () => { prevented++; }, stopPropagation: () => { stopped++; } };
+        title.props.onKeyDown(event); await tick();
+        assert.equal(element.textContent, '候选名称😀'); assert.equal(element.dataset.editableError, 'true');
+        assert.equal(blurred, 0); assert.equal(prevented, 0); assert.equal(stopped, 0); assert.deepEqual(saves, []);
+        assert.equal(element.dataset.editableSaving, undefined);
+        if (phase === 'during composition') title.props.onCompositionEnd({ currentTarget: element });
+        title.props.onKeyDown({ ...event, keyCode: key === 'Enter' ? 13 : 27 }); await tick();
+        assert.equal(blurred, 1); assert.equal(prevented, 1); assert.equal(stopped, 1);
+        assert.equal(element.textContent, key === 'Enter' ? '候选名称😀' : '原模块');
+        assert.deepEqual(saves, key === 'Enter' ? ['候选名称😀'] : []);
+        assert.equal(element.dataset.editableError, 'false');
+      } finally { hooks.dispose(); }
+    }
+  });
+}
+
+for (const [kind, limit] of [['title', 180], ['subtitle', 300]] as const) {
+  test(`paste inserts only sanitized ${kind} plain text through insertText without the range fallback`, async () => {
+    const hooks = new Hooks(), saves: string[] = [], reads: string[] = [], commands: unknown[][] = [];
+    let prevented = 0;
+    const expected = `前 😀${'字'.repeat(limit - 3)}`;
+    const element = {
+      textContent: '', dataset: {} as Record<string, string>, ownerDocument: {
+        execCommand: (...args: unknown[]) => { commands.push(args); element.textContent = String(args[2]); return true; },
+        getSelection: () => { assert.fail('successful insertText must not use the range fallback'); },
+        createRange: () => { assert.fail('successful insertText must not create a range'); },
+        createTextNode: () => { assert.fail('successful insertText must not create a fallback text node'); },
+      },
+    };
+    try {
+      const title = nodes(hooks.render(ui.Text, { kind, value: '原模块', onSave: async value => { saves.push(value); return true; } })).find(node => node.props.contentEditable)!;
+      title.props.ref.current = element; hooks.runEffects();
+      title.props.onPaste({ currentTarget: element, preventDefault: () => { prevented++; }, clipboardData: { getData: (type: string) => { reads.push(type); return type === 'text/plain' ? `前\r\n\t\u2028\u2029\u0000\u007f😀${'字'.repeat(limit)}` : '<img src=x onerror=alert(1)>'; } } });
+      assert.equal(prevented, 1); assert.deepEqual(reads, ['text/plain']); assert.deepEqual(commands, [['insertText', false, expected]]);
+      assert.equal(element.textContent, expected); assert.equal(Array.from(element.textContent).length, limit);
+      assert.deepEqual(saves, []); title.props.onBlur({ currentTarget: element }); await tick(); assert.deepEqual(saves, [expected]);
+    } finally { hooks.dispose(); }
+  });
+}
+
+test('paste range fallback replaces only the selection inside the editable title with a text node', async () => {
+  const hooks = new Hooks(), saves: string[] = [], reads: string[] = [], calls: string[] = [];
+  const child = {}, expected = '丁 丙<b>字</b>';
+  const range = {
+    commonAncestorContainer: child,
+    deleteContents: () => { calls.push('delete'); element.textContent = '甲'; },
+    insertNode: (node: { textContent: string }) => { calls.push('insert'); element.textContent += node.textContent; },
+    setStartAfter: (node: { textContent: string }) => { calls.push('caret'); assert.equal(node.textContent, expected); },
+    collapse: (start: boolean) => { calls.push('collapse'); assert.equal(start, true); },
+  };
+  const selection = { rangeCount: 1, getRangeAt: () => range, removeAllRanges: () => { calls.push('remove'); }, addRange: (next: unknown) => { calls.push('add'); assert.equal(next, range); } };
+  const element = {
+    textContent: '甲乙', dataset: {} as Record<string, string>, contains: (node: unknown) => node === child,
+    ownerDocument: {
+      execCommand: (command: string, _ui: boolean, plain: string) => { assert.equal(command, 'insertText'); assert.equal(plain, expected); return false; },
+      getSelection: () => selection,
+      createTextNode: (plain: string) => { assert.equal(plain, expected); return { textContent: plain }; },
+      createRange: () => { assert.fail('an existing inside selection must be reused'); },
+    },
+    append: () => { assert.fail('inside selection must be replaced instead of appended'); },
+  };
+  try {
+    const title = nodes(hooks.render(ui.Text, { value: '甲乙', onSave: async value => { saves.push(value); return true; } })).find(node => node.props.contentEditable)!;
+    title.props.ref.current = element; hooks.runEffects();
+    let prevented = 0;
+    title.props.onPaste({ currentTarget: element, preventDefault: () => { prevented++; }, clipboardData: { getData: (type: string) => { reads.push(type); return type === 'text/plain' ? '丁\n丙<b>字</b>' : '<strong>不应插入</strong>'; } } });
+    assert.equal(prevented, 1); assert.deepEqual(reads, ['text/plain']);
+    assert.deepEqual(calls, ['delete', 'insert', 'caret', 'collapse', 'remove', 'add']);
+    assert.equal(element.textContent, `甲${expected}`); title.props.onBlur({ currentTarget: element }); await tick(); assert.deepEqual(saves, [`甲${expected}`]);
+  } finally { hooks.dispose(); }
+});
+
+test('paste without insertText appends safely when selection is outside and clamps the complete draft', async () => {
+  const hooks = new Hooks(), saves: string[] = [], reads: string[] = [], caretTargets: unknown[] = [];
+  const outside = {}, expected = `${'甲'.repeat(179)}😀`;
+  const externalRange = { commonAncestorContainer: outside, deleteContents: () => assert.fail('outside content must not be deleted'), insertNode: () => assert.fail('outside content must not receive clipboard text') };
+  const caretRange = { selectNodeContents: (target: unknown) => { caretTargets.push(target); }, collapse: (start: boolean) => { assert.equal(start, false); } };
+  const selection = { rangeCount: 1, getRangeAt: () => externalRange, removeAllRanges() {}, addRange: (range: unknown) => { assert.equal(range, caretRange); } };
+  const element = {
+    textContent: '甲'.repeat(179), dataset: {} as Record<string, string>, contains: () => false,
+    ownerDocument: { getSelection: () => selection, createTextNode: (plain: string) => ({ textContent: plain }), createRange: () => caretRange },
+    append: (node: { textContent: string }) => { assert.equal(node.textContent, '😀 后文'); element.textContent += node.textContent; },
+  };
+  try {
+    const title = nodes(hooks.render(ui.Text, { value: element.textContent, onSave: async value => { saves.push(value); return true; } })).find(node => node.props.contentEditable)!;
+    title.props.ref.current = element; hooks.runEffects();
+    let prevented = 0;
+    title.props.onPaste({ currentTarget: element, preventDefault: () => { prevented++; }, clipboardData: { getData: (type: string) => { reads.push(type); return type === 'text/plain' ? '😀\n后文' : '<iframe>不应插入</iframe>'; } } });
+    assert.equal(prevented, 1); assert.deepEqual(reads, ['text/plain']); assert.equal(element.textContent, expected);
+    assert.equal(caretTargets.length, 2); assert.ok(caretTargets.every(target => target === element));
+    title.props.onBlur({ currentTarget: element }); await tick(); assert.deepEqual(saves, [expected]);
+  } finally { hooks.dispose(); }
+});
+
 test('navigation checks title status again after a slow card save', async () => {
   const f = fixture(); let finish!: () => void;
   const pending = new Promise<void>(resolve => { finish = resolve; });

@@ -2,6 +2,8 @@
 
 The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). On 2026-10-12, the **0.4.1 automatic scan completed with no Failed/Error findings**, four recommendations and one README English-language warning. Its existing publication state is preserved. Automatic scan completion does not establish approval by a community human reviewer.
 
+The documentation and editing-test remediation was reviewed on the main branch on 2026-10-13. That preview completed without Failed/Error findings; the README warning and two source recommendations remain. Preview scope and evidence are recorded below.
+
 | Field | Value |
 | --- | --- |
 | Name / ID | Magical Cards / magical-cards |
@@ -58,6 +60,19 @@ The scan retained exactly four recommendations and one warning:
 Automatic completion does not establish approval by a human reviewer. Recommendations are reported with their functional reasons rather than removed by disabling existing editing or linked-note features.
 
 The [regression record](verification/review-remediation-0.4.1.md) covers IME event boundaries, plain-text paste, and real Chrome / Obsidian undo and redo. The compatibility choices follow the documented [IME event ordering](https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event) and [native undo history](https://developer.mozilla.org/en-US/docs/Web/API/Document/execCommand) limitations. This remediation changes documentation and tests; rebuilt installation files remain byte-identical to 0.4.1.
+
+## Main-branch preview after remediation
+
+On 2026-10-13, the account entry's **Review branch** scan of `main` at commit `856cc79ca6dff1779c3032c2aebdd421f5a41e32` completed. [Captured result](verification/community-remediation-0.4.1.jpg).
+
+| Check | Result |
+| --- | --- |
+| Overall preview | Completed; no Failed/Error findings |
+| Source code | Two recommendations remain: deprecated `keyCode` and `execCommand` |
+| Dependencies | Pass; no vulnerable dependencies found |
+| README | English-language warning remains despite the expanded English overview, Installation / Usage and full English guide |
+
+This branch preview ran only source, dependency and README checks. It did not rerun release attestations, network, behavior or reproducible-build checks, so it does not establish that the release's Vault Enumeration or Clipboard Access recommendations have disappeared. The Chinese main README remains the author's chosen primary document. The expanded English sections, regression evidence and functional explanations are retained for human review; no detection-rule workaround or final approval is claimed.
 
 ## Historical automatic scan of 0.4.0
 

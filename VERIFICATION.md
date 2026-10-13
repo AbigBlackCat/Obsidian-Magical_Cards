@@ -1,12 +1,14 @@
 # Magical Cards 0.4.2 verification
 
-Candidate prepared on 2026-10-13 with compatible host **0.1.37**. Module hiding stays recoverable; confirmed deletion removes module configuration, all Dashboard references and module positions while preserving work notes, showcase notes, images and work IDs. Existing note embeds report that the module was removed. Removing a module from one Dashboard continues to affect that category only.
+Released on 2026-10-13 as [Magical Cards **0.4.2**](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.4.2), with compatible host **0.1.37**. Module hiding stays recoverable; confirmed deletion removes module configuration, all Dashboard references and module positions while preserving work notes, showcase notes, images and work IDs. Existing note embeds report that the module was removed. Removing a module from one Dashboard continues to affect that category only.
 
-The preceding local implementation check passed **212 / 212 cards tests** and **258 / 258 host development-tree tests**, type checks and builds. The host development tree includes existing Gantt work; these numbers are a local baseline, not clean official-release evidence. Clean export, released-file hashes and CI results must be recorded after the release checks complete.
+The preceding local implementation check passed **212 / 212 cards tests** and **258 / 258 host development-tree tests**, type checks and builds. The host development tree includes existing Gantt work; these numbers are a local baseline, not clean official-release evidence. The final clean builds pass **212 / 212 cards tests** and **254 / 254 official-host tests**, both type checks, resource checks and reproducible builds. Lint has 0 errors and the same 3 warnings. The official host excludes the local Gantt changes.
+
+Both tag workflows passed and published exactly `main.js`, `manifest.json` and `styles.css`. Downloaded files match the tested clean builds byte for byte. All three public files passed attestation verification bound to the release workflow, tag `0.4.2` and source commit `1fc580fe0d785eaa27e932a2c9f400c26f09a4b6`; no private-host attestation is claimed. Card main.js is **4,748,598 bytes**, below 5,000,000. [Release record](verification/release-0.4.2.json). Current-vault installation was not changed.
 
 New regression coverage includes recoverable hiding versus deletion, removal of category and placement references, preserved notes/images and unrelated configuration, stale-view and stale-draft rejection, same-field conflicts, failed writes, concurrent saves, edit/sort guards, default modules that stay deleted after restart, and older shared-runtime capability checks. README.md retains its English opening, Chinese primary instructions and the author's development notes.
 
-No new community scan is requested for this documentation change. The recorded 0.4.1 release and main-branch preview results remain historical; the README English-language warning is not claimed resolved. Fresh native deletion checks and physical Windows testing have not been performed for this candidate. Existing release verification below is unchanged.
+No new community scan is requested for this documentation change. The recorded 0.4.1 release and main-branch preview results remain historical; the README English-language warning is not claimed resolved. Fresh native deletion checks and physical Windows testing have not been performed for this release. Existing release verification below is unchanged.
 
 ---
 

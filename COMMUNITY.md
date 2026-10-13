@@ -1,6 +1,6 @@
 # Community submission: Magical Cards 0.4.2
 
-The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). The **0.4.2 candidate** separates recoverable hiding from confirmed module deletion: deletion removes configuration and all Dashboard references while keeping notes and images. Compatible host: **0.1.37**. This candidate has not yet been scanned; no approval or new review result is claimed.
+The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). The [**0.4.2 GitHub release**](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.4.2) separates recoverable hiding from confirmed module deletion: deletion removes configuration and all Dashboard references while keeping notes and images. Compatible host: **0.1.37**. The release CI and file-provenance checks pass; this release has not been submitted for a new community scan, and no approval or new community review result is claimed.
 
 The latest recorded release scan is **0.4.1**, completed on 2026-10-12 without Failed/Error findings, with four recommendations and one README English-language warning. Its main-branch documentation and editing-test preview completed on 2026-10-13, retaining the README warning and two source recommendations. These immutable results are recorded below and do not apply to 0.4.2.
 

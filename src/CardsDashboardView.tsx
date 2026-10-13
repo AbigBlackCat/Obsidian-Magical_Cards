@@ -1,28 +1,13 @@
 import React, { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import type { CardsAPI, CardsDashboard } from './types';
 import type { WorkPropertiesManager } from './WorkPropertiesSessions';
-import CardsSurface, { assertCardModuleOperationsSettled } from './CardsSurface';
+import CardsSurface, { flushDashboardEdits } from './CardsSurface';
+export { flushDashboardEdits } from './CardsSurface';
 import { ALL_DASHBOARD_ID, deleteDashboard, saveDashboard } from './dashboards';
 import { cardModuleChoices } from './module-choice';
-import { getShowcaseManager } from './showcase-sessions';
 import { Field, Icon } from './primitives';
-import { setStandaloneModuleHidden } from './settings';
-
-export async function flushDashboardEdits(api: CardsAPI, manager: WorkPropertiesManager, surface?: HTMLElement): Promise<void> {
-  const checkTitles = () => {
-    for (const element of assertCardModuleOperationsSettled(api, surface)) {
-      if (element.querySelector('[data-editable-composing="true"]')) throw new Error('请先结束输入法输入，模块名称草稿已保留。');
-      const focused = element.ownerDocument.activeElement;
-      if (focused?.instanceOf(HTMLElement) && element.contains(focused) && focused.classList.contains('bw-editable-text')) focused.blur();
-      if (element.querySelector('.bw-editable-text[data-editable-saving="true"], .bw-editable-text[data-editable-error="true"]')) throw new Error('模块名称尚未保存，请等待保存完成，或回到标题重试后再切换 Dashboard。');
-    }
-  };
-  checkTitles();
-  await manager.flushAll();
-  if (manager.recoveryDrafts().length) throw new Error('卡片草稿尚未保存，请完成编辑后再切换 Dashboard。');
-  await getShowcaseManager(api)?.flushAll();
-  checkTitles();
-}
+import { readModuleDraft, setStandaloneModuleHidden, type CardModuleDraft } from './settings';
+import ModuleRemovalDialog from './ModuleRemovalDialog';
 
 interface Props {
   api: CardsAPI;
@@ -40,6 +25,7 @@ export default function CardsDashboardView({ api, manager, dashboardId, onDashbo
   if (existing) retained.current = existing;
   const dashboard = dashboardId === ALL_DASHBOARD_ID ? undefined : existing ?? (retained.current?.id === dashboardId ? retained.current : undefined);
   const [editing, setEditing] = useState<DashboardEditorState | null>(null);
+  const [removal, setRemoval] = useState<CardModuleDraft | null>(null);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
@@ -74,11 +60,20 @@ export default function CardsDashboardView({ api, manager, dashboardId, onDashbo
   };
   const selected = dashboard?.id ?? ALL_DASHBOARD_ID;
   const blockComposition = (event: React.PointerEvent) => { if (composing.current.size) { event.preventDefault(); setError('请先结束输入法输入，当前草稿已保留。'); } };
-  const headerAction = (id: string) => <button type="button" className="bw-module-visibility-action" data-module-action={dashboard ? 'remove' : 'hide'} data-module-collection={id} disabled={busy || snapshot.loading} onPointerDownCapture={blockComposition} onClick={() => { void execute(async () => {
+  const openRemoval = (id: string) => {
+    if (!api.supportsModuleDeletion) { setError('请升级已启用的兼容卡片插件后再移除模块。已有模块和资料已保留。'); return; }
+    void execute(() => {
+      const current = readModuleDraft(api.getSnapshot().settings, id);
+      if (!current) throw new Error('模块已改变，请重新载入后重试。');
+      setRemoval(structuredClone(current));
+    });
+  };
+  const removalAction = (id: string) => <button type="button" className="bw-module-visibility-action" data-module-action="delete" data-module-collection={id} disabled={busy || snapshot.loading} onPointerDownCapture={blockComposition} onClick={() => openRemoval(id)}>移除模块</button>;
+  const headerAction = (id: string) => <><button type="button" className="bw-module-visibility-action" data-module-action={dashboard ? 'remove' : 'hide'} data-module-collection={id} disabled={busy || snapshot.loading} onPointerDownCapture={blockComposition} onClick={() => { void execute(async () => {
     if (dashboard) await saveDashboard(api, { ...dashboard, moduleIds: dashboard.moduleIds.filter(moduleId => moduleId !== id) }, dashboard);
     else await setStandaloneModuleHidden(api, id, true);
     if (mounted.current) setStatus(dashboard ? '已从此 Dashboard 移出，可在“编辑 Dashboard”重新加入。' : '已隐藏，可在“全部”→“已隐藏模块”恢复。');
-  }); }}>{dashboard ? '移出此 Dashboard' : '隐藏模块'}</button>;
+  }); }}>{dashboard ? '移出此 Dashboard' : '隐藏模块'}</button>{removalAction(id)}</>;
   const hidden = cardModuleChoices(snapshot.settings, true).filter(choice => snapshot.settings.hiddenModuleIds?.includes(choice.id) || snapshot.settings.standaloneHiddenModuleIds?.includes(choice.id));
   const tabs = [{ id: ALL_DASHBOARD_ID, title: '全部' }, ...(api.supportsDashboards ? boards : [])];
   if (dashboard && !existing) tabs.push({ id: dashboard.id, title: `${dashboard.title}（已删除）` });
@@ -98,9 +93,10 @@ export default function CardsDashboardView({ api, manager, dashboardId, onDashbo
     {selected === ALL_DASHBOARD_ID && hidden.length > 0 && <details className="bw-hidden-modules" data-hidden-modules><summary>已隐藏模块（{hidden.length}）</summary><p>恢复后重新显示，模块、卡片资料和原顺序都会保留。</p><ul>{hidden.map(choice => {
       const legacyHidden = snapshot.settings.hiddenModuleIds?.includes(choice.id);
       const alsoStandalone = snapshot.settings.standaloneHiddenModuleIds?.includes(choice.id);
-      return <li key={choice.id} data-hidden-module={choice.id}><span>{choice.label}</span>{legacyHidden ? <span className="bw-hidden-module-help">{alsoStandalone ? '此模块已在设置中移除，请先前往设置恢复，再在此处恢复模块。' : '此模块已在设置中移除，请前往设置恢复。'}</span> : <button type="button" data-module-action="restore" data-module-collection={choice.id} disabled={busy} onPointerDownCapture={blockComposition} onClick={() => { void execute(async () => { await setStandaloneModuleHidden(api, choice.id, false); if (mounted.current) setStatus('已恢复模块，将按原顺序显示。'); }); }}>恢复模块</button>}</li>;
+      return <li key={choice.id} data-hidden-module={choice.id}><span>{choice.label}</span>{legacyHidden ? <span className="bw-hidden-module-help">{alsoStandalone ? '此模块按旧版规则隐藏，请先前往设置恢复，再在此处恢复模块。' : '此模块按旧版规则隐藏，请前往设置恢复。'}</span> : <button type="button" data-module-action="restore" data-module-collection={choice.id} disabled={busy} onPointerDownCapture={blockComposition} onClick={() => { void execute(async () => { await setStandaloneModuleHidden(api, choice.id, false); if (mounted.current) setStatus('已恢复模块，将按原顺序显示。'); }); }}>恢复模块</button>}{removalAction(choice.id)}</li>;
     })}</ul></details>}
     {editing && <DashboardEditor api={api} manager={manager} state={editing} close={() => setEditing(null)} />}
+    {removal && <ModuleRemovalDialog api={api} manager={manager} baseline={removal} close={() => setRemoval(null)} removed={() => setStatus('模块已移除，作品笔记和图片已保留。')} />}
   </div>;
 }
 

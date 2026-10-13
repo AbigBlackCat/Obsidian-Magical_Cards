@@ -1,3 +1,15 @@
+# Magical Cards 0.4.2 verification
+
+Candidate prepared on 2026-10-13 with compatible host **0.1.37**. Module hiding stays recoverable; confirmed deletion removes module configuration, all Dashboard references and module positions while preserving work notes, showcase notes, images and work IDs. Existing note embeds report that the module was removed. Removing a module from one Dashboard continues to affect that category only.
+
+The preceding local implementation check passed **212 / 212 cards tests** and **258 / 258 host development-tree tests**, type checks and builds. The host development tree includes existing Gantt work; these numbers are a local baseline, not clean official-release evidence. Clean export, released-file hashes and CI results must be recorded after the release checks complete.
+
+New regression coverage includes recoverable hiding versus deletion, removal of category and placement references, preserved notes/images and unrelated configuration, stale-view and stale-draft rejection, same-field conflicts, failed writes, concurrent saves, edit/sort guards, default modules that stay deleted after restart, and older shared-runtime capability checks. README.md retains its English opening, Chinese primary instructions and the author's development notes.
+
+No new community scan is requested for this documentation change. The recorded 0.4.1 release and main-branch preview results remain historical; the README English-language warning is not claimed resolved. Fresh native deletion checks and physical Windows testing have not been performed for this candidate. Existing release verification below is unchanged.
+
+---
+
 # Magical Cards 0.4.0 verification
 
 Checked on 2026-10-12 from source commit `1868348817d4c243a88485eefcb66b8673191b71`. This version adds Dashboard categories and separate ordinary-card and image-showcase creation. The checks below cover the clean public source, its native installation, compatible-host loading orders and the official release. Tag `0.4.0` uses source commit `93050e9b74b6a8d049de37cd14dfe89453e8507a`; its installation bytes match the checked clean build.

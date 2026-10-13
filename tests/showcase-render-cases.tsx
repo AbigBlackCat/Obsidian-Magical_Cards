@@ -73,14 +73,14 @@ test('saved book/film settings previews cannot mount editing sessions or expose 
   } finally { manager.dispose(); }
 });
 
-test('removed modules disappear standalone but retain embedded identity and restore control', () => {
+test('legacy hidden modules disappear standalone but retain embedded identity and restore control', () => {
   const f = fixture(), manager = new WorkPropertiesManager(f.api);
   f.snapshot.settings.hiddenModuleIds = ['book', 'photos'];
   try {
     const standalone = renderToStaticMarkup(<CardsSurface api={f.api} manager={manager} />);
     assert.doesNotMatch(standalone, /data-cards-module="book"|data-cards-module="photos"/);
     const embed = renderToStaticMarkup(<CardsSurface api={f.api} manager={manager} embed={{ id: 'embed', modules: [{ id: 'kept', collection: 'photos', layout: 'album-rail' }] }} />);
-    assert.match(embed, /data-cards-module="kept"/); assert.match(embed, /此模块已从显示中移除/); assert.match(embed, />恢复模块<\/button>/);
+    assert.match(embed, /data-cards-module="kept"/); assert.match(embed, /此模块已按旧版规则隐藏/); assert.match(embed, />恢复模块<\/button>/);
     assert.doesNotMatch(embed, /data-module-mode="showcase"|集合未找到/); assert.equal(f.writes(), 0);
   } finally { manager.dispose(); }
   assert.deepEqual(mergeVisibleModuleOrder(['book', 'hidden1', 'film', 'hidden2', 'photos'], ['photos', 'book', 'film']), ['photos', 'hidden1', 'book', 'hidden2', 'film']);

@@ -13,6 +13,7 @@ export class CardsStore implements CardsAPI {
  readonly showcase:ShowcaseAPI;
  readonly supportsDashboards=true;
  readonly supportsStandaloneModuleVisibility=true;
+ readonly supportsModuleDeletion=true;
  private snapshot:CardsSnapshot;
  private listeners=new Set<()=>void>(); private queue:Promise<unknown>=Promise.resolve(); private timer:number|undefined;
  private destroyed=false; private refreshRevision=0; private orderPath=''; private initialization?:Promise<void>;
@@ -378,8 +379,17 @@ export class CardsStore implements CardsAPI {
    for(const key of Object.keys(patch) as Array<keyof CardsSettings>)if(JSON.stringify(current[key])!==JSON.stringify(expected[key]))throw new Error('所编辑的卡片设置已在其他窗口更新，请重新载入后修改。');
    const stored=parts.fields.bw_card_settings as Record<string,unknown>;
    const dashboards=patch.dashboards?.map(board=>({...current.dashboards?.find(item=>item.id===board.id),...board,moduleIds:[...board.moduleIds]}));
-   const values={...stored,...patch,...('workbenchText' in patch?{workbenchText:{...(record(stored.workbenchText)?stored.workbenchText:{}),...patch.workbenchText}}:{}),...(dashboards?{dashboards}:{})};
-   settings=readCardsSettings(values);parts.fields.bw_card_settings=values;
+   const values:Record<string,unknown>={...stored,...patch,...('workbenchText' in patch?{workbenchText:{...(record(stored.workbenchText)?stored.workbenchText:{}),...patch.workbenchText}}:{}),...(dashboards?{dashboards}:{})};
+   // Keep only the deletion ID; built-in module preferences must not be written back.
+   for(const kind of ['book','film'] as const)if((patch.deletedModuleIds??current.deletedModuleIds)?.includes(kind)){
+    delete values[kind==='book'?'bookCardAppearance':'filmCardAppearance'];
+    if(record(values.workbenchText)){const titles={...values.workbenchText};delete titles[`${kind}.title`];values.workbenchText=titles;}
+   }
+   settings=readCardsSettings(values);
+   // A queued save must not restore references deleted after its initial snapshot.
+   const references=[...('customModules' in patch?settings.customModules.map(module=>module.id):[]),...('dashboards' in patch?settings.dashboards?.flatMap(board=>board.moduleIds)??[]:[]),...('workbenchCards' in patch?settings.workbenchCards.map(placement=>placement.module):[]),...(['standaloneOrder','hiddenModuleIds','standaloneHiddenModuleIds'] as const).flatMap(key=>key in patch?settings[key]??[]:[])];
+   if(references.some(id=>settings.deletedModuleIds?.includes(id)))throw new Error('所保存的模块已删除，当前草稿已保留，请重新载入后重试。');
+   parts.fields.bw_card_settings=values;
    return `---\n${stringifyYaml(parts.fields)}---\n${parts.body}`;
   });
   this.emit({settings});

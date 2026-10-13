@@ -78,11 +78,12 @@ In a category, use **编辑 Dashboard** (Edit Dashboard) to change its name or m
 
 The module heading provides a management action for the current page:
 
-- **Hide a module in All:** hide it from All and every Dashboard in the Magical Cards tab. Note embeds continue to display it. Expand **已隐藏模块** (Hidden modules), collapsed by default on All, to restore its category membership, appearance and order. Settings → **已移除模块** (Removed modules) also offers restoration.
+- **Hide a module in All:** hide it from All and every Dashboard in the Magical Cards tab. Note embeds continue to display it. Expand **已隐藏模块** (Hidden modules), collapsed by default on All, to restore its category membership, appearance and order.
 - **Remove a module from a Dashboard:** remove only its reference in the current category. All and other Dashboards are unchanged. To add it back, use **编辑 Dashboard** (Edit Dashboard), select the original module, and save.
+- **Delete a module:** after confirmation, remove its configuration and every Dashboard reference. Work notes, showcase notes, images and work IDs remain intact. Existing note embeds report that the module was deleted; there is no module restoration control.
 - **Trash in the card toolbar:** delete the current individual card, rather than the entire module. Read the confirmation before deleting.
 
-Hiding and removing category references preserve configuration, notes and images. If the shared runtime does not support Dashboards, upgrade the enabled compatible cards plugins and restart the vault; existing modules and data remain intact.
+Hiding is reversible and preserves module configuration; removing a category reference affects that category only. Deleting a module removes its configuration and category references while preserving notes and images. If a compatible host is also enabled, upgrade it to **0.1.37**; an older shared runtime prompts an upgrade instead of attempting deletion. If the shared runtime does not support Dashboards, upgrade the enabled compatible cards plugins and restart the vault; existing modules and data remain intact.
 
 ### Five layouts
 
@@ -102,7 +103,7 @@ Layouts do not autoplay. Album rail displays sleeves without playback controls o
 
 ## Appearance and settings
 
-Settings are ordered as **Card directory → Examples → Add cards module → Add image showcase → Existing modules → Removed modules → Note code generator**. Both creation groups, examples, existing modules, removed modules and advanced settings start collapsed.
+Settings are ordered as **Card directory → Examples → Add cards module → Add image showcase → Existing modules → Hidden modules (legacy) → Note code generator**. Both creation groups, examples, existing modules, legacy hidden modules and advanced settings start collapsed.
 
 Expand **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add image showcase), enter a **module name**, choose its **aspect ratio**, then click **保存并收起** (Save and collapse). Each creator keeps its own draft and a fixed storage type; advanced card style offers full cover or minimal without converting the module type. Click the purple stacked-card ribbon icon to experience the module in the **Magical Cards** tab. Settings previews support browsing and sliding only; they cannot flip or start editing sessions.
 
@@ -112,7 +113,7 @@ Expand **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add 
 
 ![Showcase advanced settings with layout, three-card limit, flipping, name position and a read-only preview](previews/settings-advanced.png)
 
-The trash icon beside an expanded module's heading **hides its display in the cards tab only**, preserving its configuration, order, notes and images. Note embeds continue to display it. Restore it through Settings → **已移除模块** (Removed modules) or All → **已隐藏模块** (Hidden modules). Failed saves and source conflicts retain your draft for retry or explicit reload.
+The trash icon beside an expanded module's heading **deletes the module** after confirmation: its configuration, category references and module positions are removed, while work notes, showcase notes and images remain intact. Existing note embeds report a deleted module and stop displaying its cards. There is no module restoration control. To temporarily remove a module from the cards view, use **隐藏模块** (Hide module) and restore it from All → **已隐藏模块** (Hidden modules). Modules hidden by older versions remain restorable through Settings → **已隐藏模块（旧版）** (Hidden modules, legacy). Failed saves and source conflicts preserve your draft and the original module for retry or explicit reload.
 
 Enter a directory relative to the current vault, such as `卡片库`. Work notes live under `书籍` (books) and `观影` (films); showcases live under `橱窗/<module ID>/`. Configuration is in `_数据/卡片配置.md`. Changing this setting does not move existing data. Absolute computer paths are rejected.
 
@@ -197,6 +198,8 @@ Compatible hosts share the existing runtime. New versions add missing block lang
 **0.3.1 changes:** curved galleries retire unused WebGL contexts and reuse their canvas for ratio and direction changes; the first-run guide uses the author's revised text; the new showcase option is named “添加图片橱窗” (Add image showcase); appearance saves include a recovery hint for a black tab.
 
 **0.4.0 changes:** cards modules and image showcases have separate collapsed creators with independent drafts. The cards view adds All and named Dashboards with manual existing-module selection, editing, deletion and independent module ordering. Categories share existing data, new modules are not assigned automatically, and module hiding remains global.
+
+**0.4.2 changes:** hiding remains reversible, and **移出此 Dashboard** (Remove from this Dashboard) changes only the current category. Confirmed **移除模块** (Delete module) removes module configuration, all category references and module positions while preserving work notes and images. Existing embeds report a deleted module; there is no module restoration control. Unsaved edits and ordering are checked before deletion; failures and conflicts preserve the original module and drafts. Compatible host: **0.1.37**.
 
 ## Development and license
 

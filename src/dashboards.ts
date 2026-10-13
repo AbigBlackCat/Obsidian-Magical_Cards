@@ -35,7 +35,9 @@ export async function saveDashboard(api: CardsAPI, draft: CardsDashboard, baseli
   assertSupported(api);
   readDashboards([draft]);
   if (baseline && baseline.id !== draft.id) throw new Error('看板标识已改变，草稿已保留，请重新载入。');
-  const boards = api.getSnapshot().settings.dashboards ?? [], current = boards.find(board => board.id === draft.id);
+  const settings = api.getSnapshot().settings;
+  if (draft.moduleIds.some(id => settings.deletedModuleIds?.includes(id))) throw new Error('所选模块已删除，看板草稿已保留，请取消该模块后重试。');
+  const boards = settings.dashboards ?? [], current = boards.find(board => board.id === draft.id);
   const next = { ...(current ?? draft), id: draft.id, title: draft.title.trim(), moduleIds: [...draft.moduleIds] };
   if (baseline ? !same(current, baseline) : !!current) {
     if (same(current, next)) return;

@@ -7,6 +7,7 @@ import { CARD_APPEARANCE_FIELDS, newModuleDraft, readModuleDraft, saveModuleDraf
 import { cardModuleChoices } from './module-choice';
 import { newCardsBlock } from './embed-source';
 import SettingsCardPreview from './SettingsCardPreview';
+import ModuleRemovalDialog from './ModuleRemovalDialog';
 import type { WorkPropertiesManager } from './WorkPropertiesSessions';
 
 interface ControllerOptions {
@@ -53,6 +54,7 @@ export class CardsSettingsController {
   private generate?: { setDisabled: (disabled: boolean) => unknown };
   private copy?: { setDisabled: (disabled: boolean) => unknown };
   private directoryDraft: string;
+  private removal?: { root: Root; host: HTMLElement; state: EditorState };
 
   constructor(private api: CardsAPI, private manager?: WorkPropertiesManager, private options: ControllerOptions = {}) {
     this.directoryDraft = options.directory?.get() ?? '';
@@ -146,7 +148,7 @@ export class CardsSettingsController {
         }
         this.wraps.set(list, { outer: examples.outer, cleanup: () => cleanups.forEach(cleanup => cleanup()) });
       } else {
-        const state = this.editors.get(section), label = section === 'code' ? '笔记代码块生成' : section === 'removed' ? '已移除模块' : state ? this.editorLabel(state) : section;
+        const state = this.editors.get(section), label = section === 'code' ? '笔记代码块生成' : section === 'removed' ? '已隐藏模块（旧版）' : state ? this.editorLabel(state) : section;
         const wrapped = this.details(list, section, label);
         if (section === 'code' || section === 'removed' || state?.creating) wrapped.outer.dataset.settingsGroup = state?.creator ?? section;
         else wrapped.outer.dataset.cardCollection = section;
@@ -318,11 +320,18 @@ export class CardsSettingsController {
     if (!state.creating) rows.push(this.row(`${label} · 移除模块`, section, setting => {
       setting.setName(''); setting.settingEl.className = 'bw-cards-settings-remove'; setting.settingEl.dataset.cardSettingsLevel = 'header';
       const stop = (event: Event) => { event.preventDefault(); event.stopPropagation(); }; setting.settingEl.addEventListener('click', stop);
-      setting.addButton(control => control.setIcon('trash-2').setTooltip('移除模块，保留作品、配置和顺序；可在已移除模块中恢复').onClick(async () => {
-        if (state.busy) return; this.setBusy(state, true); this.setError(state, '');
-        try { await setModuleHidden(this.api, state.key, true); }
-        catch (failure) { this.setError(state, failure); }
-        finally { this.setBusy(state, false); }
+      setting.addButton(control => control.setIcon('trash-2').setTooltip('移除模块及全部分类引用，保留笔记和图片；此操作不能通过隐藏列表恢复').onClick(() => {
+        if (state.busy || this.removal) return;
+        const baseline = readModuleDraft(this.api.getSnapshot().settings, state.key);
+        if (!this.api.supportsModuleDeletion) { this.setError(state, '请升级已启用的兼容卡片插件后再移除模块。已有模块和资料已保留。'); return; }
+        if (!baseline) { this.setError(state, '模块已移除，当前草稿仍保留。'); return; }
+        this.setBusy(state, true); this.setError(state, '');
+        const host = (setting.settingEl.ownerDocument.body ?? setting.settingEl).createDiv();
+        const root = createRoot(host); this.removal = { root, host, state };
+        root.render(React.createElement(ModuleRemovalDialog, { api: this.api, manager: this.manager, baseline: structuredClone(baseline), close: () => {
+          if (this.removal?.root !== root) return;
+          this.removal = undefined; root.unmount(); host.remove(); this.setBusy(state, false);
+        }, removed: () => new Notice('模块已移除，作品笔记和图片已保留。') }));
       }));
       setting.settingEl.querySelector('button')?.setAttribute('aria-label', `移除模块：${state.draft.title}`);
       return () => setting.settingEl.removeEventListener('click', stop);
@@ -340,13 +349,13 @@ export class CardsSettingsController {
     }, { desc: DIRECTORY_DESCRIPTION, aliases: ['作品文件夹', '保存目录'] }));
     const group = (items: CardSettingRow[]): CardSettingItem => ({ type: 'group', cls: 'bw-cards-settings-native-group', items });
     const settings = this.api.getSnapshot().settings, hidden = new Set(settings.hiddenModuleIds ?? []);
-    const defaults = ['book', 'film'].filter(id => !hidden.has(id));
+    const defaults = ['book', 'film'].filter(id => !hidden.has(id) && !settings.deletedModuleIds?.includes(id));
     if (defaults.length) definitions.push(group(defaults.flatMap(id => this.editorRows(this.editor(id)))));
     definitions.push(group(this.editorRows(this.editor('creator:add-module', 'add-module'))));
     definitions.push(group(this.editorRows(this.editor('creator:add-showcase', 'add-showcase'))));
-    for (const module of settings.customModules) if (!hidden.has(module.id)) definitions.push(group(this.editorRows(this.editor(module.id))));
+    for (const module of settings.customModules) if (!hidden.has(module.id) && !settings.deletedModuleIds?.includes(module.id)) definitions.push(group(this.editorRows(this.editor(module.id))));
     const removed = cardModuleChoices(settings, true).filter(module => hidden.has(module.id));
-    if (removed.length) definitions.push(group(removed.map(module => this.row(`已移除模块 · 恢复${module.label}`, 'removed', setting => {
+    if (removed.length) definitions.push(group(removed.map(module => this.row(`已隐藏模块（旧版） · 恢复${module.label}`, 'removed', setting => {
       const state = this.editor(module.id);
       setting.setName(module.label).setDesc('恢复模块，沿用原有作品、外观及顺序。').addButton(control => control.setButtonText('恢复').onClick(async () => {
         if (state.busy) return; this.setBusy(state, true);
@@ -392,6 +401,7 @@ export class CardsSettingsController {
   }
   hide() {
     this.active = false;
+    if (this.removal) { const { root, host, state } = this.removal; this.removal = undefined; root.unmount(); host.remove(); state.busy = false; }
     for (const row of [...this.rows]) row.cleanup();
     for (const wrap of this.wraps.values()) wrap.cleanup(); this.wraps.clear();
     for (const cleanup of this.documents.values()) cleanup(); this.documents.clear();

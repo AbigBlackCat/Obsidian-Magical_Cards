@@ -105,12 +105,14 @@ test('fresh onboarding creates six ordinary works with fresh UUIDs, byte-exact o
 test('the generated guide preserves the authored visible bytes, substitutes only root paths and has a unique invisible identity', async () => {
   const template = await readFile(resolve(directory, '../examples/Magical_Cards示例及用法说明.md'), 'utf8');
   const authored = template.replaceAll('{{rootFolder}}', () => '卡片库');
-  assert.equal(createHash('sha256').update(authored).digest('hex'), '2074bcaebc97748f8add93548dcae841a00cf6b99113081c9d0fc6c194e1a1f9');
+  assert.equal(createHash('sha256').update(authored).digest('hex'), '46cd0833d1ad5d933f77f6ab9260a371521922d3b951b38a70be049a93cc6100');
   assert.match(authored, /“全部”和所有 Dashboard 隐藏；笔记嵌入继续显示/);
   assert.match(authored, /默认收起的“已隐藏模块”可恢复/);
   assert.match(authored, /只取消当前分类中的引用，“全部”和其他 Dashboard 不变/);
   assert.match(authored, /点击“编辑 Dashboard”，勾选原模块并保存/);
   assert.match(authored, /卡片工具栏的垃圾桶删除当前单张卡片/);
+  assert.match(authored, /真正移除模块：确认后删除模块配置和所有分类引用，保留作品笔记、橱窗笔记及图片/);
+  assert.match(authored, /原笔记嵌入会提示模块已移除，此操作没有模块恢复入口/);
   // Keep the author's introduction byte-exact while the usage instructions evolve.
   const introduction = template.split('## 打开和编辑卡片', 1)[0];
   assert.equal(createHash('sha256').update(introduction).digest('hex'), 'ade9cca52edac606a23cfde8526188319798d04be86a04d135709fab9b241ff7');

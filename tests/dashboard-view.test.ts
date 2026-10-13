@@ -36,7 +36,7 @@ function fixture(supported = true) {
   let workError = '', settingsError = '';
   let pause: (() => Promise<void>) | undefined, settingsPause: (() => Promise<void>) | undefined;
   const api = {
-    ...(supported ? { supportsDashboards: true, supportsStandaloneModuleVisibility: true } : {}),
+    ...(supported ? { supportsDashboards: true, supportsStandaloneModuleVisibility: true, supportsModuleDeletion: true } : {}),
     getSnapshot: () => snapshot,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     coverUrl: (value: string) => value,
@@ -116,7 +116,7 @@ const nodes = (value: React.ReactNode): React.ReactElement<any>[] => {
 const directory = dirname(fileURLToPath(import.meta.url)), require = createRequire(import.meta.url);
 const source = await readFile(resolve(directory, '../src/main.tsx'), 'utf8');
 const memoryBundle = await build({
-  stdin: { contents: `${source}\nexport { CardsView };\nexport { default as Dashboard, flushDashboardEdits } from './CardsDashboardView';\nexport { default as Surface } from './CardsSurface';\nexport { default as Text } from './EditableText';\nexport { default as ModuleList } from './ModuleList';\nexport { WorkOrderList } from './WorkOrder';\nexport { default as WorkCollection } from './WorkCollection';\nexport { default as ShowcaseCollection } from './ShowcaseCollection';\nexport { DeleteWorkDialog } from './WorkEditor';\nexport { renderedRoots } from 'react-dom/client';`, resolveDir: resolve(directory, '../src'), loader: 'tsx' },
+  stdin: { contents: `${source}\nexport { CardsView };\nexport { default as Dashboard, flushDashboardEdits } from './CardsDashboardView';\nexport { default as ModuleRemovalDialog } from './ModuleRemovalDialog';\nexport { default as Surface, registerCardModuleSurface, assertCardModuleRemovalSettled } from './CardsSurface';\nexport { default as Text } from './EditableText';\nexport { default as ModuleList } from './ModuleList';\nexport { WorkOrderList } from './WorkOrder';\nexport { default as WorkCollection } from './WorkCollection';\nexport { default as ShowcaseCollection } from './ShowcaseCollection';\nexport { DeleteWorkDialog } from './WorkEditor';\nexport { renderedRoots } from 'react-dom/client';`, resolveDir: resolve(directory, '../src'), loader: 'tsx' },
   bundle: true, platform: 'node', format: 'cjs', write: false, external: ['react', 'react/jsx-runtime'],
   plugins: [{ name: 'dashboard-view-platform', setup(builder) {
     builder.onResolve({ filter: /^obsidian$/ }, () => ({ path: 'platform', namespace: 'dashboard-test' }));
@@ -140,9 +140,15 @@ const ui = memoryModule.exports as {
   WorkCollection: typeof import('../src/WorkCollection').default;
   ShowcaseCollection: typeof import('../src/ShowcaseCollection').default;
   DeleteWorkDialog: typeof import('../src/WorkEditor').DeleteWorkDialog;
+  ModuleRemovalDialog: typeof import('../src/ModuleRemovalDialog').default;
+  registerCardModuleSurface: typeof import('../src/CardsSurface').registerCardModuleSurface;
+  assertCardModuleRemovalSettled: typeof import('../src/CardsSurface').assertCardModuleRemovalSettled;
   flushDashboardEdits: typeof import('../src/CardsDashboardView').flushDashboardEdits;
   CardsView: new (leaf: unknown, plugin: unknown, closed: () => void) => ViewStub;
 };
+const peerModule = { exports: {} };
+new Function('require', 'module', 'exports', memoryBundle.outputFiles[0].text)((name: string) => name === 'react' ? reactProxy : require(name), peerModule, peerModule.exports);
+const peerUI = peerModule.exports as typeof ui;
 const flushDashboardEdits = ui.flushDashboardEdits;
 const surfaceList = (hooks: Hooks, props: React.ComponentProps<typeof CardsSurface>) => nodes(hooks.render(ui.Surface, props)).find(node => typeof node.props.save === 'function' && Array.isArray(node.props.ids))!;
 
@@ -546,7 +552,8 @@ test('native leaf state preserves each dashboard independently and closes only i
 
 const dashboardProps = (f: ReturnType<typeof fixture>, dashboardId = 'all') => ({ api: f.api, manager: f.manager, dashboardId, onDashboardChange() {} });
 const dashboardSurface = (tree: React.ReactNode) => nodes(tree).find(node => node.type === ui.Surface)!;
-const actionFor = (tree: React.ReactNode, id: string) => dashboardSurface(tree).props.headerAction(id) as React.ReactElement<any>;
+const actionFor = (tree: React.ReactNode, id: string) => nodes(dashboardSurface(tree).props.headerAction(id)).find(node => ['hide', 'remove'].includes(node.props['data-module-action']))!;
+const deletionFor = (tree: React.ReactNode, id: string) => nodes(dashboardSurface(tree).props.headerAction(id)).find(node => node.props['data-module-action'] === 'delete')!;
 const visibleStatus = (tree: React.ReactNode) => nodes(tree).filter(node => node.props.role === 'status').map(node => String(node.props.children)).join('\n');
 
 test('another standalone window protects its sorting and title drafts until saved or closed', async () => {
@@ -586,6 +593,21 @@ test('standalone hiding affects all dashboards but neither note embeds nor the o
   } finally { f.dispose(); }
 });
 
+test('deleted modules are absent from standalone and dashboards while note embeds keep missing-module placeholders without restoration', () => {
+  const f = fixture();
+  try {
+    const before = structuredClone(f.api.getSnapshot());
+    f.replace({ ...before, settings: { ...before.settings, deletedModuleIds: ['book', 'custom-a'] } });
+    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), ['film']);
+    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, dashboard: boardA }))), ['missing', 'film']);
+    const embed: CardsEmbed = { id: 'removed-module-note', modules: [{ id: 'reading', collection: 'book' }, { id: 'custom', collection: 'custom-a' }] };
+    const html = renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, embed }));
+    assert.deepEqual(moduleOrder(html), ['reading', 'custom']); assert.ok(html.includes('模块已删除'));
+    assert.equal(html.includes('恢复模块'), false); assert.equal(html.includes('data-work-id="reading"'), false);
+    assert.deepEqual(f.api.getSnapshot().entities, before.entities); assert.equal(f.patches.length, 0);
+  } finally { f.dispose(); }
+});
+
 test('empty ordinary and showcase modules both expose independent visibility actions, without a card-delete action being enabled', () => {
   const f = fixture();
   try {
@@ -593,9 +615,110 @@ test('empty ordinary and showcase modules both expose independent visibility act
     f.replace({ ...snapshot, entities: [], settings: { ...snapshot.settings, customModules: [...snapshot.settings.customModules, { id: 'showcase', title: '空图片橱窗', kind: 'book', mode: 'showcase', appearance: { style: 'cover', material: 'paper' } }] } });
     const html = renderToStaticMarkup(React.createElement(ui.Dashboard, dashboardProps(f)));
     assert.equal((html.match(/data-module-action="hide"/g) ?? []).length, 4);
+    assert.equal((html.match(/data-module-action="delete"/g) ?? []).length, 4);
     assert.ok(html.includes('data-module-collection="showcase"')); assert.ok(html.includes('data-module-collection="book"'));
     assert.ok(/aria-label="删除当前书籍"[^>]*disabled/.test(html)); assert.ok(/aria-label="删除当前图片"[^>]*disabled/.test(html));
   } finally { f.dispose(); }
+});
+
+test('permanent module removal requires confirmation, preserves data on cancel or failure and removes every reference on success', async () => {
+  const f = fixture(), hooks = new Hooks(), dialogHooks = new Hooks(), props = dashboardProps(f, boardA.id);
+  try {
+    const before = structuredClone(f.api.getSnapshot());
+    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects(); deletionFor(tree, 'custom-a').props.onClick(); await tick();
+    tree = hooks.render(ui.Dashboard, props);
+    let dialog = nodes(tree).find(node => node.type === ui.ModuleRemovalDialog)!;
+    assert.equal(dialog.props.baseline.id, 'custom-a'); assert.equal(f.patches.length, 0);
+    const text = renderToStaticMarkup(React.createElement(ui.ModuleRemovalDialog, dialog.props));
+    assert.ok(text.includes('所有 Dashboard')); assert.ok(text.includes('作品笔记和图片文件保留')); assert.ok(text.includes('不能通过'));
+    dialog.props.close(); tree = hooks.render(ui.Dashboard, props);
+    assert.equal(nodes(tree).some(node => node.type === ui.ModuleRemovalDialog), false); assert.deepEqual(f.api.getSnapshot(), before);
+    deletionFor(tree, 'custom-a').props.onClick(); await tick(); tree = hooks.render(ui.Dashboard, props);
+    dialog = nodes(tree).find(node => node.type === ui.ModuleRemovalDialog)!;
+    let content = dialogHooks.render(ui.ModuleRemovalDialog, dialog.props); dialogHooks.runEffects();
+    f.settingsFail('配置不可写'); nodes(content).find(node => node.props.children === '确认移除模块')!.props.onClick(); await tick();
+    content = dialogHooks.render(ui.ModuleRemovalDialog, dialog.props);
+    assert.ok(nodes(content).some(node => node.props.role === 'alert' && String(node.props.children).includes('配置不可写')));
+    assert.deepEqual(f.api.getSnapshot(), before); assert.equal(f.patches.length, 1);
+    f.settingsFail(''); nodes(content).find(node => node.props.children === '确认移除模块')!.props.onClick(); await tick();
+    tree = hooks.render(ui.Dashboard, props);
+    assert.equal(nodes(tree).some(node => node.type === ui.ModuleRemovalDialog), false); assert.match(visibleStatus(tree), /模块已移除.*笔记和图片已保留/);
+    const settings = f.api.getSnapshot().settings;
+    assert.deepEqual(settings.customModules, []); assert.deepEqual(settings.deletedModuleIds, ['custom-a']);
+    assert.ok(settings.dashboards!.every(board => !board.moduleIds.includes('custom-a'))); assert.deepEqual(settings.standaloneOrder, ['film', 'book']);
+    assert.deepEqual(f.api.getSnapshot().entities, before.entities); assert.equal(f.writes.length, 0);
+  } finally { dialogHooks.dispose(); hooks.dispose(); f.dispose(); }
+});
+
+test('module removal is blocked before confirmation while IME composition or a sorting draft is active', async () => {
+  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f);
+  try {
+    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
+    const wrapper = nodes(tree).find(node => typeof node.props.onCompositionStartCapture === 'function')!, target = new EventTarget();
+    wrapper.props.onCompositionStartCapture({ target }); let prevented = false;
+    const remove = deletionFor(tree, 'book'); remove.props.onPointerDownCapture({ preventDefault: () => { prevented = true; } }); remove.props.onClick(); await tick();
+    tree = hooks.render(ui.Dashboard, props);
+    assert.equal(prevented, true); assert.equal(nodes(tree).some(node => node.type === ui.ModuleRemovalDialog), false); assert.equal(f.patches.length, 0);
+    wrapper.props.onCompositionEndCapture({ target });
+    nodes(tree).find(node => node.props.role === 'tabpanel')!.props.ref.current = { querySelector: (selector: string) => selector.includes('data-cards-pending') ? {} : null, ownerDocument: { activeElement: null } };
+    deletionFor(tree, 'book').props.onClick(); await tick(); tree = hooks.render(ui.Dashboard, props);
+    assert.equal(nodes(tree).some(node => node.type === ui.ModuleRemovalDialog), false); assert.equal(f.patches.length, 0); assert.equal(f.writes.length, 0);
+    assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('排序')));
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('closed-view sorting drafts permit returning to their dashboard but prevent permanent removal until explicitly discarded', async () => {
+  const f = fixture(), original = new Hooks(), hooks = new Hooks(), restored = new Hooks(), dialogHooks = new Hooks(), changes: string[] = [];
+  const props = { ...dashboardProps(f), onDashboardChange: (id: string) => { changes.push(id); } };
+  const draft = ['film', 'missing', 'book', 'custom-a'];
+  try {
+    const list = surfaceList(original, { api: f.api, manager: f.manager, dashboard: boardA });
+    f.settingsFail('排序冲突'); list.props.retainDraft(draft); await assert.rejects(list.props.save(draft), /排序冲突/); original.dispose(); f.settingsFail('');
+    await flushDashboardEdits(f.api, f.manager); assert.throws(() => ui.assertCardModuleRemovalSettled(f.api), /排序/);
+    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
+    nodes(tree).find(node => node.props.role === 'tab' && node.props.children === boardA.title)!.props.onClick(); await tick(); assert.deepEqual(changes, [boardA.id]);
+    const resumedProps = { ...props, dashboardId: boardA.id }; tree = hooks.render(ui.Dashboard, resumedProps);
+    const retry = surfaceList(restored, { api: f.api, manager: f.manager, dashboard: boardA });
+    assert.deepEqual(retry.props.initialDraft, draft);
+    deletionFor(tree, 'custom-a').props.onClick(); await tick(); tree = hooks.render(ui.Dashboard, resumedProps);
+    const dialog = nodes(tree).find(node => node.type === ui.ModuleRemovalDialog)!;
+    let content = dialogHooks.render(ui.ModuleRemovalDialog, dialog.props); dialogHooks.runEffects();
+    const beforeRemoval = f.patches.length;
+    nodes(content).find(node => node.props.children === '确认移除模块')!.props.onClick(); await tick(); content = dialogHooks.render(ui.ModuleRemovalDialog, dialog.props);
+    assert.equal(f.patches.length, beforeRemoval); assert.ok(nodes(content).some(node => node.props.role === 'alert' && String(node.props.children).includes('排序')));
+    assert.deepEqual(retry.props.initialDraft, draft); retry.props.retainDraft(null);
+    assert.doesNotThrow(() => ui.assertCardModuleRemovalSettled(f.api));
+    nodes(content).find(node => node.props.children === '确认移除模块')!.props.onClick(); await tick();
+    assert.deepEqual(f.api.getSnapshot().settings.deletedModuleIds, ['custom-a']); assert.equal(f.patches.length, beforeRemoval + 1);
+  } finally { original.dispose(); restored.dispose(); dialogHooks.dispose(); hooks.dispose(); f.dispose(); }
+});
+
+test('separate plugin bundles share registered surfaces and retained sorting drafts, with cleanup releasing removal guards', () => {
+  assert.notEqual(ui.registerCardModuleSurface, peerUI.registerCardModuleSurface);
+  for (const [first, second] of [[ui, peerUI], [peerUI, ui]]) {
+    const f = fixture(), original = new Hooks(), restored = new Hooks();
+    const element = { querySelector: (selector: string) => selector === '[data-cards-pending]' ? {} : null } as unknown as HTMLElement;
+    const unregister = first.registerCardModuleSurface(f.api, element), draft = ['film', 'missing', 'book', 'custom-a'];
+    try {
+      assert.throws(() => second.assertCardModuleRemovalSettled(f.api), /排序/); unregister(); assert.doesNotThrow(() => second.assertCardModuleRemovalSettled(f.api));
+      const tree = original.render(first.Surface, { api: f.api, manager: f.manager, dashboard: boardA });
+      nodes(tree).find(node => typeof node.props.save === 'function' && Array.isArray(node.props.ids))!.props.retainDraft(draft); original.dispose();
+      assert.throws(() => second.assertCardModuleRemovalSettled(f.api), /排序/);
+      const remounted = restored.render(second.Surface, { api: f.api, manager: f.manager, dashboard: boardA });
+      const retry = nodes(remounted).find(node => typeof node.props.save === 'function' && Array.isArray(node.props.ids))!;
+      assert.deepEqual(retry.props.initialDraft, draft); retry.props.retainDraft(null);
+      assert.doesNotThrow(() => second.assertCardModuleRemovalSettled(f.api)); assert.equal(f.patches.length, 0);
+    } finally { unregister(); original.dispose(); restored.dispose(); f.dispose(); }
+  }
+});
+
+test('old runtime module removal explains the missing capability without opening a destructive confirmation', async () => {
+  const f = fixture(false), hooks = new Hooks(), props = dashboardProps(f);
+  try {
+    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects(); deletionFor(tree, 'book').props.onClick(); await tick(); tree = hooks.render(ui.Dashboard, props);
+    assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('升级')));
+    assert.equal(nodes(tree).some(node => node.type === ui.ModuleRemovalDialog), false); assert.equal(f.patches.length, 0); assert.equal(f.writes.length, 0);
+  } finally { hooks.dispose(); f.dispose(); }
 });
 
 test('failed hide keeps the module mounted; successful hide and restore preserve its original slot with visible status', async () => {

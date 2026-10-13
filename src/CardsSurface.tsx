@@ -10,19 +10,51 @@ import ShowcaseCollection from './ShowcaseCollection';
 import { setModuleHidden } from './settings';
 import { ALL_DASHBOARD_ID, saveDashboardOrder } from './dashboards';
 import { getShowcaseRenderOperations } from './showcase-render-state';
+import { getShowcaseManager } from './showcase-sessions';
 
-const standaloneDrafts = new WeakMap<CardsAPI, Map<string, { order: string[]; dashboard?: CardsDashboard }>>();
-const standaloneSurfaces = new WeakMap<CardsAPI, Set<HTMLElement>>();
+const operationsKey = Symbol.for('magical-cards.module-operations.v1');
+interface ModuleOperations { drafts: Map<string, { order: string[]; dashboard?: CardsDashboard }>; surfaces: Set<HTMLElement>; }
+type APIWithOperations = CardsAPI & { [operationsKey]?: ModuleOperations };
+function moduleOperations(api: CardsAPI): ModuleOperations {
+  return (api as APIWithOperations)[operationsKey] ??= { drafts: new Map(), surfaces: new Set() };
+}
+
+export function registerCardModuleSurface(api: CardsAPI, element: HTMLElement): () => void {
+  const { surfaces } = moduleOperations(api);
+  surfaces.add(element);
+  return () => { surfaces.delete(element); };
+}
 
 /** Do not unmount a module while an operation or its explicit retry draft remains. */
 export function assertCardModuleOperationsSettled(api: CardsAPI, surface?: HTMLElement): HTMLElement[] {
-  const surfaces = [...new Set([...(standaloneSurfaces.get(api) ?? []), ...(surface ? [surface] : [])])];
+  const surfaces = [...new Set([...moduleOperations(api).surfaces, ...(surface ? [surface] : [])])];
   if (surfaces.some(element => element.querySelector('[data-cards-pending]'))) throw new Error('模块仍在编辑或排序，草稿已保留。请先完成操作，或放弃排序草稿后重试。');
   for (const module of api.getSnapshot().settings.customModules) if (module.mode === 'showcase') {
     const state = getShowcaseRenderOperations(api, module.id)?.getSnapshot();
     if (state?.importing || state?.imports.length || state?.move) throw new Error('图片导入或排序尚未完成，重试记录已保留。请先完成操作，或放弃排序草稿后重试。');
   }
   return surfaces;
+}
+
+export function assertCardModuleRemovalSettled(api: CardsAPI): void {
+  if (moduleOperations(api).drafts.size) throw new Error('模块排序草稿尚未保存，请在卡片标签页重试或放弃草稿后再操作。');
+  assertCardModuleOperationsSettled(api);
+}
+
+export async function flushDashboardEdits(api: CardsAPI, manager?: WorkPropertiesManager, surface?: HTMLElement): Promise<void> {
+  const checkTitles = () => {
+    for (const element of assertCardModuleOperationsSettled(api, surface)) {
+      if (element.querySelector('[data-editable-composing="true"]')) throw new Error('请先结束输入法输入，模块名称草稿已保留。');
+      const focused = element.ownerDocument.activeElement;
+      if (focused?.instanceOf(HTMLElement) && element.contains(focused) && focused.classList.contains('bw-editable-text')) focused.blur();
+      if (element.querySelector('.bw-editable-text[data-editable-saving="true"], .bw-editable-text[data-editable-error="true"]')) throw new Error('模块名称尚未保存，请等待保存完成，或回到标题重试后再操作。');
+    }
+  };
+  checkTitles();
+  await manager?.flushAll();
+  if (manager?.recoveryDrafts().length) throw new Error('卡片草稿尚未保存，请完成编辑后再操作。');
+  await getShowcaseManager(api)?.flushAll();
+  checkTitles();
 }
 
 /** Reordering visible modules leaves removed modules in their original slots. */
@@ -42,21 +74,18 @@ export default function CardsSurface({ api, manager, embed, dashboard, saveOrder
   useEffect(() => setEmbedOrder(null), [embed]);
   useEffect(() => {
     const element = surface.current;
-    if (embed || !element) return;
-    let surfaces = standaloneSurfaces.get(api);
-    if (!surfaces) { surfaces = new Set(); standaloneSurfaces.set(api, surfaces); }
-    surfaces.add(element);
-    return () => { surfaces.delete(element); if (!surfaces.size) standaloneSurfaces.delete(api); };
+    if (!element) return;
+    return registerCardModuleSurface(api, element);
   }, [api, embed]);
   const run: Run = async action => { setError(''); try { await action(); return true; } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); return false; } };
   const modules: EmbeddedModule[] = useMemo(() => {
     if (embed) return embedOrder ? [...embed.modules].sort((a,b) => embedOrder.indexOf(a.id) - embedOrder.indexOf(b.id)) : embed.modules;
     if (dashboard) return dashboard.moduleIds.map(id => ({ id, collection: id }));
-    const items = [{ id: 'book', collection: 'book' }, { id: 'film', collection: 'film' }, ...snapshot.settings.customModules.map(module => ({ id: module.id, collection: module.id }))];
+    const items = [{ id: 'book', collection: 'book' }, { id: 'film', collection: 'film' }, ...snapshot.settings.customModules.map(module => ({ id: module.id, collection: module.id }))].filter(module => !snapshot.settings.deletedModuleIds?.includes(module.id));
     const order = snapshot.settings.standaloneOrder;
     return [...items].sort((a, b) => { const ai = order.indexOf(a.id), bi = order.indexOf(b.id); return (ai < 0 ? order.length + items.indexOf(a) : ai) - (bi < 0 ? order.length + items.indexOf(b) : bi); });
-  }, [embed, embedOrder, dashboard, snapshot.settings.customModules, snapshot.settings.standaloneOrder]);
-  const visibleModules = embed ? modules : modules.filter(module => !snapshot.settings.hiddenModuleIds?.includes(module.collection) && !snapshot.settings.standaloneHiddenModuleIds?.includes(module.collection));
+  }, [embed, embedOrder, dashboard, snapshot.settings.customModules, snapshot.settings.standaloneOrder, snapshot.settings.deletedModuleIds]);
+  const visibleModules = embed ? modules : modules.filter(module => !snapshot.settings.deletedModuleIds?.includes(module.collection) && !snapshot.settings.hiddenModuleIds?.includes(module.collection) && !snapshot.settings.standaloneHiddenModuleIds?.includes(module.collection));
   const visibleIds = visibleModules.map(module => module.id);
   const draftKey = dashboard?.id ?? ALL_DASHBOARD_ID;
   const mergedOrder = (order: string[]) => {
@@ -68,22 +97,23 @@ export default function CardsSurface({ api, manager, embed, dashboard, saveOrder
     const definition = modules.find(module => module.id === id)!;
     const action = embed ? undefined : headerAction?.(definition.collection);
     const custom = snapshot.settings.customModules.find(module => module.id === definition.collection);
-    if (snapshot.settings.hiddenModuleIds?.includes(definition.collection)) return <section className="bw-work-stack bw-module bw-removed-module"><header className="bw-section-head">{handle}<h2>{custom?.title ?? (definition.collection === 'book' ? '阅读' : definition.collection === 'film' ? '影视' : '卡片模块')}</h2></header><p role="status">此模块已从显示中移除，卡片资料仍保留。</p><button type="button" onClick={() => { void run(() => setModuleHidden(api, definition.collection, false)); }}>恢复模块</button></section>;
+    if (snapshot.settings.deletedModuleIds?.includes(definition.collection)) return <section className="bw-work-stack bw-module"><header className="bw-section-head">{handle}<h2>模块已移除</h2></header><p role="status">此模块已删除，作品笔记与图片仍保留。请重新选择已有模块生成代码。</p></section>;
+    if (snapshot.settings.hiddenModuleIds?.includes(definition.collection)) return <section className="bw-work-stack bw-module bw-removed-module"><header className="bw-section-head">{handle}<h2>{custom?.title ?? (definition.collection === 'book' ? '阅读' : definition.collection === 'film' ? '影视' : '卡片模块')}</h2></header><p role="status">此模块已按旧版规则隐藏，卡片资料仍保留。</p><button type="button" onClick={() => { void run(() => setModuleHidden(api, definition.collection, false)); }}>恢复模块</button></section>;
     if (custom?.mode === 'showcase') {
       const appearance = { ...custom.appearance, ...(definition.layout ? { layout: definition.layout } : {}), ...(definition.orientation ? { orientation: definition.orientation } : {}) };
       return <ShowcaseCollection module={custom} appearance={appearance} threeCardView={snapshot.settings.threeCardView} api={api} handle={handle} headerAction={action} />;
     }
     const kind = custom?.kind ?? definition.collection;
     if (kind !== 'book' && kind !== 'film') return <section className="bw-work-stack bw-module"><header className="bw-section-head">{handle}<h2>集合未找到</h2>{action}</header><p role="status">请检查 collection：{definition.collection}</p></section>;
-    const works = snapshot.entities.filter(work => work.type === kind && (custom ? work.moduleId === custom.id : !snapshot.settings.customModules.some(module => module.id === work.moduleId && module.kind === work.type)));
+    const works = snapshot.entities.filter(work => work.type === kind && !snapshot.settings.deletedModuleIds?.includes(work.moduleId ?? '') && (custom ? work.moduleId === custom.id : !snapshot.settings.customModules.some(module => module.id === work.moduleId && module.kind === work.type)));
     const original = custom?.appearance ?? (kind === 'book' ? snapshot.settings.bookCardAppearance : snapshot.settings.filmCardAppearance);
     const appearance = { ...original, ...(definition.layout ? { layout: definition.layout } : {}), ...(definition.orientation ? { orientation: definition.orientation } : {}) };
     return <WorkCollection kind={kind} module={custom} works={works} order={snapshot.workOrder?.[kind]} appearance={appearance} threeCardView={snapshot.settings.threeCardView} manager={manager} api={api} run={run} edit={setEditor} renameModule={renameModule} handle={handle} headerAction={action} />;
   };
   return <WorkbenchTextProvider values={snapshot.settings.workbenchText} save={(key, value) => run(() => api.saveSettings({ workbenchText: { ...api.getSnapshot().settings.workbenchText, [key]: value } }))}><div ref={surface} className="bw-app bw-cards-surface" data-cards-embed={embed?.id}>
     {snapshot.loading && <p role="status">正在读取卡片…</p>}{(error || snapshot.error) && <p className="bw-sync-note is-error" role="alert">{error || snapshot.error}</p>}
-    {!visibleIds.length && <p className="bw-empty">{embed ? '当前代码块未指定卡片模块。' : dashboard ? '此 Dashboard 暂无显示的模块。点击“编辑 Dashboard”选择模块；隐藏的模块可在“全部”的“已隐藏模块”中恢复。' : '所有模块均已隐藏，可展开“已隐藏模块”恢复。'}</p>}
-    <ModuleList key={embed?.id ?? draftKey} ids={visibleIds} save={async order => { const merged = mergedOrder(order); if (saveOrder) { await saveOrder(merged); setEmbedOrder(merged); } else if (dashboard) await saveDashboardOrder(api, standaloneDrafts.get(api)?.get(draftKey)?.dashboard ?? dashboard, merged); else await api.saveSettings({ standaloneOrder: merged }); }} initialDraft={(embed ? initialDraft : standaloneDrafts.get(api)?.get(draftKey)?.order)?.filter(id => visibleIds.includes(id))} retainDraft={draft => { let merged = draft; if (draft) { try { merged = mergedOrder(draft); } catch { /* Keep the original draft while save reports the changed module set. */ } } if (embed) retainDraft?.(merged); else if (merged) { let drafts = standaloneDrafts.get(api); if (!drafts) { drafts = new Map(); standaloneDrafts.set(api, drafts); } drafts.set(draftKey, { order: merged, dashboard: drafts.get(draftKey)?.dashboard ?? (dashboard ? structuredClone(dashboard) : undefined) }); } else standaloneDrafts.get(api)?.delete(draftKey); }}>{renderModule}</ModuleList>
+    {!visibleIds.length && <p className="bw-empty">{embed ? '当前代码块未指定卡片模块。' : dashboard ? '此 Dashboard 暂无显示的模块。点击“编辑 Dashboard”选择模块；隐藏的模块可在“全部”的“已隐藏模块”中恢复。' : '当前没有可显示的模块，可在设置中添加模块，或恢复已隐藏模块。'}</p>}
+    <ModuleList key={embed?.id ?? draftKey} ids={visibleIds} save={async order => { const merged = mergedOrder(order); if (saveOrder) { await saveOrder(merged); setEmbedOrder(merged); } else if (dashboard) await saveDashboardOrder(api, moduleOperations(api).drafts.get(draftKey)?.dashboard ?? dashboard, merged); else await api.saveSettings({ standaloneOrder: merged }); }} initialDraft={(embed ? initialDraft : moduleOperations(api).drafts.get(draftKey)?.order)?.filter(id => visibleIds.includes(id))} retainDraft={draft => { let merged = draft; if (draft) { try { merged = mergedOrder(draft); } catch { /* Keep the original draft while save reports the changed module set. */ } } if (embed) retainDraft?.(merged); else if (merged) { const { drafts } = moduleOperations(api); drafts.set(draftKey, { order: merged, dashboard: drafts.get(draftKey)?.dashboard ?? (dashboard ? structuredClone(dashboard) : undefined) }); } else moduleOperations(api).drafts.delete(draftKey); }}>{renderModule}</ModuleList>
     {editor && <WorkEditor entity={editor} genericCard={!!editor.moduleId} api={api} run={run} close={() => setEditor(null)} />}
   </div></WorkbenchTextProvider>;
 }

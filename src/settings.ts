@@ -11,7 +11,7 @@ export const CARD_APPEARANCE_FIELDS = [
   { field: 'layout', name: '动效布局', options: CARD_LAYOUTS, fallback: 'cylinder' },
   { field: 'orientation', name: '画廊方向', options: { horizontal: '横向', vertical: '竖向' }, fallback: 'horizontal' },
 ] as const;
-export const CARD_SETTING_KEYS = ['bookCardAppearance', 'filmCardAppearance', 'customModules', 'threeCardView', 'workbenchText', 'workbenchCards', 'standaloneOrder', 'hiddenModuleIds', 'standaloneHiddenModuleIds', 'dashboards'] as const;
+export const CARD_SETTING_KEYS = ['bookCardAppearance', 'filmCardAppearance', 'customModules', 'threeCardView', 'workbenchText', 'workbenchCards', 'standaloneOrder', 'hiddenModuleIds', 'standaloneHiddenModuleIds', 'deletedModuleIds', 'dashboards'] as const;
 export const FRESH_CARD_APPEARANCE: Readonly<WorkCardAppearance> = { material: 'paper', style: 'cover', layout: 'cylinder', ratio: '2:3', imageFit: 'cover' };
 export const NEW_MODULE_APPEARANCE: Readonly<WorkCardAppearance> = { material: 'paper', style: 'cover', layout: 'skewed-carousel', ratio: '2:3', imageFit: 'cover', threeCardView: false };
 export function freshCardsSettings(): CardsSettings {
@@ -53,6 +53,7 @@ export function newCustomModule(title: string, appearance: WorkCardAppearance = 
 }
 export interface CardModuleDraft { id: string; title: string; appearance: WorkCardAppearance; mode?: 'showcase'; showcaseNote?: string; }
 export function readModuleDraft(settings: CardsSettings, id: string): CardModuleDraft | null {
+  if (settings.deletedModuleIds?.includes(id)) return null;
   const custom = settings.customModules.find(module => module.id === id);
   const original = custom?.appearance ?? (id === 'book' ? settings.bookCardAppearance : id === 'film' ? settings.filmCardAppearance : undefined);
   if (!original) return null;
@@ -74,6 +75,7 @@ export async function saveModuleDraft(api: CardsAPI, draft: CardModuleDraft, bas
   if (!validCardAppearance(draft.appearance)) throw new Error('卡片外观设置无效。');
   if (!draft.title.trim()) throw new Error('请填写模块名称。');
   let settings = api.getSnapshot().settings;
+  if (settings.deletedModuleIds?.includes(draft.id)) throw new Error('此模块已删除，当前草稿已保留。请使用“添加卡片模块”或“添加图片橱窗”创建新模块。');
   const current = readModuleDraft(settings, draft.id);
   if (baseline ? !sameModuleDraft(current, baseline) : current !== null) {
     if (!baseline && sameModuleDraft(current, draft)) return;
@@ -92,6 +94,7 @@ export async function saveModuleDraft(api: CardsAPI, draft: CardModuleDraft, bas
     draft.showcaseNote = await api.showcase.create(draft.id, draft.title.trim());
     if (!draft.showcaseNote?.trim()) throw new Error('橱窗笔记尚未创建，当前模块草稿已保留。');
     settings = api.getSnapshot().settings;
+    if (settings.deletedModuleIds?.includes(draft.id)) throw new Error('此模块已删除，当前草稿和橱窗笔记已保留。请创建新模块。');
     if (!sameModuleDraft(readModuleDraft(settings, draft.id), current)) throw new Error('此模块已在其他位置修改，当前选择已保留。请重新载入设置后再编辑。');
     module = settings.customModules.find(item => item.id === draft.id);
   }
@@ -101,18 +104,34 @@ export async function saveModuleDraft(api: CardsAPI, draft: CardModuleDraft, bas
   });
 }
 export async function setModuleHidden(api: CardsAPI, id: string, hidden: boolean): Promise<void> {
-  if (!api.showcase) throw new Error('请升级已启用的卡片插件后再移除或恢复模块。');
+  if (!api.showcase) throw new Error('请升级已启用的卡片插件后再隐藏或恢复模块。');
   const settings = api.getSnapshot().settings;
   if (!readModuleDraft(settings, id)) throw new Error('模块已改变，请重新载入后重试。');
   const ids = settings.hiddenModuleIds ?? [];
   await api.saveSettings({ hiddenModuleIds: hidden ? [...new Set([...ids, id])] : ids.filter(value => value !== id) });
 }
 export async function setStandaloneModuleHidden(api: CardsAPI, id: string, hidden: boolean): Promise<void> {
-  if (!api.supportsStandaloneModuleVisibility) throw new Error('请升级已启用的兼容卡片插件后再移除或恢复独立卡片页模块。已有模块和资料已保留。');
+  if (!api.supportsStandaloneModuleVisibility) throw new Error('请升级已启用的兼容卡片插件后再隐藏或恢复独立卡片页模块。已有模块和资料已保留。');
   const settings = api.getSnapshot().settings;
   if (!readModuleDraft(settings, id)) throw new Error('模块已改变，请重新载入后重试。');
   const ids = settings.standaloneHiddenModuleIds ?? [];
   await api.saveSettings({ standaloneHiddenModuleIds: hidden ? [...new Set([...ids, id])] : ids.filter(value => value !== id) });
+}
+export async function removeModule(api: CardsAPI, id: string, baseline: CardModuleDraft): Promise<void> {
+  if (!api.supportsModuleDeletion) throw new Error('请升级已启用的兼容卡片插件后再移除模块。已有模块、笔记和图片已保留。');
+  const settings = api.getSnapshot().settings;
+  if (baseline.id !== id || !sameModuleDraft(readModuleDraft(settings, id), baseline)) throw new Error('此模块已在其他位置修改或删除，移除已取消。当前草稿已保留，请重新载入后重试。');
+  await api.saveSettings({
+    deletedModuleIds: [...new Set([...(settings.deletedModuleIds ?? []), id])],
+    customModules: settings.customModules.filter(module => module.id !== id),
+    standaloneOrder: settings.standaloneOrder.filter(moduleId => moduleId !== id),
+    workbenchCards: settings.workbenchCards.filter(placement => placement.module !== id),
+    // Built-in appearance and title also participate in saveSettings's conflict check.
+    ...(id === 'book' || id === 'film' ? { [id === 'book' ? 'bookCardAppearance' : 'filmCardAppearance']: settings[id === 'book' ? 'bookCardAppearance' : 'filmCardAppearance'], workbenchText: { ...settings.workbenchText } } : {}),
+    ...(settings.dashboards !== undefined ? { dashboards: settings.dashboards.map(board => ({ ...board, moduleIds: board.moduleIds.filter(moduleId => moduleId !== id) })) } : {}),
+    ...(settings.hiddenModuleIds !== undefined ? { hiddenModuleIds: settings.hiddenModuleIds.filter(moduleId => moduleId !== id) } : {}),
+    ...(settings.standaloneHiddenModuleIds !== undefined ? { standaloneHiddenModuleIds: settings.standaloneHiddenModuleIds.filter(moduleId => moduleId !== id) } : {}),
+  });
 }
 export function validWorkbenchCards(value: unknown): value is WorkbenchCardPlacement[] {
   const placement = (item: unknown): item is WorkbenchCardPlacement => record(item) && typeof item.module === 'string' && !!item.module.trim() && ['reflection', 'actions', 'gantt', 'quadrants', 'collections', 'end', 'inside-collections'].includes(String(item.before));
@@ -121,8 +140,9 @@ export function validWorkbenchCards(value: unknown): value is WorkbenchCardPlace
 export function readCardsSettings(value: unknown): CardsSettings {
   const saved = record(value) ? value : {};
   if (Object.hasOwn(saved, 'standaloneHiddenModuleIds') && !standaloneIds(saved.standaloneHiddenModuleIds)) throw new Error('独立卡片页已移除模块标识无效，原内容已保留。');
+  if (Object.hasOwn(saved, 'deletedModuleIds') && !standaloneIds(saved.deletedModuleIds)) throw new Error('已删除模块标识无效，原内容已保留。');
   const text = record(saved.workbenchText) ? Object.fromEntries(Object.entries(saved.workbenchText).filter(([key, value]) => ['book.title', 'film.title'].includes(key) && typeof value === 'string')) : {};
-  return { bookCardAppearance: readCardAppearance(saved.bookCardAppearance, DEFAULT_CARD_SETTINGS.bookCardAppearance), filmCardAppearance: readCardAppearance(saved.filmCardAppearance, DEFAULT_CARD_SETTINGS.filmCardAppearance), customModules: readCustomModules(saved.customModules), threeCardView: typeof saved.threeCardView === 'boolean' ? saved.threeCardView : false, workbenchText: text as Record<string, string>, workbenchCards: validWorkbenchCards(saved.workbenchCards) ? saved.workbenchCards.map(item => ({ ...item })) : [], standaloneOrder: ids(saved.standaloneOrder) ? [...saved.standaloneOrder] : [], ...(ids(saved.hiddenModuleIds) ? { hiddenModuleIds: [...saved.hiddenModuleIds] } : {}), ...(standaloneIds(saved.standaloneHiddenModuleIds) ? { standaloneHiddenModuleIds: [...saved.standaloneHiddenModuleIds] } : {}), ...(Object.hasOwn(saved, 'dashboards') ? { dashboards: readDashboards(saved.dashboards) } : {}) };
+  return { bookCardAppearance: readCardAppearance(saved.bookCardAppearance, DEFAULT_CARD_SETTINGS.bookCardAppearance), filmCardAppearance: readCardAppearance(saved.filmCardAppearance, DEFAULT_CARD_SETTINGS.filmCardAppearance), customModules: readCustomModules(saved.customModules), threeCardView: typeof saved.threeCardView === 'boolean' ? saved.threeCardView : false, workbenchText: text as Record<string, string>, workbenchCards: validWorkbenchCards(saved.workbenchCards) ? saved.workbenchCards.map(item => ({ ...item })) : [], standaloneOrder: ids(saved.standaloneOrder) ? [...saved.standaloneOrder] : [], ...(ids(saved.hiddenModuleIds) ? { hiddenModuleIds: [...saved.hiddenModuleIds] } : {}), ...(standaloneIds(saved.standaloneHiddenModuleIds) ? { standaloneHiddenModuleIds: [...saved.standaloneHiddenModuleIds] } : {}), ...(standaloneIds(saved.deletedModuleIds) ? { deletedModuleIds: [...saved.deletedModuleIds] } : {}), ...(Object.hasOwn(saved, 'dashboards') ? { dashboards: readDashboards(saved.dashboards) } : {}) };
 }
 export function validateCardsPatch(patch: Partial<CardsSettings>): void {
   for (const key of Object.keys(patch)) if (!(CARD_SETTING_KEYS as readonly string[]).includes(key)) throw new Error(`不能修改卡片设置：${key}`);
@@ -133,6 +153,7 @@ export function validateCardsPatch(patch: Partial<CardsSettings>): void {
   if ('standaloneOrder' in patch && !ids(patch.standaloneOrder)) throw new Error('卡片模块顺序无效。');
   if ('hiddenModuleIds' in patch && !ids(patch.hiddenModuleIds)) throw new Error('已移除模块标识无效。');
   if ('standaloneHiddenModuleIds' in patch && !standaloneIds(patch.standaloneHiddenModuleIds)) throw new Error('独立卡片页已移除模块标识无效，原内容已保留。');
+  if ('deletedModuleIds' in patch && !standaloneIds(patch.deletedModuleIds)) throw new Error('已删除模块标识无效，原内容已保留。');
   if ('dashboards' in patch && !validDashboards(patch.dashboards)) throw new Error('看板设置无效，请检查名称、唯一标识和模块顺序。原内容已保留。');
   if ('workbenchText' in patch && (!record(patch.workbenchText) || Object.entries(patch.workbenchText).some(([key, value]) => !['book.title', 'film.title'].includes(key) || typeof value !== 'string'))) throw new Error('卡片模块文字无效。');
 }

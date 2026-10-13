@@ -1,14 +1,16 @@
-# Community submission: Magical Cards 0.4.1
+# Community submission: Magical Cards 0.4.2
 
-The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). On 2026-10-12, the **0.4.1 automatic scan completed with no Failed/Error findings**, four recommendations and one README English-language warning. Its existing publication state is preserved. Automatic scan completion does not establish approval by a community human reviewer.
+The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). The **0.4.2 candidate** separates recoverable hiding from confirmed module deletion: deletion removes configuration and all Dashboard references while keeping notes and images. Compatible host: **0.1.37**. This candidate has not yet been scanned; no approval or new review result is claimed.
 
-The documentation and editing-test remediation was reviewed on the main branch on 2026-10-13. That preview completed without Failed/Error findings; the README warning and two source recommendations remain. Preview scope and evidence are recorded below.
+The latest recorded release scan is **0.4.1**, completed on 2026-10-12 without Failed/Error findings, with four recommendations and one README English-language warning. Its main-branch documentation and editing-test preview completed on 2026-10-13, retaining the README warning and two source recommendations. These immutable results are recorded below and do not apply to 0.4.2.
+
+The main README now begins with continuous English Overview, Installation and Usage sections, followed by the Chinese primary guide and the author's unchanged development notes. Its language warning awaits a future review; this documentation update does not request one or claim it resolved.
 
 | Field | Value |
 | --- | --- |
 | Name / ID | Magical Cards / magical-cards |
 | Repository | AbigBlackCat/Obsidian-Magical_Cards |
-| Version / target release tag | 0.4.1 |
+| Version / target release tag | 0.4.2 |
 | Minimum app version | 1.11.4 |
 | Platforms | Desktop; macOS checks and their app version recorded in VERIFICATION.md; Windows not physically tested |
 | Short description | Browse book, film and image showcase cards with editable descriptions, draggable modules and note embeds. |
@@ -18,11 +20,11 @@ The documentation and editing-test remediation was reviewed on the main branch o
 
 The text below fits the community form's 1,000-character limit. The existing published form is not changed automatically:
 
-Browse book, film and image showcase cards in a dedicated view or note embeds. Choose five layouts, including horizontal and vertical curved galleries. A showcase stores explicitly imported images, optional names and descriptions in one local folder and Markdown note.
+Browse book, film and image showcase cards in a dedicated view or note embeds. Choose five layouts, including horizontal and vertical curved galleries. A showcase keeps imported images, optional names and descriptions in one local folder and Markdown note.
 
-Start with six editable offline examples. Create card modules or image showcases with a name and aspect ratio; other options stay under Advanced. Manually place modules in Dashboards, each with its own order. Move a module out of one Dashboard, or hide it across the standalone view and restore it later. Both actions preserve cards, files and settings; note embeds still display hidden modules. Settings previews browse without flipping.
+Start with six editable offline examples. Create modules with a name and aspect ratio; other options stay under Advanced. Place modules in Dashboards with separate orders. Move a module out of one Dashboard, or hide it in the cards view and restore it later. Confirmed module deletion removes configuration and all category references, keeping notes and images; embeds report a deleted module. Settings previews browse without flipping.
 
-The interface is in Chinese, with full Chinese and English guides. No account, sync service or audio playback is required. Remote covers load from their image servers; built-in covers work offline and are excluded from the MIT code license.
+The interface is in Chinese, with Chinese and English guides. No account, sync service or audio playback is required. Remote covers load from their image servers; built-in covers work offline and are excluded from the MIT code license.
 
 ## Remediation of the 0.2.0 review
 
@@ -139,11 +141,11 @@ These recommendations are not reported as blocking failures by this scan. Comple
 
 ## Review and release checklist
 
-1. Verify the default branch manifest, package version and release tag match 0.4.1.
+1. Verify the default branch manifest, package version and release tag match 0.4.2.
 2. Verify the release's three files, build size, artifact attestations and reproducible clean build.
-3. Record the actual scan result and its release or branch commit. The completed 0.4.1 release scan still contains four recommendations and the README English-language warning.
+3. On the next requested review, record the actual result and its release or branch commit. The completed 0.4.1 release scan still contains four recommendations and the README English-language warning; neither it nor the main-branch preview establishes a result for 0.4.2.
 4. Preserve the entry’s existing publication state. Automatic scan completion alone does not establish human-review approval.
 
 ## Verification and limits
 
-See VERIFICATION.md for recorded checks. Windows has not been tested on a physical machine. No mobile compatibility is claimed. Compatible host **0.1.36** shares showcase editing, per-module settings, removed-module restoration and explicit Dashboard and standalone-module-visibility capabilities. Dashboard navigation and the new standalone hiding rule appear only in the standalone Magical Cards view; note embeds retain their existing display rules. When an older host owns the shared runtime, the plugin preserves it and prompts an upgrade for unsupported capabilities. Original cover rights and source notices remain applicable and are not expanded by this release.
+See VERIFICATION.md for recorded checks. Windows has not been tested on a physical machine. No mobile compatibility is claimed. Compatible host **0.1.37** shares showcase editing, per-module settings, legacy hidden-module restoration, and explicit Dashboard, standalone-module-visibility and module-deletion capabilities. Confirmed deletion removes the module configuration and classification references while retaining work and showcase notes, images and work IDs; it has no UI restoration control. Dashboard navigation and the new standalone hiding rule appear only in the standalone Magical Cards view; note embeds retain their existing display rules. When an older host owns the shared runtime, the plugin preserves it and prompts an upgrade for unsupported capabilities. Original cover rights and source notices remain applicable and are not expanded by this release.

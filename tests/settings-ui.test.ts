@@ -6,7 +6,7 @@ import {build} from 'esbuild';
 import {createRequire} from 'node:module';
 import {dirname,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {freshCardsSettings,newCustomModule,newModuleDraft,readCardsSettings,readModuleDraft,saveModuleDraft,setModuleHidden,validateCardsPatch} from '../src/settings';
+import {freshCardsSettings,newCustomModule,newModuleDraft,readCardsSettings,readModuleDraft,removeModule,saveModuleDraft,setModuleHidden,validateCardsPatch} from '../src/settings';
 import {createWork} from '../src/domain';
 import CardsSurface from '../src/CardsSurface';
 import {WorkPropertiesManager} from '../src/WorkPropertiesSessions';
@@ -18,6 +18,7 @@ function fixture(settings=readCardsSettings(undefined)) {
   let failure='',createFailure='';
   const creates:Array<{id:string;title:string;note:string}>=[];
   const api={
+    supportsModuleDeletion:true,
     getSnapshot:()=>snapshot,subscribe:(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};},coverUrl:(value:string)=>value,
     saveSettings:async(patch:Partial<CardsSettings>)=>{
       patches.push(structuredClone(patch));if(failure){const error=failure;failure='';throw new Error(error);}
@@ -369,29 +370,54 @@ test('modern row updates retain failed draft and reveal state, commit choices on
   assert.equal(doc.observers.size,0);
 });
 
-test('default and custom header trash retains failed drafts and restoration uses the same saved module IDs',async()=>{
+test('settings header trash opens genuine module removal confirmation and cancellation retains unsaved choices',async()=>{
   const settings=freshCardsSettings(),custom=newCustomModule('照片');settings.customModules=[custom];settings.standaloneOrder=[custom.id,'book','film'];
   const {api,patches,fail}=fixture(settings),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
   const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
   try{
-    let reading=el.all().find(child=>child.dataset.cardCollection==='book')!;
+    const reading=el.all().find(child=>child.dataset.cardCollection==='book')!;
     const trash=reading.all().find(child=>child.dataset.cardSettingsLevel==='header')!;
     assert.equal(trash.parentElement!.tagName,'SUMMARY');assert.equal(trash.children[0].dataset.icon,'trash-2');
     assert.ok(reading.classList.contains('bw-cards-settings-module'));
     await row(reading,'模块名称').children[0].control!.choose('待保存名称');await row(reading,'比例').children[0].control!.choose('4:3');
-    fail('暂不能移除');await trash.children[0].control!.click!();
+    await trash.children[0].control!.click!();
+    let root=ui.renderedRoots.at(-1)!;
+    let confirmation=root.element as unknown as React.ReactElement<React.ComponentProps<typeof import('../src/ModuleRemovalDialog').default>>;
+    assert.equal(confirmation.props.baseline.id,'book');assert.equal(confirmation.props.baseline.title,'阅读');assert.equal(patches.length,0);
+    assert.equal(trash.children[0].disabled,true);assert.equal(root.unmounted,false);
+    confirmation.props.close();assert.equal(root.unmounted,true);
     assert.equal(reading.open,true);assert.equal(row(reading,'模块名称').children[0].value,'待保存名称');assert.equal(api.getSnapshot().settings.hiddenModuleIds,undefined);
-    await trash.children[0].control!.click!();assert.deepEqual(api.getSnapshot().settings.hiddenModuleIds,['book']);
+    assert.equal(row(reading,'比例').children[0].value,'4:3');assert.equal(trash.children[0].disabled,false);
+    await trash.children[0].control!.click!();root=ui.renderedRoots.at(-1)!;
+    confirmation=root.element as unknown as React.ReactElement<React.ComponentProps<typeof import('../src/ModuleRemovalDialog').default>>;
+    fail('暂不能移除');await assert.rejects(removeModule(confirmation.props.api,'book',confirmation.props.baseline),/暂不能移除/);
+    assert.equal(root.unmounted,false);assert.equal(row(reading,'模块名称').children[0].value,'待保存名称');assert.equal(api.getSnapshot().settings.deletedModuleIds,undefined);
+    await removeModule(confirmation.props.api,'book',confirmation.props.baseline);confirmation.props.removed();confirmation.props.close();
+    assert.deepEqual(api.getSnapshot().settings.deletedModuleIds,['book']);
     assert.equal(el.all().some(child=>child.dataset.cardCollection==='book'),false);
-    const removed=el.all().find(child=>child.dataset.settingsGroup==='removed')!;assert.equal(removed.open,false);
+    assert.equal(el.all().some(child=>child.dataset.settingsGroup==='removed'),false);
     const code=el.all().find(child=>child.dataset.settingsGroup==='code')!;assert.equal(code.all().some(child=>child.dataset.settingName==='阅读'),false);
-    await button(removed,'恢复').click!();reading=el.all().find(child=>child.dataset.cardCollection==='book')!;
-    assert.equal(row(reading,'模块名称').children[0].value,'待保存名称');assert.equal(row(reading,'比例').children[0].value,'4:3');
-    assert.equal(api.getSnapshot().settings.workbenchText['book.title'],'阅读');assert.deepEqual(api.getSnapshot().settings.standaloneOrder,[custom.id,'book','film']);
+    assert.equal(api.getSnapshot().settings.workbenchText['book.title'],'阅读');assert.deepEqual(api.getSnapshot().settings.standaloneOrder,[custom.id,'film']);
     const photograph=el.all().find(child=>child.dataset.cardCollection===custom.id)!;
     await photograph.all().find(child=>child.dataset.cardSettingsLevel==='header')!.children[0].control!.click!();
-    assert.equal(api.getSnapshot().settings.customModules[0].id,custom.id);assert.equal(api.getSnapshot().settings.customModules[0].title,'照片');
-    assert.ok(patches.every(patch=>Object.keys(patch).join()==='hiddenModuleIds'));
+    root=ui.renderedRoots.at(-1)!;confirmation=root.element as unknown as React.ReactElement<React.ComponentProps<typeof import('../src/ModuleRemovalDialog').default>>;
+    await removeModule(confirmation.props.api,custom.id,confirmation.props.baseline);confirmation.props.removed();confirmation.props.close();
+    assert.deepEqual(api.getSnapshot().settings.customModules,[]);assert.deepEqual(api.getSnapshot().settings.deletedModuleIds,['book',custom.id]);
+    assert.ok(patches.every(patch=>Object.hasOwn(patch,'deletedModuleIds')));assert.equal(api.getSnapshot().entities[0].title,'示例书籍');
+  }finally{cleanup();}
+});
+
+test('legacy hidden modules keep a folded restore entry and remain separate from genuinely removed modules',async()=>{
+  const settings=freshCardsSettings();settings.hiddenModuleIds=['film'];settings.deletedModuleIds=['book'];
+  const {api,patches}=fixture(settings),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
+  try{
+    const hidden=el.all().find(child=>child.dataset.settingsGroup==='removed')!;
+    assert.equal(hidden.open,false);assert.ok(hidden.children[0].textContent.includes('已隐藏模块'));assert.equal(hidden.all().some(child=>child.dataset.settingName==='阅读'),false);
+    await button(hidden,'恢复').click!();
+    assert.deepEqual(api.getSnapshot().settings.hiddenModuleIds,[]);assert.deepEqual(api.getSnapshot().settings.deletedModuleIds,['book']);
+    assert.ok(el.all().some(child=>child.dataset.cardCollection==='film'));assert.equal(el.all().some(child=>child.dataset.cardCollection==='book'),false);
+    assert.deepEqual(Object.keys(patches[0]),['hiddenModuleIds']);
   }finally{cleanup();}
 });
 

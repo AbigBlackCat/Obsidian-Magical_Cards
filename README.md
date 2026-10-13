@@ -1,12 +1,36 @@
-简体中文 · [English](README_en.md)
-
-## English overview
+# Magical Cards
 
 Magical Cards is a desktop Obsidian plugin for book, film, and image showcase cards, with draggable modules and note embeds. It works offline with six editable starter examples. The interface is currently in Chinese; see the [full English guide](README_en.md).
 
+[简体中文说明](#中文说明) · [Full English guide](README_en.md)
+
+## Overview
+
 Choose five layouts, organize modules into Dashboards, and edit summaries on the back of a card. Hiding a module preserves its notes and images. Works remain local Markdown notes; appearance and ordering are stored in the selected card directory. Remote covers load only from their image servers. The linked-note picker searches vault paths when invoked. Copy writes generated embed code only after a click, and pasting reads plain text from that paste event; the plugin does not monitor the clipboard or upload note contents.
 
-<h1 align="center">Magical Cards</h1>
+## Installation
+
+Requires **Obsidian desktop 1.11.4 or later**. In Settings → Community plugins → Browse, search for **Magical Cards**, install and enable it. [Community listing](https://community.obsidian.md/plugins/magical-cards).
+
+For manual installation:
+
+1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/latest).
+2. Put all three files in your vault's configuration folder under `plugins/magical-cards/`; the default path is `<vault>/.obsidian/plugins/magical-cards/`.
+3. Reload Obsidian and enable **Magical Cards** in Settings → Community plugins.
+
+## Usage
+
+On first use in an empty card directory, the plugin creates three book cards, three film cards and an offline guide, then opens the guide. Existing collections and appearances are preserved; deleted examples are not recreated.
+
+1. Open the cards view with the purple stacked-card ribbon icon or the **打开卡片视图** (Open cards view) command. Browse by swiping, scrolling or using the arrow keys.
+2. Click a module's `+` to add a work, or flip a card to edit its summary. For an image collection, use **添加图片橱窗** (Add image showcase) in Settings and import selected images.
+3. Create Dashboards to group existing modules. Removing a module from one Dashboard changes that category only; hiding is reversible. Deleting a module removes its configuration and all Dashboard references, while preserving its notes and images.
+4. To embed modules in a note, run **插入卡片模块** (Insert cards modules) and select existing modules. Settings also provides a code generator with a Copy button. Embeds reference the original collections rather than duplicating data.
+
+The Chinese instructions below cover all settings, screenshots and the author's development notes. The [full English guide](README_en.md) includes the same operations and the original interface labels. Desktop macOS has been tested; Windows has not been tested on physical hardware.
+
+## 中文说明
+
 <p align="center">把阅读、观影与图片收藏，变成可以浏览、编辑、嵌入笔记的卡片。</p>
 <p align="center">
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/AbigBlackCat/Obsidian-Magical_Cards?style=flat-square"></a>
@@ -37,20 +61,6 @@ https://community.obsidian.md/plugins/magical-cards
 这个插件是从我的Obsidian工作台里独立出来的，等我的工作台开发完善了我会带它和大家见面。关于这个插件，如果你有任何建议和反馈，欢迎给我提issue,或者作为contributor参与进一步开发我的插件，你也可以fork我的插件去自定义你的功能。
 
 传送门:https://github.com/AbigBlackCat/Obsidian-Magical_Cards/ 
-
-## Installation
-
-Requires **Obsidian desktop 1.11.4 or later**. In Settings → Community plugins → Browse, search for **Magical Cards**, install and enable it. [Community listing](https://community.obsidian.md/plugins/magical-cards).
-
-For manual installation:
-
-1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/latest).
-2. Put all three files in `<vault>/.obsidian/plugins/magical-cards/`.
-3. Reload Obsidian and enable **Magical Cards** in Settings → Community plugins.
-
-## Usage
-
-On first use in an empty card directory, the plugin creates six offline examples and opens a guide. Open the cards view from the ribbon icon or the **打开卡片视图** command. To embed collections in a note, run **插入卡片模块** and select existing modules; the command inserts the code block into the active note. Settings also provides a generator for copying and pasting the code. See [README_en.md](README_en.md) for the complete guide.
 
 ## 目录
 
@@ -93,11 +103,12 @@ Magical Cards 标签页顶部的“全部”展示所有未隐藏模块。点击
 
 模块标题右侧的管理入口按当前页面操作：
 
-- **“全部”中隐藏模块**：从 Magical Cards 标签页的“全部”和所有 Dashboard 隐藏，笔记嵌入继续显示。展开“全部”页面默认收起的“已隐藏模块”可恢复，沿用原分类、外观与顺序；设置中的“已移除模块”也可恢复。
+- **“全部”中隐藏模块**：从 Magical Cards 标签页的“全部”和所有 Dashboard 隐藏，笔记嵌入继续显示。展开“全部”页面默认收起的“已隐藏模块”可恢复，沿用原分类、外观与顺序。
 - **从 Dashboard 移出模块**：只取消当前分类中的引用，“全部”和其他 Dashboard 不受影响。要重新加入，点击“编辑 Dashboard”，勾选原模块并保存。
+- **移除模块**：确认后删除该模块配置及所有 Dashboard 引用。笔记、图片和作品 ID 保留；原有笔记嵌入会提示模块已移除。此操作没有模块恢复入口。
 - **卡片工具栏的垃圾桶**：删除当前单张卡片，不是移除整个模块；删除前请确认提示。
 
-以上隐藏和移出操作保留配置、笔记和图片。若提示当前共享运行时不支持 Dashboard，请升级已启用的兼容卡片插件并重启笔记库；原有模块和资料会保留。
+隐藏保留模块配置并可恢复；移出 Dashboard 只取消该分类的引用。移除模块则删除模块及分类引用，保留作品笔记和图片。 若同时启用兼容宿主，请升级到 **0.1.37**；旧共享运行时不支持时会提示升级，不会尝试删除。若提示当前共享运行时不支持 Dashboard，请升级已启用的兼容卡片插件并重启笔记库；原有模块和资料会保留。
 
 ### 五种动效布局
 
@@ -116,7 +127,7 @@ Magical Cards 标签页顶部的“全部”展示所有未隐藏模块。点击
 ## 外观与设置
 
 
-设置依次为：**卡片目录 → 示例 → 添加卡片模块 → 添加图片橱窗 → 已有模块 → 已移除模块 → 笔记代码块生成**。两个添加入口、示例、已有模块、已移除模块和高级设置默认收起。
+设置依次为：**卡片目录 → 示例 → 添加卡片模块 → 添加图片橱窗 → 已有模块 → 已隐藏模块（旧版） → 笔记代码块生成**。两个添加入口、示例、已有模块、旧版隐藏模块和高级设置默认收起。
 
 按用途展开“添加卡片模块”或“添加图片橱窗”，只需填写**模块名称**、选择**比例**，然后点击**保存并收起**。两个入口的类型固定、草稿独立；高级样式仅选择整幅封面或简约，不转换存储类型。保存后点击左侧紫色叠卡图标，在 **Magical Cards** 标签页体验。设置中的预览仅能浏览和滑动，不会翻面或打开描述编辑。
 
@@ -126,7 +137,7 @@ Magical Cards 标签页顶部的“全部”展示所有未隐藏模块。点击
 
 ![橱窗高级设置：布局、三卡、翻面、名称位置及只读预览](previews/settings-advanced.png)
 
-模块展开后，标题右侧的垃圾桶**只隐藏卡片标签页中的展示**，保留配置、顺序、笔记和图片，笔记嵌入仍显示。展开设置中的“已移除模块”，或“全部”页面的“已隐藏模块”可恢复。保存失败或来源冲突时保留草稿，检查后重试或重新载入。
+模块展开后，标题右侧的垃圾桶用于**真正移除模块**。确认后删除模块配置、分类引用及模块位置，保留作品笔记、橱窗笔记和图片；原有笔记嵌入会提示模块已移除，不再显示其卡片，也没有模块恢复入口。只想暂时不显示，请在 Magical Cards 标签页选择“隐藏模块”，之后可在“全部”页面的“已隐藏模块”恢复。旧版已隐藏模块仍可在设置中的“已隐藏模块（旧版）”恢复。保存失败或来源冲突时保留草稿和原模块，检查后重试或重新载入。
 
 **卡片目录**填写当前笔记库内的相对目录，例如 `卡片库`。作品保存在其下的 `书籍`／`观影` 目录，橱窗在 `橱窗/<模块 ID>/`，配置保存在 `_数据/卡片配置.md`。切换目录不会搬运原有作品；不要填写电脑上的绝对路径。
 
@@ -213,6 +224,8 @@ modules:
 **0.3.1 更新**：修正弯曲画廊退出时的 WebGL 上下文释放，比例和方向变化复用画布；首次说明页采用作者修订的正文；新建橱窗的选项改为“添加图片橱窗”；补充外观更改后的黑屏恢复提示。
 
 **0.4.0 更新**：添加卡片模块与添加图片橱窗分为独立折叠入口，各自保留草稿；卡片标签页新增“全部”和 Dashboard 分类，可主动选择已有模块、编辑或删除分类，并分别保存模块顺序。分类共用原资料，新模块不自动加入，模块隐藏仍全局生效。
+
+**0.4.2 更新**：区分隐藏、移出分类和真正移除模块。隐藏仍可恢复；“移出此 Dashboard”仅取消当前分类引用；“移除模块”经确认删除模块配置、全部分类引用及模块位置，保留作品笔记和图片，原有嵌入提示模块已移除，不提供模块恢复入口。删除前检查未保存编辑与排序，失败或冲突保留原模块和草稿。兼容宿主为 **0.1.37**。
 
 ## 开发与版权
 

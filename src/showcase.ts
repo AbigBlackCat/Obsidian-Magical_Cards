@@ -109,6 +109,7 @@ export function createShowcaseService(options: ShowcaseServiceOptions): Showcase
     if (upload.size > 10 * 1024 * 1024) throw new Error('图片应小于 10 MB。');
     const extension = upload.name.split('.').at(-1)?.toLowerCase();
     if (!extension || !['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(extension)) throw new Error('请选择 PNG、JPEG、WebP、GIF 或 SVG 图片。');
+    if (extension === 'svg' && upload.size > 2_000_000) throw new Error('SVG 封面超过 2 MB，请缩小文件后重试。');
     const note = fileFor(moduleId), sourcePath = note.path, image = `图片-${incoming.id}.${extension}`, path = `${sourcePath.slice(0, sourcePath.lastIndexOf('/'))}/${image}`;
     const content = extension === 'svg' ? sanitizeSvg(await upload.text()) : await upload.arrayBuffer();
     assertFile(moduleId, note); if (note.path !== sourcePath) throw new Error('橱窗目录已移动，请重新导入；原图片已保留。');
@@ -117,7 +118,7 @@ export function createShowcaseService(options: ShowcaseServiceOptions): Showcase
     if (existing instanceof TFile) {
       const previous = typeof content === 'string' ? await app.vault.read(existing) : await app.vault.readBinary(existing);
       active();
-      const equal = typeof content === 'string' ? previous === content : previous instanceof ArrayBuffer && equalBytes(previous, content);
+      const equal = typeof content === 'string' ? previous === content : typeof previous !== 'string' && equalBytes(previous, content);
       if (!equal) throw new Error('导入标识对应的图片已有不同内容，没有覆盖原文件。');
     } else if (typeof content === 'string') await app.vault.create(path, content);
     else await app.vault.createBinary(path, content);

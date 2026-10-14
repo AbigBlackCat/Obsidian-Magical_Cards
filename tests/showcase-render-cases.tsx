@@ -41,11 +41,17 @@ test('flip settings and explicit front text also gate the scroll-bend current to
   assert.match(html, /bw-scroll-bend-current/);
 });
 
-test('scroll-bend keeps the normal summary action and names showcase description editing explicitly', () => {
+test('scroll-bend names summary and description editing in transparent flip hints without duplicate front actions', () => {
   const render = (backActionLabel?: string) => renderToStaticMarkup(<WorkCarousel works={[{ id: 'a' }]} label="图片" appearance={{ material: 'paper', style: 'cover', layout: 'scroll-bend' }} backActionLabel={backActionLabel} renderWork={() => <img src="local.png" alt="" />} renderBack={() => <p>背面</p>} empty="空" />);
-  assert.match(render(), />编辑摘要<\/button>/);
-  assert.match(render('编辑描述'), />编辑描述<\/button>/);
+  assert.match(render(), /title="编辑摘要 · 翻到背面 · F"/);
+  assert.match(render('编辑描述'), /title="编辑描述 · 翻到背面 · F"/);
   assert.doesNotMatch(render('编辑描述'), /编辑摘要/);
+  for (const html of [render(), render('编辑描述')]) {
+    assert.match(html, /aria-label="翻到背面：图片 1"/);
+    assert.match(html, /class="bw-card-flip bw-card-flip-hotspot bw-scroll-bend-flip"[^>]*aria-hidden="true" tabindex="-1"/);
+    assert.doesNotMatch(html, />(?:编辑摘要|编辑描述|回到正面)<\/button>|<svg/);
+    for (const [control] of html.matchAll(/<button\b[^>]*class="bw-card-flip bw-card-flip-hotspot[^>]*>[\s\S]*?<\/button>/g)) assert.match(control, /><\/button>$/);
+  }
 });
 
 test('showcase previews respect front/back/hidden names and module three-card overrides without sessions or writes', () => {

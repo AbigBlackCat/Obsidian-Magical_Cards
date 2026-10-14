@@ -7,13 +7,14 @@ import { createWork } from '../src/domain';
 import { carouselIndex, carouselLimit, carouselOffset, carouselOpacity, carouselSlots, constrainPosition } from '../src/carousel-motion';
 import { bendForSpeed, cardGeometry, cardTransform } from '../src/layouts/geometry';
 import { createScrollBend } from '../src/layouts/scroll-bend';
+import { CARD_RATIOS, freshCardsSettings, readCardsSettings } from '../src/settings';
 import type { CardLayout, CardRatio } from '../src/types';
 
 const layouts: CardLayout[] = ['cylinder', 'coverflow-carousel', 'album-rail', 'scroll-bend', 'skewed-carousel'];
 
 test('all layouts keep card ratios, fit, material, note activation and summary flip entry', () => {
   const work = { ...createWork('film'), title: '<当前笔记>', summary: '真实摘要', cover: '附件/封面.png' };
-  for (const layout of layouts) for (const ratio of ['1:1', '4:3', '3:4', '2:3', '16:9'] as CardRatio[]) for (const imageFit of ['contain', 'cover'] as const) {
+  for (const layout of layouts) for (const ratio of ['1:1', '4:3', '3:4', '2:3', '16:9', '32:15'] as CardRatio[]) for (const imageFit of ['contain', 'cover'] as const) {
     const html = renderToStaticMarkup(createElement(WorkCarousel, { works: [work], label: '卡片', appearance: { layout, material: 'foil', style: 'cover', orientation: 'vertical' }, ratio, imageFit, threeCardView: true, renderWork: item => createElement('h3', {}, item.title), renderBack: () => null, open: () => {}, empty: '空模块' }));
     assert.match(html, new RegExp(`data-layout="${layout}"`));
     assert.match(html, new RegExp(`data-ratio="${ratio}"`));
@@ -28,9 +29,42 @@ test('all layouts keep card ratios, fit, material, note activation and summary f
       assert.match(html, /data-orientation="vertical"/);
       assert.match(html, /class="bw-scroll-bend-canvas" aria-hidden="true"/);
       assert.match(html, />打开笔记<\/button>/);
-      assert.match(html, />编辑摘要<\/button>/);
+      assert.match(html, /class="bw-card-flip bw-card-flip-hotspot bw-scroll-bend-flip"/);
+      assert.doesNotMatch(html, />编辑摘要<\/button>/);
     }
   }
+});
+
+test('transparent front controls leave artwork untouched and are absent in previews or when flipping is disabled', () => {
+  const work = { ...createWork('film'), title: '封面作品' };
+  for (const layout of layouts) {
+    const props = { works: [work], label: '卡片', appearance: { layout, material: 'paper', style: 'cover' } as const, ratio: '32:15' as const, renderWork: () => createElement('img', { src: 'cover.svg', alt: '' }), renderBack: () => null, open: () => {}, empty: '空' };
+    const html = renderToStaticMarkup(createElement(WorkCarousel, props));
+    const controls = [...html.matchAll(/<button\b[^>]*class="bw-card-flip bw-card-flip-hotspot[^>]*>[\s\S]*?<\/button>/g)];
+    assert.ok(controls.length >= 1);
+    for (const [control] of controls) {
+      assert.match(control, /aria-label="翻到背面：封面作品"/);
+      assert.match(control, /title="编辑摘要 · 翻到背面 · F"/);
+      assert.match(control, /><\/button>$/);
+    }
+    for (const override of [{ canFlip: false }, { appearance: { ...props.appearance, flipEnabled: false } }, { renderBack: undefined }]) {
+      const disabled = renderToStaticMarkup(createElement(WorkCarousel, { ...props, ...override }));
+      assert.match(disabled, /data-flip-enabled="false"/);
+      assert.doesNotMatch(disabled, /bw-card-flip-hotspot|bw-card-back|翻到背面|编辑摘要/);
+    }
+  }
+});
+
+test('wide ratio is available to defaults and custom appearances without changing legacy proportions', () => {
+  assert.equal(CARD_RATIOS['2:3'], '2:3 竖向封面');
+  assert.equal(CARD_RATIOS['32:15'], '32:15 宽幅横图');
+  const input = { bookCardAppearance: { material: 'paper', style: 'cover', ratio: '32:15' }, filmCardAppearance: { material: 'matte', style: 'minimal', ratio: '32:15' }, customModules: [{ id: 'wide', title: '横图', kind: 'film', ratio: '32:15', appearance: { material: 'paper', style: 'cover' } }] };
+  const settings = readCardsSettings(input);
+  assert.equal(settings.bookCardAppearance.ratio, '32:15');
+  assert.equal(settings.filmCardAppearance.ratio, '32:15');
+  assert.equal(settings.customModules[0].ratio, '32:15');
+  assert.equal(freshCardsSettings().bookCardAppearance.ratio, '2:3');
+  assert.equal(freshCardsSettings().filmCardAppearance.ratio, '2:3');
 });
 
 test('empty layouts remain empty and legacy settings keep the cylinder default', () => {
@@ -43,7 +77,7 @@ test('empty layouts remain empty and legacy settings keep the cylinder default',
 });
 
 test('registry layouts have distinct symmetric geometry and respect every ratio at narrow widths', () => {
-  for (const layout of layouts) for (const width of [20, 320, 1000, 1440]) for (const factor of [1, 3 / 4, 4 / 3, 3 / 2, 9 / 16]) {
+  for (const layout of layouts) for (const width of [20, 320, 1000, 1440]) for (const factor of [1, 3 / 4, 4 / 3, 3 / 2, 9 / 16, 15 / 32]) {
     const geometry = cardGeometry(width, factor, layout);
     assert.ok(geometry.cardWidth > 0);
     assert.ok(Math.abs(geometry.cardHeight / geometry.cardWidth - factor) < 1e-12);
@@ -158,13 +192,39 @@ test('WebGL honors both orientations, three-card clipping and reduced motion, an
 test('changing gallery ratio and orientation reuses GPU resources until the canvas is retired', () => {
   const fixture = gpuFixture(), allocations = { ...fixture.created };
   for (let index = 0; index < 200; index++) {
-    const vertical = index % 2 === 0, factor = [1, 3 / 4, 4 / 3, 3 / 2, 9 / 16][index % 5];
+    const vertical = index % 2 === 0, factor = [1, 3 / 4, 4 / 3, 3 / 2, 9 / 16, 15 / 32][index % 6];
     fixture.renderer.draw({ geometry: cardGeometry(800, factor, 'scroll-bend', vertical), position: 0, anchor: 0, vertical, limit: 1.5, reduced: false, tiles: Array(7).fill(null) }, index * 16);
     assert.equal(fixture.renderer.mode, 'webgl');assert.deepEqual(fixture.created, allocations);
     assert.equal(fixture.retiredContexts(), 0);assert.equal(fixture.values.get('uVertical'), Number(vertical));
   }
   fixture.renderer.dispose();fixture.renderer.dispose();
   assert.equal(fixture.retiredContexts(), 1);assert.deepEqual(fixture.deleted, fixture.created);
+});
+
+test('WebGL transparent hotspot projection and image hit tests follow both lens directions, ratios, gaps and rounded corners', () => {
+  for (const vertical of [false, true]) for (const factor of [1.5, 15 / 32]) {
+    const fixture = gpuFixture(), geometry = cardGeometry(800, factor, 'scroll-bend', vertical);
+    let previous = 0;
+    for (const position of [0, 0.3, 0.7, 1.1, 0.9, 0.4, 0]) {
+      fixture.renderer.draw({ geometry, position, anchor: Math.round(position), vertical, limit: 2.65, reduced: false, tiles: Array(7).fill(null) }, previous += 16);
+      const offset = Math.round(position) - position;
+      const center = { x: vertical ? 0 : offset * geometry.pitch, y: vertical ? offset * geometry.pitch : 0 };
+      for (const point of [center, { x: center.x + geometry.cardWidth / 2 - 34, y: center.y - geometry.cardHeight / 2 + 34 }]) {
+        const projected = fixture.renderer.projectPoint(point, geometry, vertical);
+        assert.equal(fixture.renderer.cardPositionAt(projected, geometry, position, vertical), Math.round(position));
+      }
+      const neighbor = { x: center.x + (vertical ? 0 : geometry.pitch), y: center.y + (vertical ? geometry.pitch : 0) };
+      assert.equal(fixture.renderer.cardPositionAt(fixture.renderer.projectPoint(neighbor, geometry, vertical), geometry, position, vertical), Math.round(position) + 1);
+      const gap = { x: vertical ? 0 : center.x + geometry.cardWidth / 2 + 8, y: vertical ? center.y + geometry.cardHeight / 2 + 8 : 0 };
+      assert.equal(fixture.renderer.cardPositionAt(fixture.renderer.projectPoint(gap, geometry, vertical), geometry, position, vertical), null);
+      const corner = { x: center.x + geometry.cardWidth / 2 - 1, y: center.y - geometry.cardHeight / 2 + 1 };
+      assert.equal(fixture.renderer.cardPositionAt(fixture.renderer.projectPoint(corner, geometry, vertical), geometry, position, vertical), null);
+    }
+    fixture.renderer.reset();
+    assert.deepEqual(fixture.renderer.projectPoint({ x: 10, y: 20 }, geometry, vertical), { x: 10, y: 20 });
+    fixture.renderer.dispose();
+    assert.deepEqual(fixture.deleted, fixture.created);
+  }
 });
 
 test('an image texture security failure returns to DOM cards and frees the GPU allocations', () => {

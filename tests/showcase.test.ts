@@ -89,6 +89,15 @@ async function fixture() {
 }
 const png = () => new File([Uint8Array.from([1, 2, 3, 4])], '照片.png', { type: 'image/png' });
 
+test('showcase SVG limit counts UTF-8 bytes before writing any image or card', async () => {
+  const { app, service, path } = await fixture(), before = app.vault.text(path);
+  const svg = new File([`<svg xmlns="http://www.w3.org/2000/svg"><text>${'字'.repeat(700_000)}</text></svg>`], '宽幅.svg', { type: 'image/svg+xml' });
+  assert.ok(svg.size > 2_000_000);
+  const result = await service.importImages('photos', [{ id: 'too-large-svg', file: svg }]);
+  assert.deepEqual(result.imported, []); assert.match(result.failed[0].error, /2 MB/);
+  assert.equal(app.vault.text(path), before); assert.equal(app.vault.getAbstractFileByPath(path.replace('橱窗.md', '图片-too-large-svg.svg')), null);
+});
+
 test('showcase creation is idempotent and missing or occupied notes are never overwritten or recreated', async () => {
   const { app, service, path } = await fixture(), original = app.vault.text(path);
   assert.equal(await service.create('photos', '不会重写'), path); assert.equal(app.vault.text(path), original);

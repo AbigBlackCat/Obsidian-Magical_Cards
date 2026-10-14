@@ -42,6 +42,7 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
   const interaction = useRef<{ press: Press | null; suppressClick: boolean; wheelTimer?: number }>({ press: null, suppressClick: false });
   const geometry = useRef(cardGeometry(800, heightFactor, layout, vertical));
   const canvas = useRef<HTMLCanvasElement>(null);
+  const scrollFlip = useRef<HTMLButtonElement>(null);
   const bend = useRef<ReturnType<typeof createScrollBend> | null>(null);
   const intro = useRef({ seen: false, start: 0 });
   const selectedId = useRef<string | null>(null);
@@ -136,16 +137,29 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
         node.style.setProperty('--bw-card-shade', String(transform.shade));
       }
       publish();
+      let bending = false;
       if (layout === 'scroll-bend' && bend.current && !flippedRef.current) {
         const center = Math.round(state.position);
-        return bend.current.draw({ geometry: g, position: state.position, anchor: center, vertical, limit: carouselLimit(count, g.sides, threeCardViewRef.current), reduced: reducedRef.current, tiles: Array.from({ length: 7 }, (_, slot) => {
+        bending = bend.current.draw({ geometry: g, position: state.position, anchor: center, vertical, limit: carouselLimit(count, g.sides, threeCardViewRef.current), reduced: reducedRef.current, tiles: Array.from({ length: 7 }, (_, slot) => {
           const position = center + slot - 3;
           if (count < 3 && (position < 0 || position >= count)) return null;
           const work = worksRef.current[carouselIndex(position, count)];
           return work ? { id: work.id, ...frontTextRef.current(work), node: cards.current.get(work.id) } : null;
         }) }, now);
       }
-      return false;
+      const hotspot = scrollFlip.current;
+      if (hotspot) {
+        const shown = bend.current?.mode === 'webgl' && !reducedRef.current && !flippedRef.current;
+        const offset = Math.round(state.position) - state.position;
+        const point = bend.current?.projectPoint({ x: (vertical ? 0 : offset * g.pitch) + g.cardWidth / 2 - 34, y: (vertical ? offset * g.pitch : 0) - g.cardHeight / 2 + 34 }, g, vertical);
+        if (point) hotspot.style.transform = `translate(-50%, -50%) translate(${point.x.toFixed(2)}px, ${point.y.toFixed(2)}px)`;
+        hotspot.style.visibility = shown ? 'visible' : 'hidden';
+        if (!shown && hotspot.contains(doc.activeElement)) element.focus({ preventScroll: true });
+        hotspot.inert = !shown;
+        hotspot.tabIndex = shown ? 0 : -1;
+        hotspot.setAttribute('aria-hidden', String(!shown));
+      }
+      return bending;
     };
     paintRef.current = paint;
     const frame = (now: number) => {
@@ -252,7 +266,10 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
     node?.style.removeProperty('--bw-tilt-x');
     node?.style.removeProperty('--bw-tilt-y');
     if (flippedId) node?.querySelector<HTMLButtonElement>('.bw-card-back button')?.focus({ preventScroll: true });
-    else if (doc && (doc.activeElement === doc.body || node?.contains(doc.activeElement))) node?.querySelector<HTMLButtonElement>('.bw-card-front > .bw-card-flip')?.focus({ preventScroll: true });
+    else if (doc && (doc.activeElement === doc.body || node?.contains(doc.activeElement))) {
+      const target = scrollFlip.current && !scrollFlip.current.inert ? scrollFlip.current : node?.querySelector<HTMLButtonElement>('.bw-card-front > .bw-card-flip');
+      target?.focus({ preventScroll: true });
+    }
     previousFlip.current = flippedId;
   }, [flippedId]);
 
@@ -305,6 +322,13 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
     focusRef.current(Math.round(motion.current.position + velocity * 0.16));
   };
   const openCurrent = () => { const item = worksRef.current[carouselIndex(motion.current.position, worksRef.current.length)]; if (item) openRef.current?.(item); };
+  const flipCurrent = () => {
+    const item = worksRef.current[carouselIndex(motion.current.position, worksRef.current.length)];
+    if (canFlip && item) setFlippedId(current => current === item.id ? null : item.id);
+  };
+  const hotspotKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (!event.nativeEvent.isComposing && event.key.toLowerCase() === 'f') { event.preventDefault(); flipCurrent(); }
+  };
   const activeIndex = carouselIndex(anchor, works.length);
   const active = works[activeIndex];
   useLayoutEffect(() => { if (flippedId && (!canFlip || flippedId !== active?.id)) setFlippedId(null); }, [active?.id, flippedId, canFlip]);
@@ -315,6 +339,16 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
     onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={event => release(event)} onPointerCancel={event => release(event, true)} onLostPointerCapture={event => release(event, true)}
     onPointerLeave={() => { if (!interaction.current.press?.moved) interaction.current.press = null; }}
     onClickCapture={event => { if (interaction.current.suppressClick && event.detail !== 0) { event.preventDefault(); event.stopPropagation(); interaction.current.suppressClick = false; } }}
+    onClick={event => {
+      if (layout !== 'scroll-bend' || bend.current?.mode !== 'webgl' || reducedRef.current || flippedRef.current || (event.target as Element).closest('.bw-paper, [data-card-control]') || event.detail === 0) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const position = bend.current.cardPositionAt({ x: event.clientX - rect.left - rect.width / 2, y: event.clientY - rect.top - rect.height / 2 }, geometry.current, motion.current.position, vertical);
+      if (position === null || works.length < 3 && (position < 0 || position >= works.length)) return;
+      const offset = position - motion.current.position;
+      if (!carouselOpacity(offset, works.length, geometry.current.sides, threeCardView)) return;
+      if (Math.abs(offset) < 0.08) openRef.current?.(worksRef.current[carouselIndex(position, worksRef.current.length)]);
+      else focusRef.current(position);
+    }}
     onKeyDown={event => {
       const target = event.target as Element;
       if (event.nativeEvent.isComposing || target.closest('textarea, input, select, [data-card-control]')) return;
@@ -330,6 +364,7 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
       event.currentTarget.focus({ preventScroll: true });
     }}>
     {layout === 'scroll-bend' && <canvas ref={canvas} className="bw-scroll-bend-canvas" aria-hidden="true" />}
+    {layout === 'scroll-bend' && active && canFlip && <button ref={scrollFlip} type="button" className="bw-card-flip bw-card-flip-hotspot bw-scroll-bend-flip" data-card-control inert aria-hidden="true" tabIndex={-1} aria-label={`翻到背面：${carouselCardLabel(active, activeIndex)}`} title={`${backActionLabel} · 翻到背面 · F`} onClick={flipCurrent} onKeyDown={hotspotKeyDown} />}
     {carouselSlots(anchor, works.length).map(index => {
       const work = works[index];
       const flipped = canFlip && flippedId === work.id;
@@ -353,7 +388,7 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
           if (Math.abs(offset) < 0.08) openRef.current?.(worksRef.current[currentIndex]);
           else focusRef.current(motion.current.position + offset);
         }}>{renderWork(work)}</button>
-        {central && canFlip && <button type="button" className="bw-card-flip" data-card-control aria-label={`翻到背面：${cardLabel}`} title="翻到背面 · F" onClick={flip}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M16 4H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V9M16 3v6h6M20 4l-4 5" /></svg></button>}
+        {central && canFlip && <button type="button" className="bw-card-flip bw-card-flip-hotspot" data-card-control aria-label={`翻到背面：${cardLabel}`} title={`${backActionLabel} · 翻到背面 · F`} onClick={flip} onKeyDown={hotspotKeyDown} />}
         </div>
         {canFlip && <div className="bw-card-face bw-card-back" inert={!flipped} aria-hidden={!flipped}>{flipped && renderBack?.(work, central && flipped, flip, () => openRef.current?.(work))}</div>}
        </div>
@@ -367,7 +402,7 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
       <span>{activeIndex + 1} / {works.length}</span>
       <button type="button" aria-label="下一张卡片" disabled={works.length < 2 || (works.length === 2 && activeIndex === works.length - 1)} onClick={() => focusRef.current((motion.current.target ?? Math.round(motion.current.position)) + 1)}>›</button>
       {canOpen && <button type="button" onClick={openCurrent}>打开笔记</button>}
-      {canFlip && <button type="button" aria-pressed={flippedId === active.id} onClick={() => setFlippedId(current => current === active.id ? null : active.id)}>{flippedId === active.id ? '回到正面' : backActionLabel}</button>}
+      {canFlip && flippedId === active.id && <button type="button" aria-pressed="true" onClick={() => setFlippedId(null)}>回到正面</button>}
     </div>
   </div>}</>;
 }

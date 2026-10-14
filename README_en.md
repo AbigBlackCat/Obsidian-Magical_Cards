@@ -115,9 +115,19 @@ Expand **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add 
 
 The trash icon beside an expanded module heading **deletes the module**, preserving work notes, showcase notes and images. The exit-arrow beside a Dashboard membership **removes only that category reference**. Both operations are available only in Settings and have explicit icon labels. Save failures keep the membership or module and retain unsaved appearance drafts.
 
-Cards and showcase toolbars use a horizontal action menu for search, add, sort, edit and individual-card deletion. Success messages disappear after four seconds; errors and retry prompts remain visible. Sliding, flipping, Save, Cancel and Retry remain directly accessible.
+Cards and showcase toolbars use a horizontal action menu for search, add, sort, edit and individual-card deletion. Success messages disappear after four seconds; errors and retry prompts remain visible. Click the transparent region at the upper-right of the current card to flip it, or focus the carousel and press F. No flip icon covers the image. Other card areas still open the note; Save, Cancel and Retry remain accessible.
 
 Enter a directory relative to the current vault, such as `卡片库`. Work notes live under `书籍` (books) and `观影` (films); showcases live under `橱窗/<module ID>/`. Configuration is in `_数据/卡片配置.md`. Changing this setting does not move existing data. Absolute computer paths are rejected.
+
+### Ordinary-card image imports and note properties
+
+Reading, film and custom ordinary-module menus include **批量导入图片／SVG** (Import multiple images/SVGs). Each selected file creates a separate card and work note, using the filename without its extension as the title and an empty summary. PNG, JPEG, WebP, GIF and safe SVGs are supported, up to 10 MB per image and 2 MB per SVG.
+
+Partial retries resend only unfinished files and retain stable IDs. They never duplicate successful cards or overwrite later title, summary or cover edits. Complete or explicitly discard unfinished imports before switching categories or deleting modules; discard keeps files already written. File retry queues last only while the shared library remains open. After a full application exit, selecting files again starts a new import.
+
+Work notes initially show only **Name and Summary**. Expand **更多信息** (More information) for the other properties. Watching date/status controls are removed while stored values remain intact. Each film-type card can rename its “Director” field, for example to “Developer”; an empty label restores the default.
+
+The new **32:15 wide image** ratio suits banners near 2.13:1. **2:3 portrait cover** is the general portrait preset. Contain preserves the full image; fill/crop fills the card and may trim its edges.
 
 ### Image showcases
 
@@ -127,7 +137,7 @@ Expand the separate **添加图片橱窗** (Add image showcase) settings group, 
 | --- | --- |
 | ![An image-only showcase front with an optional empty name](previews/showcase-front.png) | ![The showcase back provides a plain-text description editor and a shared-note control](previews/showcase-back.png) |
 
-- Select multiple images or drag images into the showcase. Folders are never scanned automatically. PNG, JPEG, WebP, GIF and SVG are supported, up to 10 MB per image.
+- Select multiple images or drag images into the showcase. Folders are never scanned automatically. PNG, JPEG, WebP, GIF and SVG are supported, up to 10 MB per image and 2 MB per SVG.
 - Each showcase has its own folder containing one `橱窗.md` note and all imported images. The note uses local embeds to show every image, optional name and description. Names may be empty.
 - Advanced options enable flipping and place names on the front, back, or nowhere. Flipping is on and names are on the back by default. Front-name mode shows only the description on the back; hiding names preserves the stored text.
 - Descriptions are plain text, limited to 400 characters, and saved automatically. IME composition waits for confirmation; failed saves and conflicts retain the draft with retry controls. With flipping off, use **编辑当前图片** (Edit current image) or edit the shared note.

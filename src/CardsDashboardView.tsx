@@ -7,6 +7,7 @@ import { deleteDashboard, saveDashboard, saveDashboardTabOrder } from './dashboa
 import { movedModule } from './ModuleList';
 import { Field } from './primitives';
 import ActionMenu from './ActionMenu';
+import WorkImageImportRecovery from './WorkImageImportRecovery';
 
 interface Props {
   api: CardsAPI;
@@ -154,6 +155,7 @@ export default function CardsDashboardView({ api, manager, dashboardId, viewId, 
     {status && <p className="bw-dashboard-status" role="status">{status}</p>}
     {tabDraft && <div className="bw-dashboard-tab-retry"><p>Dashboard 顺序尚未保存，已恢复原位置。草稿可重试或放弃。</p><button type="button" disabled={busy} onClick={() => persistTabs(tabDraft)}>重试 Dashboard 排序</button><button type="button" disabled={busy} onClick={() => { retainDashboardTabDraft(api, draftOwner, null); setTabDraft(claimDashboardTabDraft(api, draftOwner)); setError(''); }}>放弃 Dashboard 排序</button></div>}
     {dashboard && !existing && dashboard.id !== replacement && <button type="button" disabled={busy} onClick={() => select(replacement)}>切换到可用 Dashboard</button>}
+    <WorkImageImportRecovery api={api} manager={manager} visibleCollectionIds={dashboard?.moduleIds} />
     {dashboard ? <section ref={surface} id={panelId} role="tabpanel" aria-labelledby={`${panelId}-${selected}`} aria-busy={busy} inert={busy}>
       <CardsSurface key={selected} api={api} manager={manager} dashboard={dashboard} />
     </section> : <section ref={surface} id={panelId} className="bw-dashboard-empty" role="region" aria-label="Dashboard 起步" aria-busy={busy}><p>{snapshot.loading ? '正在读取 Dashboard…' : '还没有 Dashboard。新建分类后，可在插件设置中将已有卡片模块加入分类。'}</p>{supported && !snapshot.loading && <button type="button" disabled={busy || Boolean(tabDraft)} onPointerDownCapture={blockComposition} onClick={() => openEditor()}>新建 Dashboard</button>}</section>}

@@ -1,7 +1,7 @@
 import { DEFAULT_CARD_SETTINGS, type CardLayout, type CardRatio, type CardsAPI, type CardsDashboard, type CardsSettings, type CustomCardModule, type WorkCardAppearance, type WorkbenchCardPlacement } from './types';
 import { readDashboards, validDashboards } from './dashboards';
 
-export const CARD_RATIOS: Record<CardRatio, string> = { '1:1': '1:1 方图', '4:3': '4:3 横向照片', '3:4': '3:4 竖向照片', '2:3': '2:3 番剧／海报', '16:9': '16:9 横向画面' };
+export const CARD_RATIOS: Record<CardRatio, string> = { '1:1': '1:1 方图', '4:3': '4:3 横向照片', '3:4': '3:4 竖向照片', '2:3': '2:3 竖向封面', '16:9': '16:9 横向画面', '32:15': '32:15 宽幅横图' };
 export const CARD_LAYOUTS: Record<CardLayout, string> = { cylinder: '圆柱弧面', 'coverflow-carousel': '封面流轮播', 'album-rail': '黑胶专辑架', 'scroll-bend': '滚动弯曲画廊', 'skewed-carousel': '倾斜轮播' };
 export const CARD_APPEARANCE_FIELDS = [
   { field: 'style', name: '卡片样式', options: { cover: '整幅封面', minimal: '简约' }, fallback: 'cover' },

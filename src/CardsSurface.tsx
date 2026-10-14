@@ -10,6 +10,8 @@ import ShowcaseCollection from './ShowcaseCollection';
 import { saveDashboardOrder } from './dashboards';
 import { getShowcaseRenderOperations } from './showcase-render-state';
 import { getShowcaseManager } from './showcase-sessions';
+import { hasPendingWorkImageImports } from './work-image-imports';
+import WorkImageImportRecovery from './WorkImageImportRecovery';
 
 const operationsKey = Symbol.for('magical-cards.module-operations.v1');
 export interface DashboardTabDraft { baseline: CardsDashboard[]; order: string[]; }
@@ -51,6 +53,7 @@ export function claimDashboardTabDraft(api: CardsAPI, viewId: string): Dashboard
 /** Do not unmount a module while an operation or its explicit retry draft remains. */
 export function assertCardModuleOperationsSettled(api: CardsAPI, surface?: HTMLElement): HTMLElement[] {
   const surfaces = [...new Set([...moduleOperations(api).surfaces, ...(surface ? [surface] : [])])];
+  if (hasPendingWorkImageImports(api)) throw new Error('图片导入尚未完成，重试记录已保留。请先重试或放弃未完成导入后再操作。');
   if (surfaces.some(element => element.querySelector('[data-cards-pending]'))) throw new Error('模块仍在编辑或排序，草稿已保留。请先完成操作，或放弃排序草稿后重试。');
   for (const module of api.getSnapshot().settings.customModules) if (module.mode === 'showcase') {
     const state = getShowcaseRenderOperations(api, module.id)?.getSnapshot();
@@ -134,6 +137,7 @@ export default function CardsSurface({ api, manager, embed, dashboard, saveOrder
   };
   return <WorkbenchTextProvider values={snapshot.settings.workbenchText} save={(key, value) => run(() => api.saveSettings({ workbenchText: { ...api.getSnapshot().settings.workbenchText, [key]: value } }))}><div ref={surface} className="bw-app bw-cards-surface" data-cards-embed={embed?.id}>
     {snapshot.loading && <p role="status">正在读取卡片…</p>}{(error || snapshot.error) && <p className="bw-sync-note is-error" role="alert">{error || snapshot.error}</p>}
+    {embed && <WorkImageImportRecovery api={api} manager={manager} visibleCollectionIds={visibleModules.map(module => module.collection)} />}
     {!visibleIds.length && <p className="bw-empty">{embed ? '当前代码块未指定卡片模块。' : '此 Dashboard 暂无模块。请在插件设置中选择已有模块加入此分类。'}</p>}
     <ModuleList key={embed?.id ?? draftKey} ids={visibleIds} disabled={!embed && !api.supportsDashboardOnlyNavigation} save={async order => { const merged = mergedOrder(order); if (saveOrder) { await saveOrder(merged); setEmbedOrder(merged); } else if (dashboard) await saveDashboardOrder(api, moduleOperations(api).drafts.get(draftKey)?.dashboard ?? dashboard, merged); }} initialDraft={(embed ? initialDraft : moduleOperations(api).drafts.get(draftKey)?.order)?.filter(id => visibleIds.includes(id))} retainDraft={draft => { let merged = draft; if (draft) { try { merged = mergedOrder(draft); } catch { /* Keep the original draft while save reports the changed module set. */ } } if (embed) retainDraft?.(merged); else if (merged) { const { drafts } = moduleOperations(api); drafts.set(draftKey, { order: merged, dashboard: drafts.get(draftKey)?.dashboard ?? (dashboard ? structuredClone(dashboard) : undefined) }); } else moduleOperations(api).drafts.delete(draftKey); }}>{renderModule}</ModuleList>
     {editor && <WorkEditor entity={editor} genericCard={!!editor.moduleId} api={api} run={run} close={() => setEditor(null)} />}

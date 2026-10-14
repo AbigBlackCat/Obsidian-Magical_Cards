@@ -1,3 +1,28 @@
+# Magical Cards 0.6.0 candidate verification
+
+Checked on 2026-10-14 as a local **0.6.0** candidate with compatible host **0.1.39**. These candidates are not published and the current vault was not updated. Ordinary modules import multiple images or safe SVGs into separate work notes; work information starts with Name and Summary, film field labels are editable per card, and 32:15 wide cards use an accessible transparent flip region.
+
+| Check | Result |
+| --- | --- |
+| Final clean public source | 278 / 278 tests, type check, resource check, reproducible builds and candidate version check pass |
+| Final clean compatible host | 254 / 254 tests, type check, two identical host builds and identical shared-card reproducible builds pass; local Gantt work is excluded |
+| Typed lint | 0 errors; the same 3 existing compatibility/fixture warnings |
+| Native macOS / Obsidian 1.14.4 | 12 functional checks, 2 additional renderer-reload checks and 2 dual-plugin loading-order checks: 16 unique checks pass |
+| Native preservation | 38 work/image/configuration files are byte-preserved; exact card IDs, display order, selected Dashboard and original tab are retained |
+| Native diagnostics | No unhandled/React errors; one ResizeObserver warning in the functional phase, none in reload or compatibility phases |
+| Final installation bytes | Cards main.js: 4,779,623 bytes, below 5,000,000; host main.js: 758,047 bytes. Three-file ZIPs match the final clean builds and tested installation |
+| Local work and documentation | Shared sources are synchronized; the author's development notes and 12 original private Gantt files remain byte-identical |
+
+[Candidate record](verification/candidate-0.6.0.json) · [Sanitized native record](verification/native-0.6.0.json). Final complete tests and build logs correspond to the delivered hashes; earlier reports and helper failures remain local. The repeated 44-feature check is a subset of the 278 tests, not an additional suite.
+
+Native checks cover mixed image/SVG imports, retained partial-failure retry identities, later-edit protection, per-card labels, closed More Information, preserved old viewing metadata and unknown attributes, composition-event guards, plain-text paste/undo/redo, showcase SVGs, both fits across five wide layouts, horizontal/vertical gallery and simulated WebGL fallback, transparent 44-pixel controls, preview flip guards, both embed languages in reading and Live Preview, and DOM cleanup. Input, FileList, clipboard and IME events are synthetic events on actual Obsidian UI. Clipboard-history checks use browser insertText/undo/redo; they do not exercise the system clipboard or a physical IME. WebGL fallback uses a synthetic contextlost event. Reload is Obsidian's native renderer Reload command, not a full OS process restart.
+
+The dedicated vault's matching disabled host profile is recognized as existing data, so initial starter seeding is skipped and the helper creates its own fixtures. This run does not claim fresh native starter seeding or a physical network disconnection. The test helper, fixture images and vault are excluded from the installation package and public examples. Failed import File queues do not survive a full application-process restart; saved notes and image resources remain.
+
+No GitHub release, public attestation or new community review is claimed. Physical Windows testing and a black-screen fix are not claimed. Historical release and community records below remain unchanged.
+
+---
+
 # Magical Cards 0.5.0 verification
 
 Released on 2026-10-14 as [Magical Cards **0.5.0**](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.5.0), with compatible host **0.1.38**. Ordinary Dashboard categories replace the fixed All page and hiding controls. Module membership and confirmed module deletion are managed in Settings; moving out changes one category reference, while deletion removes the module configuration and references but preserves notes and images. Dashboard tabs can be reordered, and compact horizontal menus group card tools.

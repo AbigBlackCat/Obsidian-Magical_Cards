@@ -191,6 +191,31 @@ export function createScrollBend(canvas: HTMLCanvasElement, changed: (mode: 'web
   initialize();
   return {
     get mode() { return mode; }, draw,
+    projectPoint(point: { x: number; y: number }, geometry: CardGeometry, vertical: boolean) {
+      const extent = vertical ? canvas.clientHeight || geometry.cardHeight + 64 : geometry.width;
+      const along = (vertical ? point.y : point.x) / (extent * 0.5);
+      const across = (vertical ? point.x : point.y) / Math.max(vertical ? geometry.cardWidth : geometry.cardHeight, 1);
+      const weight = 1 / (1 + along * along * 2.5 + across * across * 1.5);
+      const axis = 1 + bend * 0.7 * 0.75 * weight, cross = 1 + bend * 1.7 * weight;
+      return { x: point.x * (vertical ? cross : axis), y: point.y * (vertical ? axis : cross) };
+    },
+    cardPositionAt(screen: { x: number; y: number }, geometry: CardGeometry, position: number, vertical: boolean) {
+      const extent = vertical ? canvas.clientHeight || geometry.cardHeight + 64 : geometry.width;
+      const crossSize = Math.max(vertical ? geometry.cardWidth : geometry.cardHeight, 1);
+      let point = screen;
+      // Match the shader's inverse lens so clicks follow bowed images and their gaps.
+      for (let iteration = 0; iteration < 8; iteration++) {
+        const along = (vertical ? point.y : point.x) / (extent * 0.5), across = (vertical ? point.x : point.y) / crossSize;
+        const weight = 1 / (1 + along * along * 2.5 + across * across * 1.5);
+        const axis = 1 + bend * 0.7 * 0.75 * weight, cross = 1 + bend * 1.7 * weight;
+        point = { x: screen.x / (vertical ? cross : axis), y: screen.y / (vertical ? axis : cross) };
+      }
+      const cardPosition = Math.round((vertical ? point.y : point.x) / geometry.pitch + position) + 0;
+      const local = { x: point.x - (vertical ? 0 : (cardPosition - position) * geometry.pitch), y: point.y - (vertical ? (cardPosition - position) * geometry.pitch : 0) };
+      const radius = Math.min(14, geometry.cardWidth / 2, geometry.cardHeight / 2);
+      const x = Math.abs(local.x) - geometry.cardWidth / 2 + radius, y = Math.abs(local.y) - geometry.cardHeight / 2 + radius;
+      return Math.hypot(Math.max(x, 0), Math.max(y, 0)) + Math.min(Math.max(x, y), 0) <= radius ? cardPosition : null;
+    },
     reset() { previousPosition = null; previousTime = 0; bend = 0; bendVelocity = 0; speed = 0; lastMovement = 0; },
     dispose() {
       if (disposed) return;

@@ -40,6 +40,14 @@ function optionalDate(value: unknown): boolean {
   return value === '' || validDate(value);
 }
 
+export function normalizeDirectorLabel(value: unknown): string {
+  requireValue(typeof value === 'string', '信息标签必须是文字。');
+  requireValue(!Array.from(value).some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127) && !/[\u2028\u2029]/.test(value), '信息标签应为单行纯文本。');
+  const label = value.trim();
+  requireValue(Array.from(label).length <= 40, '信息标签应为不超过 40 字的单行纯文本。');
+  return label || '导演';
+}
+
 export function validateWork(entity: Work): void {
   requireValue(!!entity && typeof entity === 'object', '记录无效');
   strings(entity, ['id', 'type', 'title', 'path', 'createdAt', 'updatedAt']);
@@ -62,6 +70,7 @@ export function validateWork(entity: Work): void {
       return;
     case 'film':
       strings(entity, ['director', 'year', 'cover', 'date', 'summary', 'link']);
+      if (entity.directorLabel !== undefined) normalizeDirectorLabel(entity.directorLabel);
       requireValue(['want', 'watching', 'finished'].includes(entity.status) && optionalDate(entity.date), '观影状态或日期无效');
       requireValue(entity.rating === null || nonnegative(entity.rating) && entity.rating <= 10, '评分无效');
       requireValue(typeof entity.pinned === 'boolean', '置顶状态无效');

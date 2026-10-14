@@ -100,13 +100,13 @@ export default function ShowcaseCollection({ module, api, appearance = module.ap
       <span className="bw-count">{displayed.length} 张</span>
       <ActionMenu label={`${module.title}操作`} disabled={busy} actions={[
         { id: 'search', label: '搜索图片', icon: 'search', expanded: searchOpen, select: () => { setSearchOpen(value => !value); setQuery(''); } },
-        { id: 'import', label: '批量添加图片', title: '选择多张图片，或拖放到此模块', icon: 'plus', disabled: !service, select: () => fileInput.current?.click() },
+        { id: 'import', label: '批量添加图片／SVG', title: '选择多张图片或 SVG，或拖放到此模块；每图最多 10 MB，SVG 最多 2 MB', icon: 'plus', disabled: !service, select: () => fileInput.current?.click() },
         { id: 'sort', label: '排序图片', icon: 'sort', expanded: sortOpen, select: () => { if (sortOpen && pendingMove) { setError('排序草稿已保留，请先重试或放弃草稿后收起。'); return; } setSortOpen(value => !value); } },
         { id: 'edit', label: '编辑当前图片', icon: 'settings', disabled: !active || !manager, select: () => { if (active) setEditingId(active.id); } },
         { id: 'delete', label: active ? `删除当前图片《${labelFor(active)}》` : '删除当前图片', icon: 'trash', danger: true, disabled: !active || !service, select: () => { if (active) setDeleting(active); } },
         { id: 'note', label: '编辑模块笔记', icon: 'open', disabled: !path, select: openNote },
       ]} />
-      <input ref={fileInput} hidden type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg" aria-label="批量选择图片" onChange={event => { importFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
+      <input ref={fileInput} hidden type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg" aria-label="批量选择图片／SVG" onChange={event => { importFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
       {headerAction}
     </div>}</header>
     {loading && <p role="status">正在读取图片…</p>}{error && <p className="bw-sync-note is-error" role="alert">{error}</p>}

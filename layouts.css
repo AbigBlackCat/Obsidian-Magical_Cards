@@ -6,6 +6,7 @@
 .bw-paper-stage[data-scroll-renderer="fallback"] .bw-scroll-bend-canvas,
 .bw-paper-stage[data-reduced-motion="true"] .bw-scroll-bend-canvas,
 .bw-paper-stage[data-scroll-editing="true"] .bw-scroll-bend-canvas { visibility: hidden; }
+.bw-app button.bw-scroll-bend-flip { top: 50%; left: 50%; right: auto; z-index: 110; visibility: hidden; }
 .bw-scroll-bend-current { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 12px 16px 4px; color: var(--bw-ink); }
 .bw-scroll-bend-current > div:first-child { flex: 1; min-width: 0; }
 .bw-scroll-bend-current strong { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }

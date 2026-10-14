@@ -1,12 +1,12 @@
-import { App,TFile,normalizePath,parseYaml,stringifyYaml } from 'obsidian';
+import { App,TFile,TFolder,normalizePath,parseYaml,stringifyYaml } from 'obsidian';
 import { createCoverSvg,sanitizeSvg } from './covers';
 import { readCoverSvg } from './cover-reader';
 import { createShowcaseService } from './showcase';
-import { validateWork } from './domain';
+import { createWork,normalizeDirectorLabel,validateWork } from './domain';
 import { entityFields,entityFromFields,replaceManaged,sourceMarkdown,validFolder,safeFilePart,contentRevision,coverPath,prepareNativeWrite } from './persistence';
 import { orderedWorks,readWorkOrder,reconcileWorkOrder,moveWorkOrder } from './work-order';
 import { CARD_SETTING_KEYS,readCardsSettings,validateCardsPatch,dashboardNavigationPatch } from './settings';
-import { type Book,type Film,type Work,type CardsAPI,type CardsSnapshot,type CardsSettings,type WorkKind,type WorkOrder,type WorkProperties,type WorkPropertyValues,type CardLayoutPatch,type CardLayoutResult,type CoverTemplate,type ShowcaseAPI } from './types';
+import { type Book,type Film,type Work,type CardsAPI,type CardsSnapshot,type CardsSettings,type WorkKind,type WorkOrder,type WorkProperties,type WorkPropertyValues,type CardLayoutPatch,type CardLayoutResult,type CoverTemplate,type ShowcaseAPI,type WorkImageImport,type WorkImageImportResult } from './types';
 const FOLDERS={book:'书籍',film:'观影'};
 const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 export class CardsStore implements CardsAPI {
@@ -15,6 +15,7 @@ export class CardsStore implements CardsAPI {
  readonly supportsDashboardOnlyNavigation=true;
  readonly supportsStandaloneModuleVisibility=true;
  readonly supportsModuleDeletion=true;
+ readonly supportsWorkPropertyLabels=true;
  private snapshot:CardsSnapshot;
  private listeners=new Set<()=>void>(); private queue:Promise<unknown>=Promise.resolve(); private timer:number|undefined;
  private destroyed=false; private refreshRevision=0; private orderPath=''; private initialization?:Promise<void>;
@@ -46,7 +47,7 @@ export class CardsStore implements CardsAPI {
   return {fields,body:match?text.slice(match[0].length):text};
  }
  private frontmatter(text:string){return this.noteParts(text).fields;}
- private async folder(path:string,assertOwner:()=>void=()=>{}){for(const part of path.split('/').reduce<string[]>((all,p)=>[...all,all.length?`${all.at(-1)}/${p}`:p],[])){this.active();assertOwner();if(!this.app.vault.getAbstractFileByPath(part))await this.app.vault.createFolder(part);}assertOwner();}
+ private async folder(path:string,assertOwner:()=>void=()=>{}){for(const part of path.split('/').reduce<string[]>((all,p)=>[...all,all.length?`${all.at(-1)}/${p}`:p],[])){this.active();assertOwner();const existing=this.app.vault.getAbstractFileByPath(part);if(existing&&!(existing instanceof TFolder))throw new Error('卡片目录被文件占用，原内容已保留。');if(!existing)await this.app.vault.createFolder(part);}assertOwner();}
  private settingsFrom(text:string){
   const fields=this.frontmatter(text);
   if(fields.bw_view!=='cards-config'||!record(fields.bw_card_settings))throw new Error('卡片配置笔记格式无效，原内容已保留，请先检查。');
@@ -131,10 +132,12 @@ export class CardsStore implements CardsAPI {
   });await this.refresh();
  });
  private fileFor(id:string){const e=this.snapshot.entities.find(e=>e.id===id);if(!e)throw new Error('记录已移除，请刷新后重试。');const f=this.app.vault.getAbstractFileByPath(e.path);if(!(f instanceof TFile))throw new Error('笔记文件不存在。');return {entity:e,file:f};}
- private async saveNow(entity:Work,sourceCover?:string,personalCover=false,assertOwner:()=>void=()=>{}){
+ private async saveNow(entity:Work,sourceCover?:string,personalCover=false,assertOwner:()=>void=()=>{},imageImport?:{collectionId:string;resource:string}){
   this.active();assertOwner();validateWork(entity);
+  if(entity.type==='film'&&entity.directorLabel!==undefined)entity={...entity,directorLabel:normalizeDirectorLabel(entity.directorLabel)};
   if((entity.type==='book'||entity.type==='film')&&entity.moduleId!==undefined&&(typeof entity.moduleId!=='string'||!entity.moduleId.trim()))throw new Error('卡片所属模块无效。');
   const existing=this.snapshot.entities.find(e=>e.id===entity.id);
+  if(imageImport&&existing)throw new Error('导入标识已由其他卡片使用，没有覆盖原作品。');
   if(existing&&entity.updatedAt!==existing.updatedAt)throw new Error('这条记录已被更新，请收起编辑并重新打开，避免覆盖新内容。');
   if(existing&&entity.revision&&entity.revision!==existing.revision)throw new Error('笔记已在其他编辑器更新，请重新打开编辑后保存。');
   const now=new Date().toISOString();
@@ -143,12 +146,14 @@ export class CardsStore implements CardsAPI {
   let file=existing?this.app.vault.getAbstractFileByPath(existing.path):null;
   if(!existing){
    const dir=`${this.root()}/${FOLDERS[entity.type]}`;await this.folder(dir,assertOwner);assertOwner();
+   if(imageImport&&await this.workImageCollection(imageImport.collectionId)!==entity.type)throw new Error('卡片模块类型已变化，请重新导入。');
+   if(imageImport&&await this.workImageNote(entity.id))throw new Error('导入标识已由其他卡片使用，请重新导入；原作品已保留。');
    const short=safeFilePart(entity.id).slice(-16);const path=`${dir}/${FOLDERS[entity.type]}-${safeFilePart(entity.title)}-${short}.md`;
    if(this.app.vault.getAbstractFileByPath(path))throw new Error('同名笔记已存在，未覆盖原文件。');
    let body=`# ${entity.title}\n`;
    if(entity.body)body=replaceManaged(body,'details',entity.body);
    const source=sourceMarkdown(entity);if(source)body=replaceManaged(body,'source',source);
-   const fields=entityFields(updated);if(sourceCover!==undefined){fields.bw_source_cover=sourceCover;fields.bw_cover_custom=personalCover;}
+   const fields=entityFields(updated);if(sourceCover!==undefined){fields.bw_source_cover=sourceCover;fields.bw_cover_custom=personalCover;}if(imageImport)fields.bw_image_import=imageImport;
    file=await this.app.vault.create(path,`---\n${stringifyYaml(fields)}---\n\n${body}`);
   }else if(file instanceof TFile){
    const target=file;const revision=entity.revision??existing.revision;
@@ -172,6 +177,83 @@ export class CardsStore implements CardsAPI {
  }
  save=(entity:Work)=>this.serial(()=>this.saveNow(entity));
  saveStarterWork=(entity:Work,assertOwner:()=>void)=>this.serial(async()=>{assertOwner();await this.refresh(assertOwner);assertOwner();if(this.snapshot.entities.some(work=>work.id===entity.id))return;await this.saveNow(entity,undefined,false,assertOwner);});
+ private async workImageCollection(collectionId:string):Promise<WorkKind>{
+  this.active();
+  const file=this.app.vault.getAbstractFileByPath(this.configPath());
+  if(!(file instanceof TFile))throw new Error('卡片配置笔记已移除，请先恢复配置。');
+  const settings=this.settingsFrom(await this.app.vault.read(file));this.active();
+  if(settings.deletedModuleIds?.includes(collectionId))throw new Error('卡片模块已删除，导入已取消。');
+  if(collectionId==='book'||collectionId==='film')return collectionId;
+  const module=settings.customModules.find(item=>item.id===collectionId);
+  if(!module||module.mode==='showcase')throw new Error('普通卡片模块已删除或类型改变，请重新选择模块。');
+  return module.kind;
+ }
+ private async workImageNote(id:string){
+  const matches:Array<{file:TFile;fields:Record<string,unknown>}>=[];
+  for(const file of this.app.vault.getMarkdownFiles().filter(file=>file.path.startsWith(`${this.root()}/`))){
+   const text=await this.app.vault.read(file);this.active();
+   let fields:Record<string,unknown>;
+   try{fields=this.frontmatter(text);}catch{continue;}
+   if(fields.bw_id===id)matches.push({file,fields});
+  }
+  if(matches.length>1)throw new Error('作品 ID 重复，请先检查对应笔记。');
+  return matches[0];
+ }
+ importWorkImages=(collectionId:string,images:WorkImageImport[]):Promise<WorkImageImportResult>=>{
+  const requests=images.map(incoming=>({...incoming})),counts=new Map<string,number>();
+  for(const incoming of requests)counts.set(incoming.id,(counts.get(incoming.id)??0)+1);
+  return this.serial(async()=>{
+   const result:WorkImageImportResult={imported:[],failed:[]};
+   for(const incoming of requests){
+    try{
+     if(typeof incoming.id!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(incoming.id))throw new Error('卡片导入标识无效。');
+     if(counts.get(incoming.id)!==1)throw new Error('本次导入包含重复卡片标识。');
+     await this.importWorkImage(collectionId,incoming);result.imported.push(incoming.id);
+    }catch(error){result.failed.push({id:incoming.id,error:this.message(error)});}
+   }
+   return result;
+  });
+ };
+ private async importWorkImage(collectionId:string,{id,file:upload}:WorkImageImport){
+  const kind=await this.workImageCollection(collectionId);
+  if(!upload||typeof upload.name!=='string'||!Number.isFinite(upload.size)||upload.size<0||typeof upload.arrayBuffer!=='function'||typeof upload.text!=='function')throw new Error('请选择有效的图片文件。');
+  if(upload.size>10*1024*1024)throw new Error('图片应小于 10 MB。');
+  const extension=upload.name.split('.').at(-1)?.toLowerCase();
+  if(!extension||!['png','jpg','jpeg','webp','gif','svg'].includes(extension))throw new Error('请选择 PNG、JPEG、WebP、GIF 或 SVG 图片。');
+  if(extension==='svg'&&upload.size>2_000_000)throw new Error('SVG 封面超过 2 MB，请缩小文件后重试。');
+  const title=upload.name.replace(/\.[^.]*$/,'').trim();if(!title)throw new Error('图片文件名不能为空，请命名后重新导入。');
+  const resource=`${this.root()}/附件/封面-${id}.${extension}`,origin={collectionId,resource};
+  const content=extension==='svg'?sanitizeSvg(await upload.text()):await upload.arrayBuffer();
+  if(await this.workImageCollection(collectionId)!==kind)throw new Error('卡片模块类型已变化，请重新导入。');
+  let note=await this.workImageNote(id);
+  const assertRetry=(existing:NonNullable<typeof note>)=>{
+   const entity=entityFromFields(existing.fields,existing.file.path,'');
+   if(!entity||entity.type!==kind||entity.moduleId!==(collectionId===kind?undefined:collectionId))throw new Error('导入标识已由其他卡片使用，没有覆盖原作品。');
+   validateWork(entity);
+   const imported=existing.fields.bw_image_import;
+   if(!record(imported)||imported.collectionId!==collectionId||imported.resource!==resource)throw new Error('导入标识已由其他卡片使用，没有覆盖原作品。');
+  };
+  if(note)assertRetry(note);
+  await this.folder(`${this.root()}/附件`);
+  const existing=this.app.vault.getAbstractFileByPath(resource);
+  if(existing&&!(existing instanceof TFile))throw new Error('图片位置被文件夹占用，原内容已保留。');
+  if(existing instanceof TFile){
+   const previous=typeof content==='string'?await this.app.vault.read(existing):await this.app.vault.readBinary(existing);
+   this.active();
+   const equal=typeof content==='string'?previous===content:typeof previous!=='string'&&equalImageBytes(previous,content);
+   if(!equal)throw new Error('导入标识对应的图片已有不同内容，没有覆盖原文件。');
+  }else{
+   if(note)throw new Error('已导入的图片已移动或删除，请先恢复原文件；没有重建或覆盖资料。');
+   if(await this.workImageCollection(collectionId)!==kind)throw new Error('卡片模块类型已变化，请重新导入。');
+   if(typeof content==='string')await this.app.vault.create(resource,content);else await this.app.vault.createBinary(resource,content);
+  }
+  if(await this.workImageCollection(collectionId)!==kind)throw new Error('卡片模块类型已变化，图片已保留，请重新导入。');
+  note=await this.workImageNote(id);
+  if(note){assertRetry(note);await this.refresh();return;}
+  await this.refresh();
+  const work={...createWork(kind),id,title,cover:resource,...(collectionId===kind?{}:{moduleId:collectionId})};
+  await this.saveNow(work,undefined,false,()=>this.active(),origin);
+ }
  private async workPropertyFile(id:string){
   this.active();
   const indexed=this.snapshot.entities.find(entity=>entity.id===id);
@@ -196,7 +278,7 @@ export class CardsStore implements CardsAPI {
   if(rawCover!==null&&typeof rawCover!=='string')throw new Error('封面属性应为图片引用文字。');
   const values:WorkPropertyValues={title:entity.title,cover:rawCover??'',summary:entity.summary,rating:entity.rating,pinned:entity.pinned,status:entity.status,cardTitleAlign:entity.cardTitleAlign??'left',cardSummaryAlign:entity.cardSummaryAlign??'left',linkedNote:entity.linkedNote??''};
   if(entity.type==='book')Object.assign(values,{author:entity.author,progress:entity.progress,lastRead:entity.lastRead,deepLink:entity.deepLink});
-  else Object.assign(values,{director:entity.director,year:entity.year,date:entity.date,link:entity.link});
+  else Object.assign(values,{director:entity.director,directorLabel:normalizeDirectorLabel(entity.directorLabel??''),year:entity.year,date:entity.date,link:entity.link});
   return {id:entity.id,kind:entity.type,moduleId:entity.moduleId,path:file.path,coverPresent,values};
  }
  readWorkProperties=async(id:string)=>{const file=await this.workPropertyFile(id);return this.workProperties(file,await this.app.vault.read(file),id);};
@@ -210,7 +292,7 @@ export class CardsStore implements CardsAPI {
    this.active();assertEditors(text);
    const current=this.workProperties(file,text,id);
    if(current.kind!==expected.kind)throw new Error('作品类型已改变，请重新打开。');
-   const allowed=['title','cover','summary','rating','pinned','status','cardTitleAlign','cardSummaryAlign',...(current.moduleId?['linkedNote']:[]),...(current.kind==='book'?['author','progress','deepLink']:['director','year','date','link'])];
+   const allowed=['title','cover','summary','rating','pinned','status','cardTitleAlign','cardSummaryAlign',...(current.moduleId?['linkedNote']:[]),...(current.kind==='book'?['author','progress','deepLink']:['director','directorLabel','year','date','link'])];
    for(const key of keys){
     if(!allowed.includes(key))throw new Error(`不能修改此作品字段：${key}`);
     if(!Object.is(current.values[key],expected.values[key])||(key==='cover'&&current.coverPresent!==expected.coverPresent))throw new Error('所编辑的属性已在其他窗口更新，请重新加载后再修改。');
@@ -218,7 +300,7 @@ export class CardsStore implements CardsAPI {
    if(!keys.length){result=current;return text;}
    const parts=this.noteParts(text),data={...parts.fields.bw_data as Record<string,unknown>};
    for(const key of keys){
-    const value=key==='linkedNote'?this.linkedNotePath(renameTarget?renameTarget():patch[key]):patch[key];
+    const value=key==='linkedNote'?this.linkedNotePath(renameTarget?renameTarget():patch[key]):key==='directorLabel'?normalizeDirectorLabel(patch[key]):patch[key];
     if((key==='cardTitleAlign'||key==='cardSummaryAlign')&&(typeof value!=='string'||!['left','center','right'].includes(value)))throw new Error('卡片文字对齐无效。');
     if(key==='title'){
      if(typeof value!=='string'||!value.trim())throw new Error('作品名称不能为空。');
@@ -336,6 +418,7 @@ export class CardsStore implements CardsAPI {
  attachCover=async(file:File)=>{
   if(file.size>10*1024*1024)throw new Error('封面应小于 10 MB。');
   const ext=file.name.split('.').pop()?.toLowerCase();if(!ext||!['png','jpg','jpeg','webp','gif','svg'].includes(ext))throw new Error('请选择 PNG、JPEG、WebP、GIF 或 SVG。');
+  if(ext==='svg'&&file.size>2_000_000)throw new Error('SVG 封面超过 2 MB，请缩小文件后重试。');
   const dir=`${this.root()}/附件`;await this.folder(dir);const path=`${dir}/封面-${crypto.randomUUID()}.${ext}`;
   if(ext==='svg')await this.app.vault.create(path,sanitizeSvg(await file.text()));else await this.app.vault.createBinary(path,await file.arrayBuffer());return path;
  };
@@ -399,4 +482,7 @@ export class CardsStore implements CardsAPI {
   });
  };
 
+}
+function equalImageBytes(left:ArrayBuffer,right:ArrayBuffer):boolean{
+ const a=new Uint8Array(left),b=new Uint8Array(right);return a.length===b.length&&a.every((value,index)=>value===b[index]);
 }

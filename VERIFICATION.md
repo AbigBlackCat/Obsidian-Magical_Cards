@@ -1,3 +1,30 @@
+# Magical Cards 0.5.0 verification
+
+Released on 2026-10-14 as [Magical Cards **0.5.0**](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.5.0), with compatible host **0.1.38**. Ordinary Dashboard categories replace the fixed All page and hiding controls. Module membership and confirmed module deletion are managed in Settings; moving out changes one category reference, while deletion removes the module configuration and references but preserves notes and images. Dashboard tabs can be reordered, and compact horizontal menus group card tools.
+
+| Check | Result |
+| --- | --- |
+| Clean public clone | Node 24.19.0 / npm 11.17.0; 244 / 244 tests, type check, resource check and reproducible builds pass |
+| Clean compatible host | 254 / 254 tests; shared cards 244 / 244; both type checks and reproducible builds pass; local Gantt work is excluded |
+| Typed lint | 0 errors; the same 3 compatibility/fixture warnings |
+| Native macOS acceptance | 22 checks before reload, 3 additional renderer-reload checks and 3 dual-plugin checks: 28 unique checks pass |
+| Native data preservation | 20 work/image files are unchanged across reload; 21 files including configuration and the enabled-plugin list are unchanged across both plugin loading orders |
+| Native diagnostics | No unhandled/React errors; one initial ResizeObserver warning, with none during reload or compatibility checks |
+| Public production bundle | main.js is 4,760,390 bytes, below 5,000,000; six bundled original-cover hashes pass |
+| Releases and provenance | Both tag workflows succeed; each release has exactly three installation files; downloads match clean builds and local installation packages byte for byte |
+| Public attestations | All three files verify against the public release workflow, tag 0.5.0 and commit 6558cb3c7c28f4cd3b393f0e372cfdf9eb7f85e4; private-host attestation is not claimed |
+| Documentation and local work | 44 local links pass; the author's development notes and original Gantt changes are preserved byte for byte |
+
+[Release record](verification/release-0.5.0.json) · [Sanitized native record](verification/native-0.5.0.json). Public [tag CI](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/actions/runs/38507111576) and compatible-host [tag CI](https://github.com/AbigBlackCat/obsidian-barry-workbench/actions/runs/38507112511) passed.
+
+Regression coverage includes idempotent hidden-state migration, zero categories, first-run Example Dashboard, explicit repeated membership, independent category order, atomic module/category creation, stale drafts and concurrent conflicts, resource cleanup, both embed languages and legacy shared runtimes. Native checks verify the five layouts, horizontal/vertical gallery, settings-only membership/deletion, retained save-failure drafts, preview flip guards, menu keyboard focus and four-second success notices. A menu visibility-transition focus race found during acceptance was corrected before the final candidate passed. Earlier harness failures remain in the local evidence and are not counted as passes.
+
+Native keyboard, pointer and input checks use synthetic DOM events on Obsidian's rendered UI; the drag check stubs pointer capture. One image was imported through the actual input in native acceptance; batch and retry behavior also has automated coverage. Restart evidence uses Obsidian's native Reload command, not an operating-system process quit. The acceptance helper and vault are excluded from release files.
+
+The current vault was not updated. No new community scan or approval is claimed, and the historical README-language warning is not claimed resolved. Physical Windows testing and a black-screen fix are not claimed. Prior verification records below remain unchanged.
+
+---
+
 # Magical Cards 0.4.2 verification
 
 Released on 2026-10-13 as [Magical Cards **0.4.2**](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.4.2), with compatible host **0.1.37**. Module hiding stays recoverable; confirmed deletion removes module configuration, all Dashboard references and module positions while preserving work notes, showcase notes, images and work IDs. Existing note embeds report that the module was removed. Removing a module from one Dashboard continues to affect that category only.

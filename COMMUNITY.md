@@ -1,6 +1,6 @@
 # Community release notes: Magical Cards 0.5.0
 
-The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). The **0.5.0 update** replaces the fixed All view and hiding operations with ordinary Dashboard categories, settings-only module management and compact horizontal action menus. Compatible host: **0.1.38**. The existing community form is not changed automatically; no new scan or approval is claimed.
+The entry is available in the [community directory](https://community.obsidian.md/plugins/magical-cards). The **0.5.0 update** replaces the fixed All view and hiding operations with ordinary Dashboard categories, settings-only module management and compact horizontal action menus. Compatible host: **0.1.38**. The [release](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.5.0) and [verification record](verification/release-0.5.0.json) are available. The existing community form is not changed automatically; no new scan or approval is claimed.
 
 The latest recorded release scan is **0.4.1**, completed on 2026-10-12 without Failed/Error findings, with four recommendations and one README English-language warning. Its main-branch documentation and editing-test preview completed on 2026-10-13, retaining the README warning and two source recommendations. These immutable results are recorded below and do not establish a result for 0.5.0.
 

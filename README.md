@@ -6,7 +6,7 @@ Magical Cards is a desktop Obsidian plugin for book, film, and image showcase ca
 
 ## Overview
 
-Choose five layouts, organize modules into Dashboards, and edit summaries on the back of a card. Hiding a module preserves its notes and images. Works remain local Markdown notes; appearance and ordering are stored in the selected card directory. Remote covers load only from their image servers. The linked-note picker searches vault paths when invoked. Copy writes generated embed code only after a click, and pasting reads plain text from that paste event; the plugin does not monitor the clipboard or upload note contents.
+Choose five layouts, organize modules into Dashboards, and edit summaries on the back of a card. Removing a module from a Dashboard changes that category only. Deleting a module preserves its notes and images. Works remain local Markdown notes; appearance and ordering are stored in the selected card directory. Remote covers load only from their image servers. The linked-note picker searches vault paths when invoked. Copy writes generated embed code only after a click, and pasting reads plain text from that paste event; the plugin does not monitor the clipboard or upload note contents.
 
 ## Installation
 
@@ -23,8 +23,8 @@ For manual installation:
 On first use in an empty card directory, the plugin creates three book cards, three film cards and an offline guide, then opens the guide. Existing collections and appearances are preserved; deleted examples are not recreated.
 
 1. Open the cards view with the purple stacked-card ribbon icon or the **打开卡片视图** (Open cards view) command. Browse by swiping, scrolling or using the arrow keys.
-2. Click a module's `+` to add a work, or flip a card to edit its summary. For an image collection, use **添加图片橱窗** (Add image showcase) in Settings and import selected images.
-3. Create Dashboards to group existing modules. Removing a module from one Dashboard changes that category only; hiding is reversible. Deleting a module removes its configuration and all Dashboard references, while preserving its notes and images.
+2. Open a module's horizontal action menu to add a work, or flip a card to edit its summary. For an image collection, use **添加图片橱窗** (Add image showcase) in Settings and import selected images.
+3. Create Dashboards to group existing modules, then assign modules in Settings. There is no All tab. Removing a module from one Dashboard changes that category only. Deleting a module removes its configuration and all Dashboard references, while preserving its notes and images.
 4. To embed modules in a note, run **插入卡片模块** (Insert cards modules) and select existing modules. Settings also provides a code generator with a Copy button. Embeds reference the original collections rather than duplicating data.
 
 The Chinese instructions below cover all settings, screenshots and the author's development notes. The [full English guide](README_en.md) includes the same operations and the original interface labels. Desktop macOS has been tested; Windows has not been tested on physical hardware.
@@ -91,24 +91,24 @@ https://community.obsidian.md/plugins/magical-cards
 | 管理作品 | 添加、编辑封面和信息、关联笔记、删除作品、调整排序。 |
 | 翻面摘要 | 翻到背面记录感想；布局切换保留当前卡和摘要草稿。 |
 | 图片橱窗 | 每个模块共用一篇笔记，批量导入图片、可选名称及翻面描述。 |
-| Dashboard 分类 | 在顶部切换“全部”和自定义分类，主动选择已有模块；每个分类独立排序。 |
+| Dashboard 分类 | 在顶部切换同等分类、拖动分类标签；在设置选择已有模块，各分类独立排序。 |
 | 模块排序 | 拖动标题前的手柄；键盘聚焦手柄后按 Alt / Option + ↑ / ↓。 |
 | 笔记嵌入 | 阅读模式和实时预览均可展示集合，同一集合可以重复引用。 |
 
 ### Dashboard 分类
 
-Magical Cards 标签页顶部的“全部”展示所有未隐藏模块。点击右侧 `+` 新建 Dashboard，填写名称、勾选要展示的已有模块，再点击“保存 Dashboard”。新建时全部未勾选；新模块也不会自动加入分类。同一模块只有经你主动勾选，才会出现在多个 Dashboard，笔记和图片共用一份。
+Dashboard 用来分类卡片模块，每个分类同等，可以放入任意数量的模块。同一模块可主动加入多个分类，笔记和图片仍共用一份。标签页没有固定“全部”页；未分类模块保留在设置中，仍可嵌入笔记。
 
-切换到分类后，点击“编辑 Dashboard”调整名称和成员；删除 Dashboard 仅删除分类，保留模块、笔记和图片。每个 Dashboard 的模块顺序单独保存，“全部”的顺序也独立保存。分类操作使用原有模块的稳定 ID，不改动作品笔记或已有笔记嵌入的集合引用与局部顺序。
+打开标签页的横向操作菜单，可以新建、重命名或删除 Dashboard。删除分类只删除分类引用，保留模块和资料。拖动顶部标签，或聚焦后按 Alt / Option + ←、→，可以调整分类顺序；每个 Dashboard 内的模块顺序独立保存。
 
-模块标题右侧的管理入口按当前页面操作：
+模块归属统一在**插件设置**中管理：
 
-- **“全部”中隐藏模块**：从 Magical Cards 标签页的“全部”和所有 Dashboard 隐藏，笔记嵌入继续显示。展开“全部”页面默认收起的“已隐藏模块”可恢复，沿用原分类、外观与顺序。
-- **从 Dashboard 移出模块**：只取消当前分类中的引用，“全部”和其他 Dashboard 不受影响。要重新加入，点击“编辑 Dashboard”，勾选原模块并保存。
-- **移除模块**：确认后删除该模块配置及所有 Dashboard 引用。笔记、图片和作品 ID 保留；原有笔记嵌入会提示模块已移除。此操作没有模块恢复入口。
-- **卡片工具栏的垃圾桶**：删除当前单张卡片，不是移除整个模块；删除前请确认提示。
+- **放入 Dashboard**：展开模块，选择已有分类，也可新建分类并随模块一起保存。新建模块不选择分类时，先留在设置中。
+- **移出 Dashboard**：所属分类右侧的退出箭头只移出该分类，其他分类和笔记嵌入继续显示。
+- **删除模块**：展开标题右侧的垃圾桶删除模块配置、全部分类引用及模块位置。作品笔记、橱窗笔记、图片和作品 ID 保留；原嵌入会提示模块已删除，没有模块恢复入口。
+- **删除当前卡片／图片**：在模块横向菜单中操作，仅针对当前单张卡片。删除前确认窗口会明确显示名称。
 
-隐藏保留模块配置并可恢复；移出 Dashboard 只取消该分类的引用。移除模块则删除模块及分类引用，保留作品笔记和图片。 若同时启用兼容宿主，请升级到 **0.1.37**；旧共享运行时不支持时会提示升级，不会尝试删除。若提示当前共享运行时不支持 Dashboard，请升级已启用的兼容卡片插件并重启笔记库；原有模块和资料会保留。
+新用户首次安装会得到可改名、可删除的普通“示例” Dashboard，包含阅读和影视。已有库不自动增加分类；升级时旧隐藏模块移为未分类，旧隐藏状态取消，相关笔记嵌入和工作台恢复展示。若同时启用兼容宿主，请升级到 **0.1.38**；旧共享运行时缺少能力时只读展示已有分类并提示升级，资料和草稿保留。
 
 ### 五种动效布局
 
@@ -127,9 +127,9 @@ Magical Cards 标签页顶部的“全部”展示所有未隐藏模块。点击
 ## 外观与设置
 
 
-设置依次为：**卡片目录 → 示例 → 添加卡片模块 → 添加图片橱窗 → 已有模块 → 已隐藏模块（旧版） → 笔记代码块生成**。两个添加入口、示例、已有模块、旧版隐藏模块和高级设置默认收起。
+设置依次为：**卡片目录 → 示例 → 添加卡片模块 → 添加图片橱窗 → 已有模块 → 笔记代码块生成**。示例、两个添加入口、已有模块和高级设置默认收起；普通卡片、图片橱窗及三个入口分别使用清晰的图标和样式。
 
-按用途展开“添加卡片模块”或“添加图片橱窗”，只需填写**模块名称**、选择**比例**，然后点击**保存并收起**。两个入口的类型固定、草稿独立；高级样式仅选择整幅封面或简约，不转换存储类型。保存后点击左侧紫色叠卡图标，在 **Magical Cards** 标签页体验。设置中的预览仅能浏览和滑动，不会翻面或打开描述编辑。
+按用途展开“添加卡片模块”或“添加图片橱窗”，填写**模块名称**、选择**比例**，可选一个或多个 Dashboard，也可新建分类并放入，然后点击**保存并收起**。不选择分类也能保存。两个入口的类型固定、草稿独立；高级样式仅选择整幅封面或简约，不转换存储类型。保存后点击左侧紫色叠卡图标，在 **Magical Cards** 标签页体验。设置中的预览仅能浏览和滑动，不会翻面或打开描述编辑。
 
 ![模块基本设置：名称、比例与保存，高级选项默认收起](previews/settings.png)
 
@@ -137,7 +137,9 @@ Magical Cards 标签页顶部的“全部”展示所有未隐藏模块。点击
 
 ![橱窗高级设置：布局、三卡、翻面、名称位置及只读预览](previews/settings-advanced.png)
 
-模块展开后，标题右侧的垃圾桶用于**真正移除模块**。确认后删除模块配置、分类引用及模块位置，保留作品笔记、橱窗笔记和图片；原有笔记嵌入会提示模块已移除，不再显示其卡片，也没有模块恢复入口。只想暂时不显示，请在 Magical Cards 标签页选择“隐藏模块”，之后可在“全部”页面的“已隐藏模块”恢复。旧版已隐藏模块仍可在设置中的“已隐藏模块（旧版）”恢复。保存失败或来源冲突时保留草稿和原模块，检查后重试或重新载入。
+模块展开后，标题右侧垃圾桶用于**删除模块**；所属 Dashboard 右侧退出箭头只用于**移出该分类**。两个操作仅在设置提供，并显示明确图标说明。移出保存失败时保留原归属；删除和保存冲突时保留原模块及未保存草稿。
+
+标签页的模块标题保留名称、数量和一个横向菜单入口，展开后操作搜索、添加、排序和当前卡片资料。成功提示四秒后消失，错误和待重试提示会保留。翻面、滑动以及编辑中的保存、取消、重试保持直接可见。
 
 **卡片目录**填写当前笔记库内的相对目录，例如 `卡片库`。作品保存在其下的 `书籍`／`观影` 目录，橱窗在 `橱窗/<模块 ID>/`，配置保存在 `_数据/卡片配置.md`。切换目录不会搬运原有作品；不要填写电脑上的绝对路径。
 
@@ -226,6 +228,8 @@ modules:
 **0.4.0 更新**：添加卡片模块与添加图片橱窗分为独立折叠入口，各自保留草稿；卡片标签页新增“全部”和 Dashboard 分类，可主动选择已有模块、编辑或删除分类，并分别保存模块顺序。分类共用原资料，新模块不自动加入，模块隐藏仍全局生效。
 
 **0.4.2 更新**：区分隐藏、移出分类和真正移除模块。隐藏仍可恢复；“移出此 Dashboard”仅取消当前分类引用；“移除模块”经确认删除模块配置、全部分类引用及模块位置，保留作品笔记和图片，原有嵌入提示模块已移除，不提供模块恢复入口。删除前检查未保存编辑与排序，失败或冲突保留原模块和草稿。兼容宿主为 **0.1.37**。
+
+**0.5.0 更新**：Dashboard 分类同等，取消固定“全部”页和隐藏操作。分类标签可以拖动排序；模块加入、移出与删除集中在设置，创建模块可同时创建分类。普通卡片、橱窗和创建入口采用不同样式，工具栏合并为横向动画菜单。历史隐藏模块转为未分类，清空旧隐藏状态，相关嵌入和兼容宿主恢复展示。兼容宿主为 **0.1.38**。
 
 ## 开发与版权
 

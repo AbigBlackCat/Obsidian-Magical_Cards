@@ -66,24 +66,24 @@ The **查看示例及用法说明** (Open examples and guide) command reopens th
 | Browse and search | Swipe, scroll, or use arrow keys. Click the magnifying glass to search. |
 | Manage works | Add or edit covers and details, link notes, delete works, and change their order. |
 | Back-of-card summaries | Flip the card and write. Switching layouts preserves the current card and summary draft. |
-| Dashboards | Switch between 全部 (All) and custom categories, manually select existing modules, and keep a separate order for each category. |
+| Dashboards | Organize modules into equal categories, assign them in Settings, and drag tabs to reorder categories. Each category has an independent module order. |
 | Reorder modules | Drag the title handle, or focus it and press Alt / Option + ↑ / ↓. |
 | Embed collections | Use reading mode or Live Preview; the same collection can appear in multiple notes. |
 
 ### Dashboards
 
-The **全部** (All) tab at the top of Magical Cards shows every module that is not hidden. Click `+` to create a Dashboard, enter its name, select existing modules, and click **保存 Dashboard** (Save Dashboard). Every checkbox starts unchecked, and new modules are never assigned automatically. A module appears in multiple Dashboards only when you manually select it; its notes and images remain shared.
+Every Dashboard is an ordinary category and can contain any number of modules. There is no fixed All tab. A module may belong to several Dashboards when explicitly assigned, while its notes and images remain shared. Unassigned modules stay in Settings and remain available for note embeds.
 
-In a category, use **编辑 Dashboard** (Edit Dashboard) to change its name or membership. Deleting a Dashboard removes only the category, preserving its modules, notes and images. Each Dashboard saves its own module order, independently of All. Categories reference stable existing module IDs and do not change work notes or the collection references and local ordering of note embeds.
+Use the horizontal category menu in the cards tab to create, rename or delete a Dashboard. Deleting a category preserves its modules and data. Drag the tabs, or focus a tab and press Alt / Option + Left or Right, to reorder categories. Each Dashboard keeps its own module order, and each window remembers the selected category by ID.
 
-The module heading provides a management action for the current page:
+Manage module membership in **Settings**:
 
-- **Hide a module in All:** hide it from All and every Dashboard in the Magical Cards tab. Note embeds continue to display it. Expand **已隐藏模块** (Hidden modules), collapsed by default on All, to restore its category membership, appearance and order.
-- **Remove a module from a Dashboard:** remove only its reference in the current category. All and other Dashboards are unchanged. To add it back, use **编辑 Dashboard** (Edit Dashboard), select the original module, and save.
-- **Delete a module:** after confirmation, remove its configuration and every Dashboard reference. Work notes, showcase notes, images and work IDs remain intact. Existing note embeds report that the module was deleted; there is no module restoration control.
-- **Trash in the card toolbar:** delete the current individual card, rather than the entire module. Read the confirmation before deleting.
+- **Add to Dashboard:** expand a module, choose existing categories, or create a category and save it together with the module. Category selection is optional when creating a module.
+- **Remove from Dashboard:** the exit-arrow icon beside a membership removes only that category reference; other categories and note embeds keep displaying the module.
+- **Delete module:** the trash icon beside an expanded module title removes its configuration, category references and positions after confirmation. Work notes, showcase notes, images and work IDs remain intact. Existing embeds report a deleted module; there is no module restoration control.
+- **Delete current card or image:** use the module's horizontal action menu. The confirmation identifies the individual card being deleted.
 
-Hiding is reversible and preserves module configuration; removing a category reference affects that category only. Deleting a module removes its configuration and category references while preserving notes and images. If a compatible host is also enabled, upgrade it to **0.1.37**; an older shared runtime prompts an upgrade instead of attempting deletion. If the shared runtime does not support Dashboards, upgrade the enabled compatible cards plugins and restart the vault; existing modules and data remain intact.
+First-time users get a normal, renameable and deletable 示例 (Example) Dashboard containing Reading and Films. Existing libraries do not receive an automatic category. During upgrade, historically hidden modules become unassigned, both old hiding states are cleared, and affected note embeds and compatible host views display those modules again. Upgrade an enabled compatible host to **0.1.38**; an older shared runtime displays existing categories read-only and prompts an upgrade without replacing the library or drafts.
 
 ### Five layouts
 
@@ -103,9 +103,9 @@ Layouts do not autoplay. Album rail displays sleeves without playback controls o
 
 ## Appearance and settings
 
-Settings are ordered as **Card directory → Examples → Add cards module → Add image showcase → Existing modules → Hidden modules (legacy) → Note code generator**. Both creation groups, examples, existing modules, legacy hidden modules and advanced settings start collapsed.
+Settings are ordered as **Card directory → Examples → Add cards module → Add image showcase → Existing modules → Note code generator**. Both creation groups, examples, existing modules and advanced settings start collapsed.
 
-Expand **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add image showcase), enter a **module name**, choose its **aspect ratio**, then click **保存并收起** (Save and collapse). Each creator keeps its own draft and a fixed storage type; advanced card style offers full cover or minimal without converting the module type. Click the purple stacked-card ribbon icon to experience the module in the **Magical Cards** tab. Settings previews support browsing and sliding only; they cannot flip or start editing sessions.
+Expand **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add image showcase), enter a **module name**, choose its **aspect ratio**, optionally select one or more Dashboards or create a new category, then click **保存并收起** (Save and collapse). Each creator keeps its own draft and a fixed storage type; advanced card style offers full cover or minimal without converting the module type. Click the purple stacked-card ribbon icon to experience the module in the **Magical Cards** tab. Settings previews support browsing and sliding only; they cannot flip or start editing sessions.
 
 ![Basic module settings with name, aspect ratio, save controls and collapsed advanced settings](previews/settings.png)
 
@@ -113,7 +113,9 @@ Expand **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add 
 
 ![Showcase advanced settings with layout, three-card limit, flipping, name position and a read-only preview](previews/settings-advanced.png)
 
-The trash icon beside an expanded module's heading **deletes the module** after confirmation: its configuration, category references and module positions are removed, while work notes, showcase notes and images remain intact. Existing note embeds report a deleted module and stop displaying its cards. There is no module restoration control. To temporarily remove a module from the cards view, use **隐藏模块** (Hide module) and restore it from All → **已隐藏模块** (Hidden modules). Modules hidden by older versions remain restorable through Settings → **已隐藏模块（旧版）** (Hidden modules, legacy). Failed saves and source conflicts preserve your draft and the original module for retry or explicit reload.
+The trash icon beside an expanded module heading **deletes the module**, preserving work notes, showcase notes and images. The exit-arrow beside a Dashboard membership **removes only that category reference**. Both operations are available only in Settings and have explicit icon labels. Save failures keep the membership or module and retain unsaved appearance drafts.
+
+Cards and showcase toolbars use a horizontal action menu for search, add, sort, edit and individual-card deletion. Success messages disappear after four seconds; errors and retry prompts remain visible. Sliding, flipping, Save, Cancel and Retry remain directly accessible.
 
 Enter a directory relative to the current vault, such as `卡片库`. Work notes live under `书籍` (books) and `观影` (films); showcases live under `橱窗/<module ID>/`. Configuration is in `_数据/卡片配置.md`. Changing this setting does not move existing data. Absolute computer paths are rejected.
 
@@ -199,7 +201,7 @@ Compatible hosts share the existing runtime. New versions add missing block lang
 
 **0.4.0 changes:** cards modules and image showcases have separate collapsed creators with independent drafts. The cards view adds All and named Dashboards with manual existing-module selection, editing, deletion and independent module ordering. Categories share existing data, new modules are not assigned automatically, and module hiding remains global.
 
-**0.4.2 changes:** hiding remains reversible, and **移出此 Dashboard** (Remove from this Dashboard) changes only the current category. Confirmed **移除模块** (Delete module) removes module configuration, all category references and module positions while preserving work notes and images. Existing embeds report a deleted module; there is no module restoration control. Unsaved edits and ordering are checked before deletion; failures and conflicts preserve the original module and drafts. Compatible host: **0.1.37**.
+**0.4.2 changes:** hiding remains reversible, and **移出此 Dashboard** (Remove from this Dashboard) changes only the current category. Confirmed **移除模块** (Delete module) removes module configuration, all category references and module positions while preserving work notes and images. Existing embeds report a deleted module; there is no module restoration control. Unsaved edits and ordering are checked before deletion; failures and conflicts preserve the original module and drafts. Compatible host: **0.1.38**.
 
 ## Development and license
 

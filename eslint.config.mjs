@@ -7,6 +7,6 @@ export default defineConfig([
   {
     files: ['src/**/*.{ts,tsx}'],
     languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
-    rules: { 'obsidianmd/ui/sentence-case': ['warn', { brands: ['Magical Cards', 'Obsidian'] }] },
+    rules: { 'obsidianmd/ui/sentence-case': ['warn', { brands: ['Magical Cards', 'Obsidian', 'Dashboard'] }] },
   },
 ]);

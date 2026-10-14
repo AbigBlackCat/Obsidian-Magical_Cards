@@ -87,6 +87,9 @@ test('workbench settings migrate only when their normalized root folder matches'
 test('fresh onboarding creates six ordinary works with fresh UUIDs, byte-exact offline covers and usable guide', async () => {
   const { board, api, app, data } = await fixture(); await Promise.all([board.run(), board.run()]);
   const snapshot = api.getSnapshot(); assert.equal(snapshot.entities.length, 6); assert.equal(snapshot.entities.filter(work => work.type === 'book').length, 3); assert.equal(snapshot.entities.filter(work => work.type === 'film').length, 3);
+  assert.equal(snapshot.settings.dashboardNavigationVersion, 1);
+  assert.deepEqual(snapshot.settings.dashboards, [{ id: data().onboarding!.demoDashboardId, title: '示例', moduleIds: ['book', 'film'] }]);
+  assert.equal(data().onboarding!.demoDashboardDone, true);
   assert.equal(new Set(snapshot.entities.map(work => work.id)).size, 6);
   for (const work of snapshot.entities) { assert.match(work.id, /^[a-f0-9-]{36}$/); assert.equal(work.moduleId, undefined); assert.equal(work.summary, ''); assert.equal(work.rating, null); if (work.type === 'book') { assert.equal(work.sourceId, ''); assert.deepEqual(work.notes, []); } }
   assert.equal(snapshot.settings.threeCardView, true); assert.equal(snapshot.settings.workbenchText['book.title'], '阅读'); assert.equal(snapshot.settings.workbenchText['film.title'], '影视');
@@ -102,17 +105,41 @@ test('fresh onboarding creates six ordinary works with fresh UUIDs, byte-exact o
   const before = app.vault.dump(); await board.run(); assert.deepEqual(app.vault.dump(), before); assert.equal(app.opened.length, 1); api.destroy();
 });
 
+test('a deleted starter Dashboard remains deleted across repeated runs and restart without reseeding cards or covers', async () => {
+  const f = await fixture(); await f.board.run();
+  const demoId = f.data().onboarding!.demoDashboardId!; assert.match(demoId, /^[a-f0-9-]{36}$/);
+  await f.api.saveSettings({ dashboards: [] }); const before = f.app.vault.dump(); await f.board.run();
+  assert.deepEqual(f.app.vault.dump(), before); assert.deepEqual(f.api.getSnapshot().settings.dashboards, []);
+  f.api.destroy(); const restart = new runtime.CardsStore(asApp(f.app), '卡片库'); await restart.initialize();
+  const board = new runtime.CardsOnboarding({ ...f.options, api: restart }); await board.run();
+  assert.deepEqual(f.app.vault.dump(), before); assert.equal(restart.getSnapshot().entities.length, 6); assert.equal(f.data().onboarding!.demoDashboardId, demoId); restart.destroy();
+});
+
+test('starter Dashboard progress retries its persisted ID and preserves user edits after the config write succeeded', async () => {
+  const f = await fixture(); const update = f.options.update; let failed = false;
+  const options = { ...f.options, update: async (patch: Partial<CardsPluginData>) => {
+    if (!failed && patch.onboarding?.demoDashboardDone) { failed = true; throw new Error('示例分类进度保存失败'); }
+    await update(patch);
+  } };
+  await assert.rejects(new runtime.CardsOnboarding(options).run(), /示例分类进度保存失败/);
+  const id = f.data().onboarding!.demoDashboardId!; assert.equal(f.data().onboarding!.demoDashboardDone, false); assert.equal(f.api.getSnapshot().settings.dashboards!.length, 1);
+  await f.api.saveSettings({ dashboards: [{ id, title: '我改过的分类', moduleIds: ['film'] }] });
+  await new runtime.CardsOnboarding(options).run();
+  assert.deepEqual(f.api.getSnapshot().settings.dashboards, [{ id, title: '我改过的分类', moduleIds: ['film'] }]);
+  assert.equal(f.data().onboarding!.demoDashboardDone, true); assert.equal(f.api.getSnapshot().entities.length, 6); f.api.destroy();
+});
+
 test('the generated guide preserves the authored visible bytes, substitutes only root paths and has a unique invisible identity', async () => {
   const template = await readFile(resolve(directory, '../examples/Magical_Cards示例及用法说明.md'), 'utf8');
   const authored = template.replaceAll('{{rootFolder}}', () => '卡片库');
-  assert.equal(createHash('sha256').update(authored).digest('hex'), '46cd0833d1ad5d933f77f6ab9260a371521922d3b951b38a70be049a93cc6100');
-  assert.match(authored, /“全部”和所有 Dashboard 隐藏；笔记嵌入继续显示/);
-  assert.match(authored, /默认收起的“已隐藏模块”可恢复/);
-  assert.match(authored, /只取消当前分类中的引用，“全部”和其他 Dashboard 不变/);
-  assert.match(authored, /点击“编辑 Dashboard”，勾选原模块并保存/);
-  assert.match(authored, /卡片工具栏的垃圾桶删除当前单张卡片/);
-  assert.match(authored, /真正移除模块：确认后删除模块配置和所有分类引用，保留作品笔记、橱窗笔记及图片/);
-  assert.match(authored, /原笔记嵌入会提示模块已移除，此操作没有模块恢复入口/);
+  assert.equal(createHash('sha256').update(authored).digest('hex'), '280dd28d26acdf145e876b0438e161123f87d7f24792a4ed33998ddb378c28df');
+  assert.match(authored, /标签页没有固定“全部”页/);
+  assert.match(authored, /所属分类右侧的退出箭头只移出该分类/);
+  assert.match(authored, /模块加入、移出和删除仅在插件设置里操作/);
+  assert.match(authored, /普通“示例” Dashboard 包含阅读和影视/);
+  assert.match(authored, /旧隐藏模块移为未分类，取消旧隐藏状态/);
+  assert.match(authored, /保留作品笔记、橱窗笔记及图片/);
+  assert.match(authored, /原笔记嵌入会提示模块已删除，没有模块恢复入口/);
   // Keep the author's introduction byte-exact while the usage instructions evolve.
   const introduction = template.split('## 打开和编辑卡片', 1)[0];
   assert.equal(createHash('sha256').update(introduction).digest('hex'), 'ade9cca52edac606a23cfde8526188319798d04be86a04d135709fab9b241ff7');

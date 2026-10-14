@@ -13,8 +13,8 @@ import { WorkPropertiesManager } from '../src/WorkPropertiesSessions';
 import { getShowcaseManager, releaseShowcaseManager } from '../src/showcase-sessions';
 import { getShowcaseRenderOperations } from '../src/showcase-render-state';
 import { createWork } from '../src/domain';
-import { freshCardsSettings } from '../src/settings';
-import type { CardsAPI, CardsDashboard, CardsSettings, CardsSnapshot, ShowcaseCard, WorkProperties, WorkPropertyValues } from '../src/types';
+import { freshCardsSettings, readModuleDraft } from '../src/settings';
+import type { CardsAPI, CardsDashboard, CardsSettings, CardsSnapshot, ShowcaseCard, Work, WorkProperties, WorkPropertyValues } from '../src/types';
 import type { CardsEmbed } from '../src/embed-source';
 
 const boardA: CardsDashboard = { id: 'board-a', title: '书与收藏', moduleIds: ['custom-a', 'book', 'missing', 'film'] };
@@ -36,7 +36,7 @@ function fixture(supported = true) {
   let workError = '', settingsError = '';
   let pause: (() => Promise<void>) | undefined, settingsPause: (() => Promise<void>) | undefined;
   const api = {
-    ...(supported ? { supportsDashboards: true, supportsStandaloneModuleVisibility: true, supportsModuleDeletion: true } : {}),
+    ...(supported ? { supportsDashboards: true, supportsDashboardOnlyNavigation: true, supportsStandaloneModuleVisibility: true, supportsModuleDeletion: true } : {}),
     getSnapshot: () => snapshot,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     coverUrl: (value: string) => value,
@@ -116,12 +116,12 @@ const nodes = (value: React.ReactNode): React.ReactElement<any>[] => {
 const directory = dirname(fileURLToPath(import.meta.url)), require = createRequire(import.meta.url);
 const source = await readFile(resolve(directory, '../src/main.tsx'), 'utf8');
 const memoryBundle = await build({
-  stdin: { contents: `${source}\nexport { CardsView };\nexport { default as Dashboard, flushDashboardEdits } from './CardsDashboardView';\nexport { default as ModuleRemovalDialog } from './ModuleRemovalDialog';\nexport { default as Surface, registerCardModuleSurface, assertCardModuleRemovalSettled } from './CardsSurface';\nexport { default as Text } from './EditableText';\nexport { default as ModuleList } from './ModuleList';\nexport { WorkOrderList } from './WorkOrder';\nexport { default as WorkCollection } from './WorkCollection';\nexport { default as ShowcaseCollection } from './ShowcaseCollection';\nexport { DeleteWorkDialog } from './WorkEditor';\nexport { renderedRoots } from 'react-dom/client';`, resolveDir: resolve(directory, '../src'), loader: 'tsx' },
+  stdin: { contents: `${source}\nexport { CardsView };\nexport { default as Dashboard, DashboardEditor, flushDashboardEdits } from './CardsDashboardView';\nexport { default as ActionMenu } from './ActionMenu';\nexport { default as ModuleRemovalDialog } from './ModuleRemovalDialog';\nexport { default as Surface, registerCardModuleSurface, assertCardModuleRemovalSettled } from './CardsSurface';\nexport { default as Text } from './EditableText';\nexport { default as ModuleList } from './ModuleList';\nexport { WorkOrderList } from './WorkOrder';\nexport { default as WorkCollection } from './WorkCollection';\nexport { default as ShowcaseCollection } from './ShowcaseCollection';\nexport { DeleteWorkDialog } from './WorkEditor';\nexport { renderedRoots } from 'react-dom/client';`, resolveDir: resolve(directory, '../src'), loader: 'tsx' },
   bundle: true, platform: 'node', format: 'cjs', write: false, external: ['react', 'react/jsx-runtime'],
   plugins: [{ name: 'dashboard-view-platform', setup(builder) {
     builder.onResolve({ filter: /^obsidian$/ }, () => ({ path: 'platform', namespace: 'dashboard-test' }));
     builder.onLoad({ filter: /.*/, namespace: 'dashboard-test' }, () => ({ contents: `export * from ${JSON.stringify(resolve(directory, 'obsidian-mock.ts'))};
-      export const Platform={isDesktopApp:true}; export const requireApiVersion=()=>false; export function addIcon(){}
+      export const Platform={isDesktopApp:true}; export const requireApiVersion=()=>false; export function addIcon(){} export function setIcon(){}
       export class PluginSettingTab {} export class Modal {} export class Setting {}
       export class ItemView { constructor(leaf){this.app=leaf.app;this.contentEl=leaf.contentEl;} getState(){return {existing:'retained'};} async setState(){} }`, resolveDir: directory, loader: 'js' }));
     builder.onResolve({ filter: /^react-dom\/client$/ }, () => ({ path: 'roots', namespace: 'dashboard-roots' }));
@@ -133,7 +133,7 @@ new Function('require', 'module', 'exports', memoryBundle.outputFiles[0].text)((
 interface RootStub { element: React.ReactElement<{ dashboardId: string; onDashboardChange(id: string): void }>; unmounted: boolean; }
 interface ViewStub { getState(): { existing: string; dashboardId: string }; setState(state: unknown, result: object): Promise<void>; getViewType(): string; onOpen(): Promise<void>; onClose(): Promise<void>; }
 const ui = memoryModule.exports as {
-  Dashboard: typeof CardsDashboardView; Surface: typeof CardsSurface; renderedRoots: RootStub[];
+  Dashboard: typeof CardsDashboardView; DashboardEditor: typeof import('../src/CardsDashboardView').DashboardEditor; ActionMenu: typeof import('../src/ActionMenu').default; Surface: typeof CardsSurface; renderedRoots: RootStub[];
   Text: typeof import('../src/EditableText').default;
   ModuleList: typeof import('../src/ModuleList').default;
   WorkOrderList: typeof import('../src/WorkOrder').WorkOrderList;
@@ -153,12 +153,12 @@ const flushDashboardEdits = ui.flushDashboardEdits;
 const surfaceList = (hooks: Hooks, props: React.ComponentProps<typeof CardsSurface>) => nodes(hooks.render(ui.Surface, props)).find(node => typeof node.props.save === 'function' && Array.isArray(node.props.ids))!;
 
 
-test('dashboard, complete library and embed render their own order without changing membership', () => {
+test('dashboard and embed render their own order while no-dashboard surfaces stay empty without changing membership', () => {
   const f = fixture();
   try {
     const original = structuredClone(f.api.getSnapshot());
     assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, dashboard: boardA }))), boardA.moduleIds);
-    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), ['film', 'custom-a', 'book']);
+    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), []);
     const embed: CardsEmbed = { id: 'note-block', modules: [{ id: 'reading-instance', collection: 'book' }, { id: 'film-instance', collection: 'film' }] };
     assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, embed }))), ['reading-instance', 'film-instance']);
     assert.deepEqual(f.api.getSnapshot(), original);
@@ -166,8 +166,8 @@ test('dashboard, complete library and embed render their own order without chang
   } finally { f.dispose(); }
 });
 
-test('hidden dashboard members remain referenced and embedded hidden modules retain restoration placeholders', () => {
-  const f = fixture();
+test('legacy runtime hides former dashboard members and embeds explain the missing capability', () => {
+  const f = fixture(false);
   try {
     f.replace({ ...f.api.getSnapshot(), settings: { ...f.api.getSnapshot().settings, hiddenModuleIds: ['book'] } });
     const html = renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, dashboard: boardA }));
@@ -177,20 +177,20 @@ test('hidden dashboard members remain referenced and embedded hidden modules ret
     const embed = { id: 'alias-block', modules: [{ id: 'preserved', collection: 'book' }] };
     const hidden = renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, embed }));
     assert.deepEqual(moduleOrder(hidden), ['preserved']);
-    assert.ok(hidden.includes('恢复模块'));
+    assert.ok(hidden.includes('升级兼容插件')); assert.equal(hidden.includes('恢复模块'), false);
   } finally { f.dispose(); }
 });
 
-test('older shared API renders the complete library without pretending dashboards can be edited', () => {
+test('older shared API renders existing classifications read-only without showing an all-library page', () => {
   const f = fixture(false);
   try {
     const html = renderToStaticMarkup(React.createElement(ui.Dashboard, { api: f.api, manager: f.manager, dashboardId: boardA.id, onDashboardChange() {} }));
-    assert.equal([...html.matchAll(/role="tab"/g)].length, 1);
-    assert.ok(html.includes('>全部</button>'));
-    assert.equal(html.includes('>书与收藏</button>'), false);
-    assert.deepEqual(moduleOrder(html), ['film', 'custom-a', 'book']);
-    assert.deepEqual(f.api.getSnapshot().settings.dashboards, [boardA, boardB]);
-    assert.equal(f.patches.length, 0);
+    assert.equal([...html.matchAll(/role="tab"/g)].length, 2);
+    assert.equal(html.includes('>全部</button>'), false);
+    assert.ok(html.includes('仅支持只读分类')); assert.ok(html.includes('>书与收藏</button>'));
+    assert.deepEqual(moduleOrder(html), boardA.moduleIds);
+    assert.equal(html.includes('bw-module-handle'), false); assert.equal(html.includes('添加书籍'), false);
+    assert.deepEqual(f.api.getSnapshot().settings.dashboards, [boardA, boardB]); assert.equal(f.patches.length, 0);
   } finally { f.dispose(); }
 });
 
@@ -430,7 +430,7 @@ test('navigation checks title status again after a slow card save', async () => 
   } finally { finish(); f.dispose(); }
 });
 
-test('failed sorting drafts stay separate for each dashboard, all modules and note embeds across remounts', async () => {
+test('failed sorting drafts stay separate for each dashboard and note embeds across remounts', async () => {
   const f = fixture(), first = new Hooks(), second = new Hooks(), all = new Hooks(), embedded = new Hooks(), restored = new Hooks();
   try {
     const props = { api: f.api, manager: f.manager, dashboard: boardA };
@@ -482,7 +482,7 @@ test('composition starting during a pending tab click prevents the view change e
   let finish!: () => void;
   const pending = new Promise<void>(resolve => { finish = resolve; });
   const manager = { flushAll: () => pending, recoveryDrafts: () => [] } as unknown as WorkPropertiesManager;
-  const props = { api: f.api, manager, dashboardId: 'all', onDashboardChange: (id: string) => changes.push(id) };
+  const props = { api: f.api, manager, dashboardId: boardB.id, onDashboardChange: (id: string) => changes.push(id) };
   try {
     const tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
     const tab = nodes(tree).find(node => node.props.role === 'tab' && node.props.children === boardA.title)!;
@@ -508,15 +508,15 @@ test('deleted selected dashboard retains its modules when draft flushing fails, 
     const panel = nodes(tree).find(node => node.props.role === 'tabpanel')!;
     assert.ok(nodes(tree).some(node => node.props.id === panel.props['aria-labelledby'] && node.props['aria-selected']));
     assert.equal(work.getSnapshot().values!.summary, '保留的摘要');
-    work.endComposition(); const allTab = nodes(tree).find(node => node.props.role === 'tab' && node.props.children === '全部')!;
-    allTab.props.onClick(); await tick(); assert.deepEqual(changes, ['all']); assert.equal(work.getSnapshot().dirty, false);
+    work.endComposition(); const fallback = nodes(tree).find(node => node.props.children === '切换到可用 Dashboard')!;
+    fallback.props.onClick(); await tick(); assert.deepEqual(changes, [boardB.id]); assert.equal(work.getSnapshot().dirty, false);
   } finally { hooks.dispose(); f.dispose(); }
 });
 
 test('dashboard keyboard focus uses the initiating tab owner and leaves IME keys alone', () => {
   const f = fixture(), hooks = new Hooks(), focused: number[] = [];
   try {
-    const tree = hooks.render(ui.Dashboard, { api: f.api, manager: f.manager, dashboardId: 'all', onDashboardChange() {} });
+    const tree = hooks.render(ui.Dashboard, { api: f.api, manager: f.manager, dashboardId: boardA.id, onDashboardChange() {} });
     const tab = nodes(tree).find(node => node.props.role === 'tab')!, targets = [0, 1, 2].map(index => ({ focus: () => focused.push(index) }));
     const currentTarget = { parentElement: { querySelectorAll: () => targets } };
     let prevented = 0;
@@ -539,21 +539,21 @@ test('native leaf state preserves each dashboard independently and closes only i
   try {
     await first.setState({ dashboardId: boardA.id }, {}); await first.onOpen();
     await second.setState({ dashboardId: boardB.id }, {}); await second.onOpen();
-    assert.deepEqual(first.getState(), { existing: 'retained', dashboardId: boardA.id });
-    assert.deepEqual(second.getState(), { existing: 'retained', dashboardId: boardB.id });
+    assert.equal(first.getState().existing, 'retained'); assert.equal(first.getState().dashboardId, boardA.id);
+    assert.equal(second.getState().existing, 'retained'); assert.equal(second.getState().dashboardId, boardB.id);
     assert.equal(first.getViewType(), 'barry-cards');
-    const root = ui.renderedRoots[start]; root.element.props.onDashboardChange('all');
-    assert.equal(first.getState().dashboardId, 'all'); assert.equal(second.getState().dashboardId, boardB.id); assert.equal(requested, 1);
+    const root = ui.renderedRoots[start]; root.element.props.onDashboardChange(boardB.id);
+    assert.equal(first.getState().dashboardId, boardB.id); assert.equal(second.getState().dashboardId, boardB.id); assert.equal(requested, 1);
     await first.onClose(); assert.equal(root.unmounted, true); assert.equal(ui.renderedRoots[start + 1].unmounted, false);
     assert.equal(closed, 1); assert.equal(disposed, 0);
-    await second.setState({ dashboardId: 42 }, {}); assert.equal(second.getState().dashboardId, 'all');
+    await second.setState({ dashboardId: 42 }, {}); assert.equal(second.getState().dashboardId, '');
   } finally { await second.onClose(); f.dispose(); }
 });
 
-const dashboardProps = (f: ReturnType<typeof fixture>, dashboardId = 'all') => ({ api: f.api, manager: f.manager, dashboardId, onDashboardChange() {} });
+const dashboardProps = (f: ReturnType<typeof fixture>, dashboardId = boardA.id) => ({ api: f.api, manager: f.manager, dashboardId, onDashboardChange() {} });
 const dashboardSurface = (tree: React.ReactNode) => nodes(tree).find(node => node.type === ui.Surface)!;
-const actionFor = (tree: React.ReactNode, id: string) => nodes(dashboardSurface(tree).props.headerAction(id)).find(node => ['hide', 'remove'].includes(node.props['data-module-action']))!;
-const deletionFor = (tree: React.ReactNode, id: string) => nodes(dashboardSurface(tree).props.headerAction(id)).find(node => node.props['data-module-action'] === 'delete')!;
+const menuActions = (tree: React.ReactNode) => nodes(tree).find(node => node.type === ui.ActionMenu)!.props.actions as import('../src/ActionMenu').MenuAction[];
+const menuAction = (tree: React.ReactNode, id: string) => menuActions(tree).find(action => action.id === id)!;
 const visibleStatus = (tree: React.ReactNode) => nodes(tree).filter(node => node.props.role === 'status').map(node => String(node.props.children)).join('\n');
 
 test('another standalone window protects its sorting and title drafts until saved or closed', async () => {
@@ -576,19 +576,17 @@ test('another standalone window protects its sorting and title drafts until save
   } finally { hooks.dispose(); f.dispose(); }
 });
 
-test('standalone hiding affects all dashboards but neither note embeds nor the original memberships and order', () => {
+test('updated navigation ignores retired hiding flags and leaves unclassified modules available to embeds', () => {
   const f = fixture();
   try {
     const before = structuredClone(f.api.getSnapshot());
-    f.replace({ ...before, settings: { ...before.settings, standaloneHiddenModuleIds: ['book', 'custom-a'] } });
-    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), ['film']);
-    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, dashboard: boardA }))), ['missing', 'film']);
-    const embed: CardsEmbed = { id: 'hidden-still-in-note', modules: [{ id: 'reading', collection: 'book' }, { id: 'custom', collection: 'custom-a' }] };
-    const html = renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, embed, headerAction: () => React.createElement('button', null, 'should not appear') }));
+    f.replace({ ...before, settings: { ...before.settings, standaloneHiddenModuleIds: ['book', 'custom-a'], hiddenModuleIds: ['book'] } });
+    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), []);
+    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, dashboard: boardA }))), boardA.moduleIds);
+    const embed: CardsEmbed = { id: 'unclassified-note', modules: [{ id: 'reading', collection: 'book' }, { id: 'custom', collection: 'custom-a' }] };
+    const html = renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, embed }));
     assert.deepEqual(moduleOrder(html), ['reading', 'custom']); assert.ok(html.includes('data-work-id="reading"'));
-    assert.equal(html.includes('should not appear'), false); assert.equal(html.includes('隐藏模块'), false);
-    assert.deepEqual(f.api.getSnapshot().settings.dashboards, before.settings.dashboards);
-    assert.deepEqual(f.api.getSnapshot().settings.standaloneOrder, before.settings.standaloneOrder);
+    assert.equal(html.includes('隐藏模块'), false); assert.equal(html.includes('恢复模块'), false);
     assert.deepEqual(f.api.getSnapshot().entities, before.entities); assert.equal(f.patches.length, 0);
   } finally { f.dispose(); }
 });
@@ -598,7 +596,7 @@ test('deleted modules are absent from standalone and dashboards while note embed
   try {
     const before = structuredClone(f.api.getSnapshot());
     f.replace({ ...before, settings: { ...before.settings, deletedModuleIds: ['book', 'custom-a'] } });
-    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), ['film']);
+    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), []);
     assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, dashboard: boardA }))), ['missing', 'film']);
     const embed: CardsEmbed = { id: 'removed-module-note', modules: [{ id: 'reading', collection: 'book' }, { id: 'custom', collection: 'custom-a' }] };
     const html = renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager, embed }));
@@ -608,89 +606,47 @@ test('deleted modules are absent from standalone and dashboards while note embed
   } finally { f.dispose(); }
 });
 
-test('empty ordinary and showcase modules both expose independent visibility actions, without a card-delete action being enabled', () => {
+test('ordinary, showcase and empty modules expose one menu without module hide, unlink or deletion controls', () => {
   const f = fixture();
   try {
     const snapshot = f.api.getSnapshot();
-    f.replace({ ...snapshot, entities: [], settings: { ...snapshot.settings, customModules: [...snapshot.settings.customModules, { id: 'showcase', title: '空图片橱窗', kind: 'book', mode: 'showcase', appearance: { style: 'cover', material: 'paper' } }] } });
-    const html = renderToStaticMarkup(React.createElement(ui.Dashboard, dashboardProps(f)));
-    assert.equal((html.match(/data-module-action="hide"/g) ?? []).length, 4);
-    assert.equal((html.match(/data-module-action="delete"/g) ?? []).length, 4);
-    assert.ok(html.includes('data-module-collection="showcase"')); assert.ok(html.includes('data-module-collection="book"'));
+    const dashboard = { id: 'empty', title: '空模块', moduleIds: ['book', 'film', 'showcase'] };
+    f.replace({ ...snapshot, entities: [], settings: { ...snapshot.settings, dashboards: [dashboard], customModules: [...snapshot.settings.customModules, { id: 'showcase', title: '空图片橱窗', kind: 'book', mode: 'showcase', appearance: { style: 'cover', material: 'paper' } }] } });
+    const html = renderToStaticMarkup(React.createElement(ui.Dashboard, dashboardProps(f, dashboard.id)));
+    assert.equal((html.match(/bw-action-menu-trigger/g) ?? []).length, 4);
+    assert.equal(html.includes('data-module-action'), false); assert.equal(html.includes('已隐藏模块'), false);
     assert.ok(/aria-label="删除当前书籍"[^>]*disabled/.test(html)); assert.ok(/aria-label="删除当前图片"[^>]*disabled/.test(html));
   } finally { f.dispose(); }
 });
 
-test('permanent module removal requires confirmation, preserves data on cancel or failure and removes every reference on success', async () => {
-  const f = fixture(), hooks = new Hooks(), dialogHooks = new Hooks(), props = dashboardProps(f, boardA.id);
+test('settings module deletion confirmation preserves files on cancellation and failure and clears every reference on success', async () => {
+  const f = fixture(), hooks = new Hooks(); let cancelled = 0, removed = 0;
+  const draft = readModuleDraft(f.api.getSnapshot().settings, 'custom-a')!;
+  const props = { api: f.api, manager: f.manager, baseline: draft, close: () => { cancelled++; }, removed: () => { removed++; } };
   try {
     const before = structuredClone(f.api.getSnapshot());
-    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects(); deletionFor(tree, 'custom-a').props.onClick(); await tick();
-    tree = hooks.render(ui.Dashboard, props);
-    let dialog = nodes(tree).find(node => node.type === ui.ModuleRemovalDialog)!;
-    assert.equal(dialog.props.baseline.id, 'custom-a'); assert.equal(f.patches.length, 0);
-    const text = renderToStaticMarkup(React.createElement(ui.ModuleRemovalDialog, dialog.props));
-    assert.ok(text.includes('所有 Dashboard')); assert.ok(text.includes('作品笔记和图片文件保留')); assert.ok(text.includes('不能通过'));
-    dialog.props.close(); tree = hooks.render(ui.Dashboard, props);
-    assert.equal(nodes(tree).some(node => node.type === ui.ModuleRemovalDialog), false); assert.deepEqual(f.api.getSnapshot(), before);
-    deletionFor(tree, 'custom-a').props.onClick(); await tick(); tree = hooks.render(ui.Dashboard, props);
-    dialog = nodes(tree).find(node => node.type === ui.ModuleRemovalDialog)!;
-    let content = dialogHooks.render(ui.ModuleRemovalDialog, dialog.props); dialogHooks.runEffects();
-    f.settingsFail('配置不可写'); nodes(content).find(node => node.props.children === '确认移除模块')!.props.onClick(); await tick();
-    content = dialogHooks.render(ui.ModuleRemovalDialog, dialog.props);
-    assert.ok(nodes(content).some(node => node.props.role === 'alert' && String(node.props.children).includes('配置不可写')));
-    assert.deepEqual(f.api.getSnapshot(), before); assert.equal(f.patches.length, 1);
-    f.settingsFail(''); nodes(content).find(node => node.props.children === '确认移除模块')!.props.onClick(); await tick();
-    tree = hooks.render(ui.Dashboard, props);
-    assert.equal(nodes(tree).some(node => node.type === ui.ModuleRemovalDialog), false); assert.match(visibleStatus(tree), /模块已移除.*笔记和图片已保留/);
-    const settings = f.api.getSnapshot().settings;
-    assert.deepEqual(settings.customModules, []); assert.deepEqual(settings.deletedModuleIds, ['custom-a']);
-    assert.ok(settings.dashboards!.every(board => !board.moduleIds.includes('custom-a'))); assert.deepEqual(settings.standaloneOrder, ['film', 'book']);
-    assert.deepEqual(f.api.getSnapshot().entities, before.entities); assert.equal(f.writes.length, 0);
-  } finally { dialogHooks.dispose(); hooks.dispose(); f.dispose(); }
-});
-
-test('module removal is blocked before confirmation while IME composition or a sorting draft is active', async () => {
-  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f);
-  try {
-    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
-    const wrapper = nodes(tree).find(node => typeof node.props.onCompositionStartCapture === 'function')!, target = new EventTarget();
-    wrapper.props.onCompositionStartCapture({ target }); let prevented = false;
-    const remove = deletionFor(tree, 'book'); remove.props.onPointerDownCapture({ preventDefault: () => { prevented = true; } }); remove.props.onClick(); await tick();
-    tree = hooks.render(ui.Dashboard, props);
-    assert.equal(prevented, true); assert.equal(nodes(tree).some(node => node.type === ui.ModuleRemovalDialog), false); assert.equal(f.patches.length, 0);
-    wrapper.props.onCompositionEndCapture({ target });
-    nodes(tree).find(node => node.props.role === 'tabpanel')!.props.ref.current = { querySelector: (selector: string) => selector.includes('data-cards-pending') ? {} : null, ownerDocument: { activeElement: null } };
-    deletionFor(tree, 'book').props.onClick(); await tick(); tree = hooks.render(ui.Dashboard, props);
-    assert.equal(nodes(tree).some(node => node.type === ui.ModuleRemovalDialog), false); assert.equal(f.patches.length, 0); assert.equal(f.writes.length, 0);
-    assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('排序')));
+    let tree = hooks.render(ui.ModuleRemovalDialog, props); hooks.runEffects();
+    assert.match(renderToStaticMarkup(React.createElement(ui.ModuleRemovalDialog, props)), /所有 Dashboard.*作品笔记和图片文件保留/);
+    nodes(tree).find(node => node.props.children === '取消')!.props.onClick(); assert.equal(cancelled, 1); assert.deepEqual(f.api.getSnapshot(), before);
+    f.settingsFail('配置不可写'); nodes(tree).find(node => node.props.children === '确认删除模块')!.props.onClick(); await tick(); tree = hooks.render(ui.ModuleRemovalDialog, props);
+    assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('配置不可写'))); assert.deepEqual(f.api.getSnapshot(), before);
+    f.settingsFail(''); nodes(tree).find(node => node.props.children === '确认删除模块')!.props.onClick(); await tick();
+    assert.equal(removed, 1); assert.equal(cancelled, 2); assert.deepEqual(f.api.getSnapshot().settings.deletedModuleIds, ['custom-a']);
+    assert.ok(f.api.getSnapshot().settings.dashboards!.every(board => !board.moduleIds.includes('custom-a'))); assert.deepEqual(f.api.getSnapshot().entities, before.entities); assert.equal(f.writes.length, 0);
   } finally { hooks.dispose(); f.dispose(); }
 });
 
-test('closed-view sorting drafts permit returning to their dashboard but prevent permanent removal until explicitly discarded', async () => {
-  const f = fixture(), original = new Hooks(), hooks = new Hooks(), restored = new Hooks(), dialogHooks = new Hooks(), changes: string[] = [];
-  const props = { ...dashboardProps(f), onDashboardChange: (id: string) => { changes.push(id); } };
-  const draft = ['film', 'missing', 'book', 'custom-a'];
+test('closed-view sorting drafts permit returning to their dashboard but prevent settings deletion until discarded', async () => {
+  const f = fixture(), original = new Hooks(), hooks = new Hooks(), restored = new Hooks(), changes: string[] = [];
+  const props = { ...dashboardProps(f, boardB.id), onDashboardChange: (id: string) => { changes.push(id); } }, draft = ['film', 'missing', 'book', 'custom-a'];
   try {
     const list = surfaceList(original, { api: f.api, manager: f.manager, dashboard: boardA });
     f.settingsFail('排序冲突'); list.props.retainDraft(draft); await assert.rejects(list.props.save(draft), /排序冲突/); original.dispose(); f.settingsFail('');
     await flushDashboardEdits(f.api, f.manager); assert.throws(() => ui.assertCardModuleRemovalSettled(f.api), /排序/);
-    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
-    nodes(tree).find(node => node.props.role === 'tab' && node.props.children === boardA.title)!.props.onClick(); await tick(); assert.deepEqual(changes, [boardA.id]);
-    const resumedProps = { ...props, dashboardId: boardA.id }; tree = hooks.render(ui.Dashboard, resumedProps);
-    const retry = surfaceList(restored, { api: f.api, manager: f.manager, dashboard: boardA });
-    assert.deepEqual(retry.props.initialDraft, draft);
-    deletionFor(tree, 'custom-a').props.onClick(); await tick(); tree = hooks.render(ui.Dashboard, resumedProps);
-    const dialog = nodes(tree).find(node => node.type === ui.ModuleRemovalDialog)!;
-    let content = dialogHooks.render(ui.ModuleRemovalDialog, dialog.props); dialogHooks.runEffects();
-    const beforeRemoval = f.patches.length;
-    nodes(content).find(node => node.props.children === '确认移除模块')!.props.onClick(); await tick(); content = dialogHooks.render(ui.ModuleRemovalDialog, dialog.props);
-    assert.equal(f.patches.length, beforeRemoval); assert.ok(nodes(content).some(node => node.props.role === 'alert' && String(node.props.children).includes('排序')));
-    assert.deepEqual(retry.props.initialDraft, draft); retry.props.retainDraft(null);
-    assert.doesNotThrow(() => ui.assertCardModuleRemovalSettled(f.api));
-    nodes(content).find(node => node.props.children === '确认移除模块')!.props.onClick(); await tick();
-    assert.deepEqual(f.api.getSnapshot().settings.deletedModuleIds, ['custom-a']); assert.equal(f.patches.length, beforeRemoval + 1);
-  } finally { original.dispose(); restored.dispose(); dialogHooks.dispose(); hooks.dispose(); f.dispose(); }
+    const tree = hooks.render(ui.Dashboard, props); hooks.runEffects(); nodes(tree).find(node => node.props.role === 'tab' && node.props.children === boardA.title)!.props.onClick(); await tick(); assert.deepEqual(changes, [boardA.id]);
+    const retry = surfaceList(restored, { api: f.api, manager: f.manager, dashboard: boardA }); assert.deepEqual(retry.props.initialDraft, draft);
+    retry.props.retainDraft(null); assert.doesNotThrow(() => ui.assertCardModuleRemovalSettled(f.api));
+  } finally { original.dispose(); hooks.dispose(); restored.dispose(); f.dispose(); }
 });
 
 test('separate plugin bundles share registered surfaces and retained sorting drafts, with cleanup releasing removal guards', () => {
@@ -712,107 +668,51 @@ test('separate plugin bundles share registered surfaces and retained sorting dra
   }
 });
 
-test('old runtime module removal explains the missing capability without opening a destructive confirmation', async () => {
-  const f = fixture(false), hooks = new Hooks(), props = dashboardProps(f);
+test('Dashboard category creation has no member controls and saves an empty ordinary classification', async () => {
+  const f = fixture(), view = new Hooks(), editor = new Hooks(); let changes: string[] = [];
+  const props = { ...dashboardProps(f), onDashboardChange: (id: string) => { changes.push(id); } };
   try {
-    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects(); deletionFor(tree, 'book').props.onClick(); await tick(); tree = hooks.render(ui.Dashboard, props);
-    assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('升级')));
-    assert.equal(nodes(tree).some(node => node.type === ui.ModuleRemovalDialog), false); assert.equal(f.patches.length, 0); assert.equal(f.writes.length, 0);
-  } finally { hooks.dispose(); f.dispose(); }
+    let tree = view.render(ui.Dashboard, props); view.runEffects(); menuAction(tree, 'create').select(); await tick(); tree = view.render(ui.Dashboard, props);
+    const modal = nodes(tree).find(node => node.type === ui.DashboardEditor)!; let body = editor.render(ui.DashboardEditor, modal.props); editor.runEffects();
+    assert.equal(nodes(body).some(node => node.props.type === 'checkbox'), false); assert.deepEqual(modal.props.state.draft.moduleIds, []);
+    nodes(body).find(node => node.type === 'input')!.props.onChange({ target: { value: '新分类' } }); body = editor.render(ui.DashboardEditor, modal.props);
+    nodes(body).find(node => node.type === 'form')!.props.onSubmit({ preventDefault() {} }); await tick();
+    const board = f.api.getSnapshot().settings.dashboards!.at(-1)!; assert.equal(board.title, '新分类'); assert.deepEqual(board.moduleIds, []); assert.deepEqual(changes, [board.id]); assert.equal(f.writes.length, 0);
+  } finally { view.dispose(); editor.dispose(); f.dispose(); }
 });
 
-test('failed hide keeps the module mounted; successful hide and restore preserve its original slot with visible status', async () => {
-  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f);
+test('rename and delete category preserve modules, other classification references and data', async () => {
+  const f = fixture(), rename = new Hooks(), removal = new Hooks(); const close: string[] = [];
   try {
     const before = structuredClone(f.api.getSnapshot());
-    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
-    f.settingsFail('配置不可写'); actionFor(tree, 'book').props.onClick(); await tick();
-    tree = hooks.render(ui.Dashboard, props);
-    assert.equal(f.api.getSnapshot().settings.standaloneHiddenModuleIds, undefined);
-    assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('配置不可写')));
-    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), before.settings.standaloneOrder);
-    f.settingsFail(''); actionFor(tree, 'book').props.onClick(); await tick(); tree = hooks.render(ui.Dashboard, props);
-    assert.deepEqual(f.api.getSnapshot().settings.standaloneHiddenModuleIds, ['book']);
-    assert.match(visibleStatus(tree), /已隐藏.*已隐藏模块.*恢复/);
-    const panel = nodes(tree).find(node => node.props['data-hidden-modules'] !== undefined)!;
-    assert.equal(panel.props.open, undefined);
-    const restore = nodes(panel).find(node => node.props['data-module-action'] === 'restore')!;
-    assert.equal(restore.props['data-module-collection'], 'book'); restore.props.onClick(); await tick(); tree = hooks.render(ui.Dashboard, props);
-    assert.deepEqual(f.api.getSnapshot().settings.standaloneHiddenModuleIds, []);
-    assert.match(visibleStatus(tree), /已恢复模块.*原顺序/);
-    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), before.settings.standaloneOrder);
-    assert.deepEqual(f.api.getSnapshot().settings.dashboards, before.settings.dashboards);
-    assert.deepEqual(f.api.getSnapshot().entities, before.entities);
-    assert.equal(f.api.getSnapshot().settings.hiddenModuleIds, before.settings.hiddenModuleIds);
-  } finally { hooks.dispose(); f.dispose(); }
+    const props = { api: f.api, manager: f.manager, state: { draft: structuredClone(boardA), baseline: structuredClone(boardA) }, close: (id?: string) => { if (id !== undefined) close.push(id); } };
+    let tree = rename.render(ui.DashboardEditor, props); rename.runEffects(); nodes(tree).find(node => node.type === 'input')!.props.onChange({ target: { value: '改名' } }); tree = rename.render(ui.DashboardEditor, props); nodes(tree).find(node => node.type === 'form')!.props.onSubmit({ preventDefault() {} }); await tick();
+    const current = f.api.getSnapshot().settings.dashboards![0]; assert.equal(current.title, '改名'); assert.deepEqual(current.moduleIds, boardA.moduleIds); assert.deepEqual(f.api.getSnapshot().settings.dashboards![1], boardB);
+    const deletion = { ...props, state: { draft: structuredClone(current), baseline: structuredClone(current), remove: true } };
+    tree = removal.render(ui.DashboardEditor, deletion); removal.runEffects(); assert.equal(nodes(tree).some(node => node.type === 'input'), false); nodes(tree).find(node => node.type === 'form')!.props.onSubmit({ preventDefault() {} }); await tick();
+    assert.deepEqual(f.api.getSnapshot().settings.dashboards, [boardB]); assert.deepEqual(f.api.getSnapshot().settings.customModules, before.settings.customModules); assert.deepEqual(f.api.getSnapshot().entities, before.entities); assert.equal(f.writes.length, 0); assert.deepEqual(close, [boardA.id, '']);
+  } finally { rename.dispose(); removal.dispose(); f.dispose(); }
 });
 
-test('removing a module changes only the selected dashboard and awaits its save, preserving the complete library and other boards', async () => {
-  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f, boardA.id);
-  let finish!: () => void; const pending = new Promise<void>(resolve => { finish = resolve; });
-  try {
-    const before = structuredClone(f.api.getSnapshot()); f.pauseSettings(() => pending);
-    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects(); actionFor(tree, 'book').props.onClick(); await tick();
-    tree = hooks.render(ui.Dashboard, props);
-    assert.equal(actionFor(tree, 'film').props.disabled, true);
-    assert.equal(nodes(tree).find(node => node.props.role === 'tabpanel')!.props.inert, true);
-    assert.deepEqual(f.api.getSnapshot().settings.dashboards, before.settings.dashboards);
-    assert.equal(f.patches.length, 1); finish(); await tick(); tree = hooks.render(ui.Dashboard, props);
-    assert.deepEqual(f.api.getSnapshot().settings.dashboards![0].moduleIds, ['custom-a', 'missing', 'film']);
-    assert.deepEqual(f.api.getSnapshot().settings.dashboards![1], before.settings.dashboards![1]);
-    assert.deepEqual(f.api.getSnapshot().settings.standaloneOrder, before.settings.standaloneOrder);
-    assert.equal(f.api.getSnapshot().settings.standaloneHiddenModuleIds, undefined);
-    assert.match(visibleStatus(tree), /已从此 Dashboard 移出.*编辑 Dashboard/);
-    assert.deepEqual(moduleOrder(renderToStaticMarkup(React.createElement(CardsSurface, { api: f.api, manager: f.manager }))), before.settings.standaloneOrder);
-  } finally { finish(); hooks.dispose(); f.dispose(); }
-});
-
-test('legacy global removals never expose a restore that clears their settings; older runtimes reject standalone hiding', async () => {
-  const f = fixture(), hooks = new Hooks();
-  try {
-    const snapshot = f.api.getSnapshot();
-    f.replace({ ...snapshot, settings: { ...snapshot.settings, hiddenModuleIds: ['book'], standaloneHiddenModuleIds: ['book', 'film'] } });
-    const tree = hooks.render(ui.Dashboard, dashboardProps(f)), panel = nodes(tree).find(node => node.props['data-hidden-modules'] !== undefined)!;
-    const rows = nodes(panel).filter(node => node.type === 'li');
-    assert.equal(nodes(rows.find(node => node.props['data-hidden-module'] === 'book')).some(node => node.props['data-module-action'] === 'restore'), false);
-    assert.ok(renderToStaticMarkup(rows[0]).includes('先前往设置恢复，再在此处恢复模块'));
-    assert.deepEqual(f.api.getSnapshot().settings.hiddenModuleIds, ['book']); assert.equal(f.patches.length, 0);
-  } finally { hooks.dispose(); f.dispose(); }
-  const old = fixture(false), oldHooks = new Hooks();
-  try {
-    const tree = oldHooks.render(ui.Dashboard, dashboardProps(old)); oldHooks.runEffects(); actionFor(tree, 'book').props.onClick(); await tick();
-    assert.equal(old.patches.length, 0);
-    assert.ok(nodes(oldHooks.render(ui.Dashboard, dashboardProps(old))).some(node => node.props.role === 'alert' && String(node.props.children).includes('升级')));
-  } finally { oldHooks.dispose(); old.dispose(); }
-});
-
-test('IME pointerdown is intercepted before blur and module visibility never writes or unloads its draft', async () => {
+test('composition before or during category navigation prevents writes and preserves the current view', async () => {
   const f = fixture(), hooks = new Hooks(), props = dashboardProps(f);
   try {
-    const tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
-    const wrapper = nodes(tree).find(node => typeof node.props.onCompositionStartCapture === 'function')!, target = new EventTarget();
-    wrapper.props.onCompositionStartCapture({ target });
-    const hide = actionFor(tree, 'book'); let prevented = false;
-    hide.props.onPointerDownCapture({ preventDefault: () => { prevented = true; } }); hide.props.onClick(); await tick();
-    assert.equal(prevented, true); assert.equal(f.patches.length, 0); assert.equal(f.writes.length, 0);
-    assert.ok(nodes(hooks.render(ui.Dashboard, props)).some(node => node.props.role === 'alert' && String(node.props.children).includes('输入法')));
-    wrapper.props.onCompositionEndCapture({ target }); actionFor(hooks.render(ui.Dashboard, props), 'book').props.onClick(); await tick();
-    assert.deepEqual(f.api.getSnapshot().settings.standaloneHiddenModuleIds, ['book']);
+    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
+    const wrapper = nodes(tree).find(node => typeof node.props.onCompositionStartCapture === 'function')!, target = new EventTarget(); wrapper.props.onCompositionStartCapture({ target });
+    const toolbar = nodes(tree).find(node => node.props.className === 'bw-dashboard-toolbar')!; let prevented = false; toolbar.props.onPointerDownCapture({ preventDefault: () => { prevented = true; } }); menuAction(tree, 'create').select(); await tick();
+    assert.equal(prevented, true); assert.equal(f.patches.length, 0); assert.equal(f.writes.length, 0); assert.equal(nodes(hooks.render(ui.Dashboard, props)).some(node => node.type === ui.DashboardEditor), false);
+    wrapper.props.onCompositionEndCapture({ target }); menuAction(hooks.render(ui.Dashboard, props), 'create').select(); await tick(); tree = hooks.render(ui.Dashboard, props); assert.ok(nodes(tree).some(node => node.type === ui.DashboardEditor));
   } finally { hooks.dispose(); f.dispose(); }
 });
 
-test('module sorting and card editing pending markers block visibility before flushing any sessions', async () => {
-  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f);
-  let pending = true;
+test('pending card or module operations block category actions before any draft is flushed', async () => {
+  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f); let pending = true;
   try {
-    const work = f.manager.getSession('reading'); await work.refresh(); work.update({ summary: '尚未提交的草稿' });
-    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
+    const work = f.manager.getSession('reading'); await work.refresh(); work.update({ summary: '保留草稿' }); let tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
     nodes(tree).find(node => node.props.role === 'tabpanel')!.props.ref.current = { querySelector: (selector: string) => selector.includes('data-cards-pending') && pending ? {} : null, ownerDocument: { activeElement: null } };
-    actionFor(tree, 'book').props.onClick(); await tick();
-    assert.equal(f.patches.length, 0); assert.equal(f.writes.length, 0); assert.equal(work.getSnapshot().dirty, true);
+    menuAction(tree, 'create').select(); await tick(); assert.equal(f.patches.length, 0); assert.equal(f.writes.length, 0); assert.equal(work.getSnapshot().dirty, true);
     tree = hooks.render(ui.Dashboard, props); assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('排序')));
-    pending = false; actionFor(tree, 'book').props.onClick(); await tick();
-    assert.equal(work.getSnapshot().dirty, false); assert.deepEqual(f.api.getSnapshot().settings.standaloneHiddenModuleIds, ['book']);
+    pending = false; menuAction(tree, 'create').select(); await tick(); assert.equal(work.getSnapshot().dirty, false);
   } finally { hooks.dispose(); f.dispose(); }
 });
 
@@ -881,16 +781,234 @@ test('single-card delete tooltips and confirmation explicitly name the current o
     const work = f.api.getSnapshot().entities[0];
     const props = { kind: 'book' as const, works: [work], appearance: f.api.getSnapshot().settings.bookCardAppearance, threeCardView: false, manager: f.manager, api: f.api, run: async () => true, edit() {} };
     let tree = ordinary.render(ui.WorkCollection, props); nodes(tree).find(node => typeof node.props.onActiveChange === 'function')!.props.onActiveChange(work.id);
-    tree = ordinary.render(ui.WorkCollection, props); const trash = nodes(tree).find(node => node.props.title === '删除当前书籍《书》')!;
-    assert.equal(trash.props['aria-label'], '删除当前书籍《书》');
+    tree = ordinary.render(ui.WorkCollection, props); const trash = menuAction(tree, 'delete');
+    assert.equal(trash.label, '删除当前书籍《书》');
     const dialog = renderToStaticMarkup(React.createElement(ui.DeleteWorkDialog, { work, busy: false, close() {}, remove() {} }));
     assert.ok(dialog.includes('删除当前书籍《书》？')); assert.ok(dialog.includes('确认删除《书》'));
     const module = { id: 'showcase', title: '收藏图', kind: 'book' as const, mode: 'showcase' as const, appearance: { material: 'paper' as const, style: 'cover' as const } };
     const showcaseProps = { module, api: f.api, previewCards: [{ id: 'picture', name: '山顶', image: 'cover.jpg', description: '' }] };
     tree = showcase.render(ui.ShowcaseCollection, showcaseProps); nodes(tree).find(node => typeof node.props.onActiveChange === 'function')!.props.onActiveChange('picture');
-    tree = showcase.render(ui.ShowcaseCollection, showcaseProps); const pictureTrash = nodes(tree).find(node => node.props.title === '删除当前图片《山顶》')!;
-    assert.equal(pictureTrash.props['aria-label'], '删除当前图片《山顶》'); pictureTrash.props.onClick();
+    tree = showcase.render(ui.ShowcaseCollection, showcaseProps); const pictureTrash = menuAction(tree, 'delete');
+    assert.equal(pictureTrash.label, '删除当前图片《山顶》'); pictureTrash.select();
     tree = showcase.render(ui.ShowcaseCollection, showcaseProps); const pictureDialog = nodes(tree).find(node => typeof node.type === 'function' && node.props.card?.id === 'picture')!;
     assert.ok(renderToStaticMarkup(pictureDialog).includes('确认删除《山顶》'));
   } finally { ordinary.dispose(); showcase.dispose(); f.dispose(); }
+});
+
+test('legacy all and invalid leaf selections resolve to the first ordinary Dashboard without creating a classification', async () => {
+  for (const selected of ['all', 'missing', '']) {
+    const f = fixture(), hooks = new Hooks(), changed: string[] = [];
+    try {
+      const tree = hooks.render(ui.Dashboard, { ...dashboardProps(f, selected), onDashboardChange: id => changed.push(id) }); hooks.runEffects(); await tick();
+      assert.equal(nodes(tree).filter(node => node.props.role === 'tab').length, 2); assert.equal(dashboardSurface(tree).props.dashboard.id, boardA.id);
+      assert.deepEqual(changed, [boardA.id]); assert.equal(f.patches.length, 0); assert.equal(f.writes.length, 0);
+    } finally { hooks.dispose(); f.dispose(); }
+  }
+});
+
+test('zero Dashboard renders a creation state while unclassified card data stays untouched', async () => {
+  const f = fixture(), hooks = new Hooks(), changed: string[] = [];
+  try {
+    const before = structuredClone(f.api.getSnapshot()); f.replace({ ...before, settings: { ...before.settings, dashboards: [] } });
+    const tree = hooks.render(ui.Dashboard, { ...dashboardProps(f, 'all'), onDashboardChange: id => changed.push(id) }); hooks.runEffects(); await tick();
+    assert.equal(nodes(tree).some(node => node.type === ui.Surface), false); assert.equal(nodes(tree).some(node => node.props.role === 'tab'), false);
+    assert.ok(nodes(tree).some(node => node.props.children === '新建 Dashboard')); assert.deepEqual(changed, ['']);
+    assert.deepEqual(f.api.getSnapshot().entities, before.entities); assert.deepEqual(f.api.getSnapshot().settings.customModules, before.settings.customModules); assert.equal(f.patches.length, 0);
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('Alt / Option arrows reorder Dashboard tabs only, leaving current selection and inner membership orders intact', async () => {
+  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f), changed: string[] = [];
+  try {
+    const before = structuredClone(f.api.getSnapshot()); const tree = hooks.render(ui.Dashboard, { ...props, onDashboardChange: id => changed.push(id) }); hooks.runEffects();
+    const tab = nodes(tree).find(node => node.props.role === 'tab')!;
+    tab.props.onKeyDown({ key: 'ArrowRight', altKey: true, nativeEvent: { isComposing: false }, preventDefault() {} }); await tick();
+    assert.deepEqual(f.api.getSnapshot().settings.dashboards, [boardB, boardA]); assert.deepEqual(f.api.getSnapshot().settings.standaloneOrder, before.settings.standaloneOrder);
+    assert.deepEqual(f.api.getSnapshot().entities, before.entities); assert.deepEqual(changed, []); assert.equal(f.patches.length, 1);
+    assert.match(visibleStatus(hooks.render(ui.Dashboard, props)), /顺序已保存/); assert.doesNotThrow(() => ui.assertCardModuleRemovalSettled(f.api));
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('failed Dashboard tab order restores persisted order, retains its first baseline and retries without changing card data', async () => {
+  const f = fixture(), hooks = new Hooks(), props = { ...dashboardProps(f), viewId: 'sorting-window' };
+  try {
+    const before = structuredClone(f.api.getSnapshot()); let tree = hooks.render(ui.Dashboard, props); hooks.runEffects(); f.settingsFail('磁盘不可写');
+    nodes(tree).find(node => node.props.role === 'tab')!.props.onKeyDown({ key: 'ArrowRight', altKey: true, nativeEvent: { isComposing: false }, preventDefault() {} }); await tick(); tree = hooks.render(ui.Dashboard, props);
+    assert.deepEqual(f.api.getSnapshot(), before); assert.deepEqual(nodes(tree).filter(node => node.props.role === 'tab').map(node => node.props.children), [boardA.title, boardB.title]);
+    assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('磁盘不可写'))); assert.throws(() => ui.assertCardModuleRemovalSettled(f.api), /Dashboard 排序/);
+    f.settingsFail(''); nodes(tree).find(node => node.props.children === '重试 Dashboard 排序')!.props.onClick(); await tick(); tree = hooks.render(ui.Dashboard, props);
+    assert.deepEqual(f.api.getSnapshot().settings.dashboards, [boardB, boardA]); assert.equal(nodes(tree).some(node => node.props.children === '重试 Dashboard 排序'), false);
+    assert.deepEqual(f.api.getSnapshot().entities, before.entities); assert.doesNotThrow(() => ui.assertCardModuleRemovalSettled(f.api));
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('tab retry drafts survive remount per leaf and external tab reordering cannot be overwritten', async () => {
+  const f = fixture(), first = new Hooks(), resumed = new Hooks(), other = new Hooks(), props = { ...dashboardProps(f), viewId: 'leaf-one' };
+  try {
+    let tree = first.render(ui.Dashboard, props); first.runEffects(); f.settingsFail('失败'); nodes(tree).find(node => node.props.role === 'tab')!.props.onKeyDown({ key: 'ArrowRight', altKey: true, nativeEvent: { isComposing: false }, preventDefault() {} }); await tick(); first.dispose(); f.settingsFail('');
+    const third = { id: 'board-c', title: '外部新增', moduleIds: [] }; f.replace({ ...f.api.getSnapshot(), settings: { ...f.api.getSnapshot().settings, dashboards: [boardA, third, boardB] } });
+    tree = resumed.render(ui.Dashboard, props); resumed.runEffects(); assert.ok(nodes(tree).some(node => node.props.children === '重试 Dashboard 排序'));
+    assert.equal(nodes(other.render(ui.Dashboard, { ...props, viewId: 'leaf-two' })).some(node => node.props.children === '重试 Dashboard 排序'), false);
+    const writes = f.patches.length; nodes(tree).find(node => node.props.children === '重试 Dashboard 排序')!.props.onClick(); await tick(); tree = resumed.render(ui.Dashboard, props);
+    assert.equal(f.patches.length, writes); assert.deepEqual(f.api.getSnapshot().settings.dashboards, [boardA, third, boardB]); assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('草稿已保留')));
+    nodes(tree).find(node => node.props.children === '放弃 Dashboard 排序')!.props.onClick(); assert.doesNotThrow(() => ui.assertCardModuleRemovalSettled(f.api));
+  } finally { first.dispose(); resumed.dispose(); other.dispose(); f.dispose(); }
+});
+
+test('tab dragging uses horizontal midpoint targets and suppresses the trailing click after a move', async () => {
+  const f = fixture(), hooks = new Hooks(), changed: string[] = [], props = { ...dashboardProps(f), onDashboardChange: (id: string) => changed.push(id) };
+  const owner = { hasPointerCapture: () => true, setPointerCapture() {}, releasePointerCapture() {} };
+  try {
+    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
+    const tablist = nodes(tree).find(node => node.props.role === 'tablist')!;
+    tablist.props.ref.current = { querySelectorAll: () => [{ dataset: { dashboardId: boardA.id }, getBoundingClientRect: () => ({ left: 0, width: 100 }) }, { dataset: { dashboardId: boardB.id }, getBoundingClientRect: () => ({ left: 100, width: 100 }) }], getBoundingClientRect: () => ({ left: 0, right: 200 }), scrollBy() {} };
+    const tab = nodes(tree).find(node => node.props.role === 'tab')!;
+    tab.props.onPointerDown({ button: 0, isPrimary: true, pointerId: 1, clientX: 20, currentTarget: owner });
+    tab.props.onPointerMove({ pointerId: 1, clientX: 185, preventDefault() {} }); tree = hooks.render(ui.Dashboard, props); assert.equal(nodes(tree).filter(node => node.props['data-drop-after']).length, 1);
+    tab.props.onPointerUp({ pointerId: 1 }); tab.props.onClick(); await tick(); assert.deepEqual(f.api.getSnapshot().settings.dashboards, [boardB, boardA]); assert.deepEqual(changed, []);
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('Dashboard success notices use the owner window timer and disappear while errors remain', async () => {
+  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f), timers: Array<{ callback: () => void; delay: number }> = [], cleared: number[] = [];
+  try {
+    let tree = hooks.render(ui.Dashboard, props); nodes(tree).find(node => node.props.className === 'bw-app bw-dashboard-view')!.props.ref.current = { ownerDocument: { defaultView: { setTimeout: (callback: () => void, delay: number) => { timers.push({ callback, delay }); return timers.length; }, clearTimeout: (id: number) => cleared.push(id) } } }; hooks.runEffects();
+    nodes(tree).find(node => node.props.role === 'tab')!.props.onKeyDown({ key: 'ArrowRight', altKey: true, nativeEvent: { isComposing: false }, preventDefault() {} }); await tick(); tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
+    assert.match(visibleStatus(tree), /顺序已保存/); assert.equal(timers.at(-1)!.delay, 4000); timers.at(-1)!.callback(); assert.equal(visibleStatus(hooks.render(ui.Dashboard, props)), '');
+    f.settingsFail('不能保存'); tree = hooks.render(ui.Dashboard, props); nodes(tree).find(node => node.props.role === 'tab')!.props.onKeyDown({ key: 'ArrowRight', altKey: true, nativeEvent: { isComposing: false }, preventDefault() {} }); await tick(); tree = hooks.render(ui.Dashboard, props); hooks.runEffects(); assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('不能保存')));
+    nodes(tree).find(node => node.props.children === '放弃 Dashboard 排序')!.props.onClick(); hooks.dispose(); assert.ok(cleared.length > 0);
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('horizontal menu keeps collapsed actions inert, supports owner-document keyboard focus and cleans up listeners', () => {
+  const hooks = new Hooks(), focus: number[] = [], selected: string[] = [];
+  const docEvents = new Map<string, (event: Event) => void>(), windowEvents = new Map<string, () => void>();
+  const owner = { addEventListener: (name: string, callback: () => void) => windowEvents.set(name, callback), removeEventListener: (name: string) => windowEvents.delete(name) };
+  const doc = { defaultView: owner, activeElement: null as object | null, addEventListener: (name: string, callback: (event: Event) => void) => docEvents.set(name, callback), removeEventListener: (name: string) => docEvents.delete(name) };
+  const items = [0, 1].map(index => ({ focus: () => { focus.push(index); doc.activeElement = items[index]; } }));
+  const root = { ownerDocument: doc, querySelectorAll: () => items };
+  const props = { label: '模块操作', actions: [{ id: 'search', label: '搜索', icon: 'search' as const, select: () => selected.push('search') }, { id: 'delete', label: '删除', icon: 'trash' as const, select: () => selected.push('delete') }] };
+  const key = (value: string, composing = false) => ({ key: value, nativeEvent: { isComposing: composing }, preventDefault() {}, stopPropagation() {} });
+  try {
+    let tree = hooks.render(ui.ActionMenu, props); nodes(tree)[0].props.ref.current = root;
+    const trigger = nodes(tree).find(node => node.props['aria-haspopup'] === 'menu')!; trigger.props.ref.current = { focus: () => focus.push(-1) };
+    assert.ok(nodes(tree).filter(node => node.props.role === 'menuitem').every(node => node.props.disabled && node.props.tabIndex === -1));
+    nodes(tree)[0].props.onKeyDown(key('ArrowRight', true)); assert.equal(nodes(hooks.render(ui.ActionMenu, props))[0].props['data-open'], undefined);
+    nodes(tree)[0].props.onKeyDown(key('ArrowRight')); tree = hooks.render(ui.ActionMenu, props); hooks.runEffects(); assert.deepEqual(focus, [0]); assert.equal(docEvents.size, 2); assert.equal(windowEvents.size, 1);
+    nodes(tree)[0].props.onKeyDown(key('ArrowLeft')); assert.deepEqual(focus, [0, 1]); nodes(tree)[0].props.onKeyDown(key('Home')); assert.equal(focus.at(-1), 0);
+    nodes(tree).find(node => node.props['data-menu-action'] === 'search')!.props.onClick(); assert.deepEqual(selected, ['search']); assert.equal(focus.at(-1), -1); assert.equal(nodes(hooks.render(ui.ActionMenu, props))[0].props['data-open'], undefined);
+    hooks.dispose(); assert.equal(docEvents.size, 0); assert.equal(windowEvents.size, 0);
+  } finally { hooks.dispose(); }
+});
+
+test('menu dismissal uses event paths for outside focus and pointer events and ignores IME Escape', () => {
+  const hooks = new Hooks(), listeners = new Map<string, (event: Event) => void>(); let restored = 0;
+  const root = { ownerDocument: { defaultView: { addEventListener() {}, removeEventListener() {} }, addEventListener: (name: string, callback: (event: Event) => void) => listeners.set(name, callback), removeEventListener: (name: string) => listeners.delete(name) }, querySelectorAll: () => [] };
+  const props = { label: '操作', actions: [] };
+  try {
+    let tree = hooks.render(ui.ActionMenu, props); nodes(tree)[0].props.ref.current = root; const trigger = nodes(tree).find(node => node.props['aria-haspopup'] === 'menu')!; trigger.props.ref.current = { focus: () => { restored++; } }; trigger.props.onClick(); tree = hooks.render(ui.ActionMenu, props); hooks.runEffects();
+    listeners.get('pointerdown')!({ composedPath: () => [root] } as unknown as Event); assert.equal(nodes(hooks.render(ui.ActionMenu, props))[0].props['data-open'], 'true');
+    nodes(tree)[0].props.onKeyDown({ key: 'Escape', nativeEvent: { isComposing: true }, preventDefault() {}, stopPropagation() {} }); assert.equal(restored, 0);
+    listeners.get('focusin')!({ composedPath: () => [] } as unknown as Event); assert.equal(nodes(hooks.render(ui.ActionMenu, props))[0].props['data-open'], undefined);
+    trigger.props.onClick(); tree = hooks.render(ui.ActionMenu, props); nodes(tree)[0].props.onKeyDown({ key: 'Escape', nativeEvent: { isComposing: false }, preventDefault() {}, stopPropagation() {} }); assert.equal(restored, 1);
+  } finally { hooks.dispose(); }
+});
+
+test('Dashboard form preserves unconfirmed IME input and keeps the dialog open after a saving conflict', async () => {
+  const f = fixture(), hooks = new Hooks(), closed: string[] = [];
+  const props = { api: f.api, manager: f.manager, state: { draft: structuredClone(boardA), baseline: structuredClone(boardA) }, close: (id?: string) => { if (id !== undefined) closed.push(id); } };
+  try {
+    let tree = hooks.render(ui.DashboardEditor, props); hooks.runEffects(); nodes(tree)[0].props.onCompositionStartCapture(); nodes(tree).find(node => node.type === 'form')!.props.onSubmit({ preventDefault() {} }); await tick(); assert.equal(f.patches.length, 0); assert.deepEqual(closed, []);
+    tree = hooks.render(ui.DashboardEditor, props); assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('输入法')));
+    nodes(tree)[0].props.onCompositionEndCapture(); nodes(tree).find(node => node.type === 'input')!.props.onChange({ target: { value: '保留名称' } }); tree = hooks.render(ui.DashboardEditor, props); f.settingsFail('并发冲突'); nodes(tree).find(node => node.type === 'form')!.props.onSubmit({ preventDefault() {} }); await tick(); tree = hooks.render(ui.DashboardEditor, props);
+    assert.equal(nodes(tree).find(node => node.type === 'input')!.props.value, '保留名称'); assert.deepEqual(closed, []); assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('并发冲突')));
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('deleting a Dashboard cannot strand a closed-leaf module ordering draft', async () => {
+  const f = fixture(), original = new Hooks(), editor = new Hooks(), recovered = new Hooks(); let closed = false;
+  const props = { api: f.api, manager: f.manager, state: { draft: structuredClone(boardA), baseline: structuredClone(boardA), remove: true }, close: () => { closed = true; } };
+  try {
+    const list = surfaceList(original, { api: f.api, manager: f.manager, dashboard: boardA }); list.props.retainDraft(['film', 'missing', 'book', 'custom-a']); original.dispose();
+    let tree = editor.render(ui.DashboardEditor, props); editor.runEffects(); nodes(tree).find(node => node.type === 'form')!.props.onSubmit({ preventDefault() {} }); await tick(); tree = editor.render(ui.DashboardEditor, props);
+    assert.equal(closed, false); assert.equal(f.patches.length, 0); assert.deepEqual(f.api.getSnapshot().settings.dashboards, [boardA, boardB]); assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('排序草稿')));
+    const retry = surfaceList(recovered, { api: f.api, manager: f.manager, dashboard: boardA }); assert.deepEqual(retry.props.initialDraft, ['film', 'missing', 'book', 'custom-a']); retry.props.retainDraft(null);
+    nodes(tree).find(node => node.type === 'form')!.props.onSubmit({ preventDefault() {} }); await tick(); assert.equal(closed, true); assert.deepEqual(f.api.getSnapshot().settings.dashboards, [boardB]); assert.doesNotThrow(() => ui.assertCardModuleRemovalSettled(f.api));
+  } finally { original.dispose(); editor.dispose(); recovered.dispose(); f.dispose(); }
+});
+
+test('a new leaf recovers closed-leaf tab-order drafts without claiming another active window draft', async () => {
+  const f = fixture(), first = new Hooks(), active = new Hooks(), reopened = new Hooks();
+  try {
+    let tree = first.render(ui.Dashboard, { ...dashboardProps(f), viewId: 'closed-leaf' }); first.runEffects(); f.settingsFail('排序失败'); nodes(tree).find(node => node.props.role === 'tab')!.props.onKeyDown({ key: 'ArrowRight', altKey: true, nativeEvent: { isComposing: false }, preventDefault() {} }); await tick();
+    tree = active.render(ui.Dashboard, { ...dashboardProps(f), viewId: 'active-leaf' }); active.runEffects(); tree = active.render(ui.Dashboard, { ...dashboardProps(f), viewId: 'active-leaf' }); assert.equal(nodes(tree).some(node => node.props.children === '重试 Dashboard 排序'), false);
+    first.dispose(); assert.throws(() => ui.assertCardModuleRemovalSettled(f.api), /排序/);
+    const newProps = { ...dashboardProps(f), viewId: 'new-leaf' }; reopened.render(ui.Dashboard, newProps); reopened.runEffects(); tree = reopened.render(ui.Dashboard, newProps); assert.ok(nodes(tree).some(node => node.props.children === '重试 Dashboard 排序'));
+    nodes(tree).find(node => node.props.children === '放弃 Dashboard 排序')!.props.onClick(); assert.doesNotThrow(() => ui.assertCardModuleRemovalSettled(f.api)); assert.deepEqual(f.api.getSnapshot().settings.dashboards, [boardA, boardB]);
+    tree = reopened.render(ui.Dashboard, newProps); assert.equal(nodes(tree).some(node => node.props.children === '重试 Dashboard 排序'), false);
+  } finally { first.dispose(); active.dispose(); reopened.dispose(); f.dispose(); }
+});
+
+test('missing post-drag click cannot suppress the next intentional tab click and reset timers belong to the owner window', async () => {
+  const f = fixture(), hooks = new Hooks(), changed: string[] = [], timers: Array<() => void> = [], cleared: number[] = [];
+  const props = { ...dashboardProps(f), onDashboardChange: (id: string) => changed.push(id) };
+  const owner = { hasPointerCapture: () => true, setPointerCapture() {}, releasePointerCapture() {}, ownerDocument: { defaultView: { setTimeout: (callback: () => void, delay: number) => { assert.equal(delay, 0); timers.push(callback); return timers.length; }, clearTimeout: (id: number) => cleared.push(id) } } };
+  try {
+    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects(); const list = nodes(tree).find(node => node.props.role === 'tablist')!;
+    list.props.ref.current = { querySelectorAll: () => [{ dataset: { dashboardId: boardA.id }, getBoundingClientRect: () => ({ left: 0, width: 100 }) }, { dataset: { dashboardId: boardB.id }, getBoundingClientRect: () => ({ left: 100, width: 100 }) }], getBoundingClientRect: () => ({ left: 0, right: 200 }), scrollBy() {} };
+    const tab = nodes(tree).find(node => node.props.role === 'tab')!; tab.props.onPointerDown({ button: 0, isPrimary: true, pointerId: 1, clientX: 20, currentTarget: owner }); tab.props.onPointerMove({ pointerId: 1, clientX: 185, preventDefault() {} }); tab.props.onPointerUp({ pointerId: 1 }); await tick();
+    assert.equal(timers.length, 1); timers[0](); tree = hooks.render(ui.Dashboard, props); const second = nodes(tree).find(node => node.props['data-dashboard-id'] === boardB.id)!; second.props.onClick(); await tick(); assert.deepEqual(changed, [boardB.id]);
+    // A cancelled subsequent gesture also owns and releases its pointer without an extra save.
+    const current = nodes(hooks.render(ui.Dashboard, props)).find(node => node.props['data-dashboard-id'] === boardA.id)!; current.props.onPointerDown({ button: 0, isPrimary: true, pointerId: 2, clientX: 120, currentTarget: owner }); current.props.onPointerMove({ pointerId: 2, clientX: 10, preventDefault() {} }); current.props.onPointerUp({ pointerId: 2 }); hooks.dispose(); assert.ok(cleared.includes(2));
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('native keyboard menu activation focuses first and a reverse arrow from the trigger reaches the last action', () => {
+  const hooks = new Hooks(), focused: number[] = [];
+  const doc = { defaultView: { addEventListener() {}, removeEventListener() {} }, activeElement: null as object | null, addEventListener() {}, removeEventListener() {} };
+  const items = [0, 1, 2].map(index => ({ focus: () => { focused.push(index); doc.activeElement = items[index]; } }));
+  const root = { ownerDocument: doc, querySelectorAll: () => items }, trigger = { focus: () => { doc.activeElement = trigger; } };
+  const props = { label: '操作', actions: ['search', 'add', 'delete'].map(id => ({ id, label: id, icon: 'plus' as const, select() {} })) };
+  try {
+    let tree = hooks.render(ui.ActionMenu, props); nodes(tree)[0].props.ref.current = root; const button = nodes(tree).find(node => node.props['aria-haspopup'] === 'menu')!; button.props.ref.current = trigger;
+    // Enter and Space activate native buttons through click.
+    button.props.onClick(); tree = hooks.render(ui.ActionMenu, props); hooks.runEffects(); assert.deepEqual(focused, [0]); trigger.focus();
+    nodes(tree)[0].props.onKeyDown({ key: 'ArrowLeft', nativeEvent: { isComposing: false }, preventDefault() {}, stopPropagation() {} }); assert.equal(focused.at(-1), 2);
+  } finally { hooks.dispose(); }
+});
+
+test('closing a Dashboard dialog during draft flushing cancels every category write', async () => {
+  for (const remove of [false, true]) {
+    const f = fixture(), hooks = new Hooks(); let finish!: () => void, closed = false;
+    const waiting = new Promise<void>(resolve => { finish = resolve; });
+    const manager = { flushAll: () => waiting, recoveryDrafts: () => [] } as unknown as WorkPropertiesManager;
+    const props = { api: f.api, manager, state: { draft: { ...structuredClone(boardA), title: '未提交名称' }, baseline: structuredClone(boardA), remove }, close: () => { closed = true; } };
+    try {
+      const before = structuredClone(f.api.getSnapshot()); const tree = hooks.render(ui.DashboardEditor, props); hooks.runEffects(); nodes(tree).find(node => node.type === 'form')!.props.onSubmit({ preventDefault() {} }); await tick(); hooks.dispose(); finish(); await tick();
+      assert.equal(f.patches.length, 0); assert.equal(closed, false); assert.deepEqual(f.api.getSnapshot(), before);
+    } finally { finish(); hooks.dispose(); f.dispose(); }
+  }
+});
+
+test('editing current ordinary card waits for its summary draft and preserves the editor state when saving fails', async () => {
+  const f = fixture(), hooks = new Hooks(), edited: Work[] = []; let error = '';
+  const work = f.api.getSnapshot().entities[0];
+  const props = { kind: 'book' as const, works: [work], appearance: f.api.getSnapshot().settings.bookCardAppearance, threeCardView: false, manager: f.manager, api: f.api, run: async (action: () => Promise<unknown>) => { try { await action(); return true; } catch (failure) { error = String(failure); return false; } }, edit: (card: Work) => edited.push(card) };
+  try {
+    const session = f.manager.getSession(work.id); await session.refresh(); session.startComposition(); session.update({ summary: '尚未确认的输入' });
+    let tree = hooks.render(ui.WorkCollection, props); nodes(tree).find(node => typeof node.props.onActiveChange === 'function')!.props.onActiveChange(work.id); tree = hooks.render(ui.WorkCollection, props); menuAction(tree, 'edit').select(); await tick(); assert.deepEqual(edited, []); assert.match(error, /输入法/); assert.equal(f.writes.length, 0);
+    session.endComposition(); f.workFail('不可写'); menuAction(tree, 'edit').select(); await tick(); assert.deepEqual(edited, []); assert.match(error, /不可写/); assert.equal(session.getSnapshot().dirty, true);
+    f.workFail(''); menuAction(tree, 'edit').select(); await tick(); assert.equal(edited.length, 1); assert.equal(session.getSnapshot().dirty, false);
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
+test('keyboard tab ordering restores the same owner-document tab focus after disabled saving controls re-enable', async () => {
+  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f); let focused = 0;
+  const body = {}, doc = { body, activeElement: body as object };
+  const handle = { isConnected: true, ownerDocument: doc, focus: () => { focused++; doc.activeElement = handle; } };
+  try {
+    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
+    nodes(tree).find(node => node.props['data-dashboard-id'] === boardA.id)!.props.onKeyDown({ key: 'ArrowRight', altKey: true, nativeEvent: { isComposing: false }, currentTarget: handle, preventDefault() {} }); await tick(); tree = hooks.render(ui.Dashboard, props); hooks.runEffects(); assert.equal(focused, 1); assert.equal(doc.activeElement, handle);
+    doc.activeElement = body; nodes(tree).find(node => node.props['data-dashboard-id'] === boardA.id)!.props.onKeyDown({ key: 'ArrowLeft', altKey: true, nativeEvent: { isComposing: false }, currentTarget: handle, preventDefault() {} }); await tick(); hooks.render(ui.Dashboard, props); hooks.runEffects(); assert.equal(focused, 2); assert.deepEqual(f.api.getSnapshot().settings.dashboards, [boardA, boardB]);
+  } finally { hooks.dispose(); f.dispose(); }
 });

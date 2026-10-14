@@ -6,6 +6,12 @@
 
 Coverflow 原始代码未附许可证，来源说明不额外授予其许可；MIT 文件仅授予本仓库作者有权许可的代码。示例封面及预览图片明确不受 MIT 许可，原图来源与权利说明见 [examples/SOURCES.md](examples/SOURCES.md)。
 
+## 横向操作菜单
+
+横向菜单参考所有者本地 registry 的 `radial.json`（2026-10-14）展开动画：弹性位移、逐项延迟、收起零延迟。根据现有 React、图标与 Obsidian 主题独立实现水平工具行，未引入半圆手势、Lucide、Tailwind 或参考组件的全局主题。原组件说明记载其用户提供代码未附许可证；此处仅记录参考来源，不授予第三方代码许可。
+
+The horizontal action menu independently adapts the motion pattern of the owner's local Radial registry item. It uses existing React, icons and Obsidian theme tokens, without importing the radial gesture code or global theme.
+
 ## React / React DOM
 
 React 与 React DOM 固定为 19.3.0，采用其原始 MIT 许可证。构建仅适配 `react-dom-client.production.js` 的三个脚本资源创建入口：普通脚本预初始化、模块脚本预初始化及异步 script 元素资源。适配后这些入口直接抛错，拒绝加载可执行脚本资源。版本、上游文件 SHA-256 及匹配数量均在构建时校验；上游变化须重新审查后才能构建。卡片渲染、SVG 清洗及 React 的惰性 script 元素保护继续保留。

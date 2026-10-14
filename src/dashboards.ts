@@ -1,6 +1,6 @@
 import type { CardsAPI, CardsDashboard } from './types';
 
-/** The built-in complete library uses standaloneOrder and is never saved as a dashboard. */
+/** Reserved by older releases; keep it readable for existing view and sorting state. */
 export const ALL_DASHBOARD_ID = 'all';
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const identifier = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z0-9_-]{1,180}$/.test(value);
@@ -19,7 +19,7 @@ export function readDashboards(value: unknown): CardsDashboard[] {
 }
 
 function assertSupported(api: CardsAPI): void {
-  if (!api.supportsDashboards) throw new Error('请升级已启用的兼容卡片插件后再编辑看板。已有模块和资料已保留。');
+  if (!api.supportsDashboards || !api.supportsDashboardOnlyNavigation) throw new Error('请升级已启用的兼容卡片插件后再编辑 Dashboard。已有模块和资料已保留。');
 }
 
 const same = (left: CardsDashboard | undefined, right: CardsDashboard) => !!left && left.id === right.id && left.title === right.title && JSON.stringify(left.moduleIds) === JSON.stringify(right.moduleIds);
@@ -58,4 +58,18 @@ export async function deleteDashboard(api: CardsAPI, baseline: CardsDashboard): 
 export async function saveDashboardOrder(api: CardsAPI, baseline: CardsDashboard, order: string[]): Promise<void> {
   if (!moduleIds(order) || order.length !== baseline.moduleIds.length || order.some(id => !baseline.moduleIds.includes(id))) throw new Error('看板成员已改变，排序草稿已保留，请重新载入后重试。');
   await saveDashboard(api, { ...baseline, moduleIds: [...order] }, baseline);
+}
+
+/** Tab ordering touches the array order, not each board's latest name or members. */
+export async function saveDashboardTabOrder(api: CardsAPI, baseline: CardsDashboard[], order: string[]): Promise<void> {
+  assertSupported(api);
+  readDashboards(baseline);
+  const expectedIds = baseline.map(board => board.id);
+  if (!moduleIds(order) || order.length !== expectedIds.length || order.some(id => !expectedIds.includes(id))) throw new Error('Dashboard 分类已改变，标签排序草稿已保留，请重新载入后重试。');
+  const boards = api.getSnapshot().settings.dashboards ?? [];
+  const currentIds = boards.map(board => board.id);
+  if (JSON.stringify(currentIds) === JSON.stringify(order)) return;
+  if (JSON.stringify(currentIds) !== JSON.stringify(expectedIds)) throw new Error('Dashboard 分类或标签顺序已在其他位置修改，排序草稿已保留，请重新载入后重试。');
+  const byId = new Map(boards.map(board => [board.id, board]));
+  await api.saveSettings({ dashboards: order.map(id => byId.get(id)!) });
 }

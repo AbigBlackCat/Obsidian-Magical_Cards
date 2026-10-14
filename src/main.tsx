@@ -4,7 +4,6 @@ import { Plugin, ItemView, PluginSettingTab, Notice, Platform, requireApiVersion
 import type { SettingDefinitionItem, ViewStateResult, WorkspaceLeaf } from 'obsidian';
 import { acquireCards, type CardsLease } from './runtime';
 import CardsDashboardView, { flushDashboardEdits } from './CardsDashboardView';
-import { ALL_DASHBOARD_ID } from './dashboards';
 import { newCardsBlock } from './embed-source';
 import { chooseCardsModules } from './module-choice';
 import { CardsSettingsController } from './settings-tab';
@@ -16,15 +15,17 @@ const VIEW = 'barry-cards';
 class CardsView extends ItemView {
   private root?: Root;
   private lease: CardsLease;
-  private dashboardId = ALL_DASHBOARD_ID;
+  private dashboardId = '';
+  private viewId: string = crypto.randomUUID();
   constructor(leaf: WorkspaceLeaf, plugin: MagicalCardsPlugin, private closed: () => void) { super(leaf); this.lease = plugin.cardsLease; }
   getViewType() { return VIEW; }
   getDisplayText() { return 'Magical Cards'; }
   getIcon() { return MAGICAL_CARDS_ICON; }
-  private render() { this.root?.render(<CardsDashboardView api={this.lease.api} manager={this.lease.propertiesManager} dashboardId={this.dashboardId} onDashboardChange={id => { this.dashboardId = id; this.render(); void this.app.workspace.requestSaveLayout(); }} />); }
-  getState() { return { ...super.getState(), dashboardId: this.dashboardId }; }
+  private render() { this.root?.render(<CardsDashboardView api={this.lease.api} manager={this.lease.propertiesManager} dashboardId={this.dashboardId} viewId={this.viewId} onDashboardChange={id => { this.dashboardId = id; this.render(); void this.app.workspace.requestSaveLayout(); }} />); }
+  getState() { return { ...super.getState(), dashboardId: this.dashboardId, viewId: this.viewId }; }
   async setState(state: unknown, result: ViewStateResult) {
-    const next = state && typeof state === 'object' && 'dashboardId' in state && typeof state.dashboardId === 'string' ? state.dashboardId : ALL_DASHBOARD_ID;
+    const next = state && typeof state === 'object' && 'dashboardId' in state && typeof state.dashboardId === 'string' ? state.dashboardId : '';
+    if (state && typeof state === 'object' && 'viewId' in state && typeof state.viewId === 'string' && /^[A-Za-z0-9_-]{1,180}$/.test(state.viewId)) this.viewId = state.viewId;
     if (this.root && next !== this.dashboardId) await flushDashboardEdits(this.lease.api, this.lease.propertiesManager, this.contentEl);
     this.dashboardId = next;
     await super.setState(state, result); this.render();

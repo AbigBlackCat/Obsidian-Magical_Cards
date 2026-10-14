@@ -9,7 +9,7 @@ export async function buildCards({write=true}={}){
   const main=result.outputFiles[0].contents;
   if(main.byteLength>=MAX_MAIN_BYTES)throw new Error(`main.js is ${main.byteLength} bytes; must be below ${MAX_MAIN_BYTES}.`);
   if(/createElement\(\s*(["'])script\1\s*\)/.test(result.outputFiles[0].text))throw new Error('Production bundle still creates executable script resources.');
-  const sheets=await Promise.all(['base-styles.css','layouts.css','ui.css'].map(file=>readFile(new URL(file,import.meta.url),'utf8')));
+  const sheets=await Promise.all(['base-styles.css','layouts.css','ui.css','horizontal-menu.css','settings-classification.css'].map(file=>readFile(new URL(file,import.meta.url),'utf8')));
   const styles=Buffer.from(sheets.join('\n'));
   if(write)await Promise.all([writeFile(new URL('main.js',import.meta.url),main),writeFile(new URL('styles.css',import.meta.url),styles)]);
   return {main,styles};

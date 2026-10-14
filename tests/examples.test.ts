@@ -66,6 +66,8 @@ test('the authored welcome example has no display block and preserves reading an
   assert.equal(note,template.replaceAll('{{rootFolder}}',()=> '示例')+'<!-- magical-cards-guide:03c64161-cdd1-4f58-b841-921115830e3e -->\n');
   const settings=frontmatter(await readFile(resolve(vault,'示例/_数据/卡片配置.md'),'utf8')).bw_card_settings;
   for(const key of ['bookCardAppearance','filmCardAppearance'])assert.deepEqual(settings[key],{material:'paper',style:'cover',layout:'cylinder',ratio:'2:3',imageFit:'cover'});
+  assert.equal(settings.dashboardNavigationVersion,1);
+  assert.deepEqual(settings.dashboards,[{id:"example-dashboard",title:"示例",moduleIds:["book","film"]}]);
   assert.equal(settings.threeCardView,true);
   assert.deepEqual(settings.customModules,[]);
   assert.doesNotMatch(note,/\/Users\/|\/home\/|认知笔记|bw_deleted_book_sources|bw_reading_days/);

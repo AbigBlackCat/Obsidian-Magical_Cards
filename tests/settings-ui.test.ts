@@ -8,7 +8,7 @@ import {dirname,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {freshCardsSettings,newCustomModule,newModuleDraft,readCardsSettings,readModuleDraft,removeModule,saveModuleDraft,setModuleHidden,validateCardsPatch} from '../src/settings';
 import {createWork} from '../src/domain';
-import CardsSurface from '../src/CardsSurface';
+import CardsSurface,{registerCardModuleSurface} from '../src/CardsSurface';
 import {WorkPropertiesManager} from '../src/WorkPropertiesSessions';
 import type {CardsAPI,CardsSettings,CardsSnapshot,WorkProperties} from '../src/types';
 
@@ -18,7 +18,7 @@ function fixture(settings=readCardsSettings(undefined)) {
   let failure='',createFailure='';
   const creates:Array<{id:string;title:string;note:string}>=[];
   const api={
-    supportsModuleDeletion:true,
+    supportsModuleDeletion:true,supportsDashboards:true,supportsDashboardOnlyNavigation:true,
     getSnapshot:()=>snapshot,subscribe:(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};},coverUrl:(value:string)=>value,
     saveSettings:async(patch:Partial<CardsSettings>)=>{
       patches.push(structuredClone(patch));if(failure){const error=failure;failure='';throw new Error(error);}
@@ -51,7 +51,7 @@ test('default collection ratio and image fit reach standalone and embedded rende
     const html=renderToStaticMarkup(React.createElement(CardsSurface,{api,manager,embed:{id:'local',modules:[{id:'reading',collection:'book',layout:'album-rail'}]}}));
     assert.ok(html.includes('data-ratio="4:3"'));assert.ok(html.includes('data-image-fit="contain"'));assert.ok(html.includes('data-layout="album-rail"'));
     const old=fixture(),oldManager=new WorkPropertiesManager(old.api);
-    try{const legacy=renderToStaticMarkup(React.createElement(CardsSurface,{api:old.api,manager:oldManager}));assert.ok(legacy.includes('data-ratio="2:3"'));assert.ok(legacy.includes('data-image-fit="cover"'));assert.equal(legacy.includes('同步'),false);}finally{oldManager.dispose();}
+    try{const legacy=renderToStaticMarkup(React.createElement(CardsSurface,{api:old.api,manager:oldManager,dashboard:{id:'legacy',title:'旧收藏',moduleIds:['book','film']}}));assert.ok(legacy.includes('data-ratio="2:3"'));assert.ok(legacy.includes('data-image-fit="cover"'));assert.equal(legacy.includes('同步'),false);}finally{oldManager.dispose();}
   } finally {manager.dispose();}
 });
 
@@ -164,6 +164,7 @@ class Element extends EventTarget {
   closest(tag:string):Element|null{for(let el:Element|null=this;el;el=el.parentElement)if(el.tagName===tag.toUpperCase())return el;return null;}
   createEl(tag:string,attributes?:{cls?:string}){const child=this.ownerDocument.createElement(tag);if(attributes?.cls)child.className=attributes.cls;this.append(child);return child;}
   createDiv(attributes?:{cls?:string}){return this.createEl('div',attributes);}
+  createSpan(attributes?:{cls?:string}){return this.createEl('span',attributes);}
   scrollIntoView(){this.scrolls++;}
   focus(){this.ownerDocument.activeElement=this;}
   select(){}
@@ -222,7 +223,7 @@ const directory=dirname(fileURLToPath(import.meta.url));
 const uiBundle=await build({stdin:{contents:"export {addCardsSettings,CardsSettingsController} from '../src/settings-tab';export {cardModuleChoices} from '../src/module-choice';export {CardsSettingsTab,default as MagicalCardsPlugin} from '../src/main';export {renderedRoots} from 'react-dom/client';export {Notice} from 'obsidian';",resolveDir:directory,loader:'ts'},bundle:true,platform:'node',format:'cjs',write:false,external:['react'],plugins:[{
   name:'settings-platform',setup(builder){
     builder.onResolve({filter:/^obsidian$/},()=>({path:'platform',namespace:'settings-platform'}));
-    builder.onLoad({filter:/.*/,namespace:'settings-platform'},()=>({contents:`export * from ${JSON.stringify(resolve(directory,'obsidian-mock.ts'))};export const Setting=globalThis.__settingsSetting;export const PluginSettingTab=globalThis.__settingsTab;export const Platform={isDesktopApp:true};export const requireApiVersion=()=>Boolean(globalThis.__settingsModern);export function addIcon(){} export class ItemView {} export class Modal {}`,resolveDir:directory,loader:'js'}));
+    builder.onLoad({filter:/.*/,namespace:'settings-platform'},()=>({contents:`export * from ${JSON.stringify(resolve(directory,'obsidian-mock.ts'))};export const Setting=globalThis.__settingsSetting;export const PluginSettingTab=globalThis.__settingsTab;export const Platform={isDesktopApp:true};export const requireApiVersion=()=>Boolean(globalThis.__settingsModern);export function addIcon(){} export function setIcon(element,icon){element.dataset.icon=icon;} export class ItemView {} export class Modal {}`,resolveDir:directory,loader:'js'}));
     builder.onResolve({filter:/^react-dom\/client$/},()=>({path:'client',namespace:'settings-roots'}));
     builder.onLoad({filter:/.*/,namespace:'settings-roots'},()=>({contents:'export const renderedRoots=[];export function createRoot(){const root={element:null,unmounted:false,render(element){this.element=element;},unmount(){this.unmounted=true;}};renderedRoots.push(root);return root;}',loader:'js'}));
   },
@@ -233,6 +234,7 @@ const bundledModule={exports:{}};new Function('require','module','exports',uiBun
 const ui=bundledModule.exports as {cardModuleChoices:typeof import('../src/module-choice').cardModuleChoices;addCardsSettings:typeof import('../src/settings-tab').addCardsSettings;CardsSettingsController:typeof import('../src/settings-controller').CardsSettingsController;CardsSettingsTab:typeof import('../src/main').CardsSettingsTab;MagicalCardsPlugin:typeof import('../src/main').default;Notice:{messages:string[]};renderedRoots:Array<{element:{props:{draft:import('../src/settings').CardModuleDraft}};unmounted:boolean}>};
 const button=(element:Element,text:string)=>element.all().find(child=>child.tagName==='BUTTON'&&child.textContent===text)!.control!;
 const row=(element:Element,name:string)=>element.all().find(child=>child.dataset.settingName===name)!;
+const basicNames=(api:CardsAPI)=>['模块名称','比例','Dashboard',...(api.getSnapshot().settings.dashboards??[]).map(board=>`Dashboard：${board.title}`),'新建 Dashboard',''];
 
 test('settings groups preserve requested order and mount previews only while open and visible',async()=>{
   const {api,listeners}=fixture(freshCardsSettings()),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
@@ -245,10 +247,10 @@ test('settings groups preserve requested order and mount previews only while ope
   assert.equal(advanced.open,false);assert.equal(add.open,false);assert.equal(showcase.open,false);
   assert.deepEqual(el.all().filter(child=>['examples','add-module','add-showcase','code'].includes(child.dataset.settingsGroup)).map(child=>child.dataset.settingsGroup),['examples','add-module','add-showcase','code']);
   assert.equal(showcase.children[0].textContent,'添加图片橱窗');
-  assert.deepEqual(showcase.all().find(child=>child.tagName==='FIELDSET')!.children.map(child=>child.dataset.settingName),['模块名称','比例','']);
+  assert.deepEqual(showcase.all().find(child=>child.tagName==='FIELDSET')!.children.map(child=>child.dataset.settingName),basicNames(api));
   assert.equal(showcase.all().find(child=>child.dataset.settingsGroup==='advanced')!.open,false);
   const basic=reading.all().find(child=>child.tagName==='FIELDSET')!;
-  assert.deepEqual(basic.children.map(child=>child.dataset.settingName),['模块名称','比例','']);
+  assert.deepEqual(basic.children.map(child=>child.dataset.settingName),basicNames(api));
   assert.deepEqual(advanced.all().filter(child=>child.dataset.settingName).map(child=>child.dataset.settingName),['卡片样式','显示方式','材质','动效布局','仅显示三张卡片','画廊方向','允许翻面','名称位置']);
   assert.ok(row(advanced,'仅显示三张卡片').dataset.description.includes('作品数量不会改变'));
   examples.open=true;examples.dispatchEvent(new Event('toggle'));assert.equal(ui.renderedRoots.length,start);
@@ -407,17 +409,14 @@ test('settings header trash opens genuine module removal confirmation and cancel
   }finally{cleanup();}
 });
 
-test('legacy hidden modules keep a folded restore entry and remain separate from genuinely removed modules',async()=>{
+test('settings expose legacy-hidden modules for classification and omit hidden restore controls',()=>{
   const settings=freshCardsSettings();settings.hiddenModuleIds=['film'];settings.deletedModuleIds=['book'];
   const {api,patches}=fixture(settings),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
   const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
   try{
-    const hidden=el.all().find(child=>child.dataset.settingsGroup==='removed')!;
-    assert.equal(hidden.open,false);assert.ok(hidden.children[0].textContent.includes('已隐藏模块'));assert.equal(hidden.all().some(child=>child.dataset.settingName==='阅读'),false);
-    await button(hidden,'恢复').click!();
-    assert.deepEqual(api.getSnapshot().settings.hiddenModuleIds,[]);assert.deepEqual(api.getSnapshot().settings.deletedModuleIds,['book']);
+    assert.equal(el.all().some(child=>child.dataset.settingsGroup==='removed'),false);
     assert.ok(el.all().some(child=>child.dataset.cardCollection==='film'));assert.equal(el.all().some(child=>child.dataset.cardCollection==='book'),false);
-    assert.deepEqual(Object.keys(patches[0]),['hiddenModuleIds']);
+    assert.deepEqual(api.getSnapshot().settings.hiddenModuleIds,['film']);assert.deepEqual(api.getSnapshot().settings.deletedModuleIds,['book']);assert.equal(patches.length,0);
   }finally{cleanup();}
 });
 
@@ -427,7 +426,7 @@ test('the separate showcase creator keeps its fixed mode and created note throug
   try{
     const add=el.all().find(child=>child.dataset.settingsGroup==='add-showcase')!,ordinary=el.all().find(child=>child.dataset.settingsGroup==='add-module')!,advanced=add.all().find(child=>child.dataset.settingsGroup==='advanced')!;
     const basic=add.all().find(child=>child.tagName==='FIELDSET')!;
-    assert.deepEqual(basic.children.map(child=>child.dataset.settingName),['模块名称','比例','']);assert.equal(advanced.open,false);
+    assert.deepEqual(basic.children.map(child=>child.dataset.settingName),basicNames(api));assert.equal(advanced.open,false);
     const style=row(add,'卡片样式').children[0].control!;assert.deepEqual(style.inputEl.options,{cover:'整幅封面',minimal:'简约'});
     const reading=el.all().find(child=>child.dataset.cardCollection==='book')!;assert.equal(row(reading,'卡片样式').children[0].options.showcase,undefined);
     assert.equal(row(ordinary,'允许翻面').hidden,true);assert.equal(row(ordinary,'名称位置').hidden,true);
@@ -538,6 +537,106 @@ test('per-module names are searchable and code choices omit hidden modules then 
     const output=code.all().find(child=>child.tagName==='TEXTAREA')!.value;assert.ok(output.includes('collection: film'));assert.ok(output.includes(`collection: ${custom.id}`));
     assert.equal(output.includes('collection: 电影'),false);assert.equal(output.includes('layout:'),false);
   }finally{for(const dispose of cleanup)dispose();controller.dispose();}
+});
+
+test('creation saves selected Dashboards and one new category atomically, retaining choices and stable IDs across failure and refresh',async()=>{
+  const settings=freshCardsSettings();settings.dashboards=[{id:'read',title:'阅读分类',moduleIds:['book']},{id:'film-board',title:'影视分类',moduleIds:['film']}];
+  const {api,patches,fail}=fixture(settings),entities=structuredClone(api.getSnapshot().entities),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const controller=new ui.CardsSettingsController(api);let cleanup=await renderDeclared(controller,el);
+  try{
+    let add=el.all().find(child=>child.dataset.settingsGroup==='add-module')!;add.open=true;
+    await row(add,'模块名称').children[0].control!.choose('多分类收藏');await row(add,'比例').children[0].control!.choose('1:1');
+    await row(add,'Dashboard：阅读分类').children[0].control!.choose(true);await row(add,'Dashboard：影视分类').children[0].control!.choose(true);
+    await row(add,'新建 Dashboard').children[0].control!.choose('新分类');fail('配置暂不可写');await button(add,'保存并收起').click!();
+    const attempted=patches[0],attemptedModule=attempted.customModules![0],newBoard=attempted.dashboards!.find(board=>board.title==='新分类')!;
+    assert.ok(newBoard);assert.deepEqual(newBoard.moduleIds,[attemptedModule.id]);assert.equal(add.open,true);assert.equal(api.getSnapshot().settings.customModules.length,0);
+    cleanup=await renderDeclared(controller,el,cleanup);add=el.all().find(child=>child.dataset.settingsGroup==='add-module')!;
+    assert.equal(row(add,'新建 Dashboard').children[0].value,'新分类');assert.equal(row(add,'Dashboard：阅读分类').children[0].checked,true);assert.equal(row(add,'Dashboard：影视分类').children[0].checked,true);
+    await button(add,'保存并收起').click!();assert.equal(add.open,false);assert.equal(patches.length,2);assert.equal(api.getSnapshot().settings.customModules[0].id,attemptedModule.id);
+    assert.deepEqual(api.getSnapshot().settings.dashboards!.map(board=>board.moduleIds),[['book',attemptedModule.id],['film',attemptedModule.id],[attemptedModule.id]]);
+    assert.equal(api.getSnapshot().settings.dashboards!.at(-1)!.id,newBoard.id);assert.deepEqual(api.getSnapshot().entities,entities);
+  }finally{for(const dispose of cleanup)dispose();controller.dispose();}
+});
+
+test('ordinary and showcase classification drafts remain independent, and unselected creators stay unclassified',async()=>{
+  const settings=freshCardsSettings();settings.dashboards=[{id:'gallery',title:'画廊',moduleIds:[]}];
+  const {api,creates}=fixture(settings),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const controller=new ui.CardsSettingsController(api);let cleanup=await renderDeclared(controller,el);
+  try{
+    let ordinary=el.all().find(child=>child.dataset.settingsGroup==='add-module')!,showcase=el.all().find(child=>child.dataset.settingsGroup==='add-showcase')!;
+    await row(ordinary,'模块名称').children[0].control!.choose('待分类');await row(showcase,'模块名称').children[0].control!.choose('图片收藏');
+    await row(showcase,'Dashboard：画廊').children[0].control!.choose(true);await row(showcase,'新建 Dashboard').children[0].control!.choose('新画廊');
+    cleanup=await renderDeclared(controller,el,cleanup);ordinary=el.all().find(child=>child.dataset.settingsGroup==='add-module')!;showcase=el.all().find(child=>child.dataset.settingsGroup==='add-showcase')!;
+    assert.equal(row(ordinary,'Dashboard：画廊').children[0].checked,false);assert.equal(row(ordinary,'新建 Dashboard').children[0].value,'');
+    await button(ordinary,'保存并收起').click!();const ordinaryModule=api.getSnapshot().settings.customModules[0];assert.ok(api.getSnapshot().settings.dashboards!.every(board=>!board.moduleIds.includes(ordinaryModule.id)));
+    await button(showcase,'保存并收起').click!();const imageModule=api.getSnapshot().settings.customModules[1];assert.equal(imageModule.mode,'showcase');assert.equal(creates.length,1);
+    assert.deepEqual(api.getSnapshot().settings.dashboards!.map(board=>board.moduleIds),[[imageModule.id],[imageModule.id]]);
+  }finally{for(const dispose of cleanup)dispose();controller.dispose();}
+});
+
+test('module exit is an icon-only settings action that changes just one Dashboard reference and retains module drafts',async()=>{
+  const settings=freshCardsSettings();settings.dashboards=[{id:'one',title:'一',moduleIds:['film','book'],future:'keep'} as import('../src/types').CardsDashboard,{id:'two',title:'二',moduleIds:['book']}];
+  const {api,patches}=fixture(settings),before=structuredClone(api.getSnapshot()),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
+  try{
+    let reading=el.all().find(child=>child.dataset.cardCollection==='book')!;
+    await row(reading,'模块名称').children[0].control!.choose('保留名称草稿');await row(reading,'比例').children[0].control!.choose('4:3');
+    const exit=row(reading,'Dashboard：一').children[0];assert.equal(exit.dataset.icon,'log-out');assert.equal(exit.textContent,'');assert.equal(exit.attributes.get('aria-label'),'移出「一」');
+    await exit.control!.click!();assert.equal(patches.length,1);assert.deepEqual(Object.keys(patches[0]),['dashboards']);assert.deepEqual(api.getSnapshot().settings.dashboards![0],{id:'one',title:'一',moduleIds:['film'],future:'keep'});
+    assert.deepEqual(api.getSnapshot().settings.dashboards![1],before.settings.dashboards![1]);assert.deepEqual(api.getSnapshot().entities,before.entities);assert.deepEqual(api.getSnapshot().settings.bookCardAppearance,before.settings.bookCardAppearance);
+    reading=el.all().find(child=>child.dataset.cardCollection==='book')!;assert.equal(row(reading,'模块名称').children[0].value,'保留名称草稿');assert.equal(row(reading,'比例').children[0].value,'4:3');assert.equal(row(reading,'Dashboard：一').children[0].checked,false);
+    await row(reading,'Dashboard：一').children[0].control!.choose(true);await button(reading,'保存并收起').click!();assert.equal(api.getSnapshot().settings.workbenchText['book.title'],'保留名称草稿');assert.deepEqual(api.getSnapshot().settings.dashboards![0].moduleIds,['film','book']);
+  }finally{cleanup();}
+});
+
+test('failed exits preserve membership and stale Dashboard controls cannot overwrite concurrent edits',async()=>{
+  const settings=freshCardsSettings();settings.dashboards=[{id:'one',title:'一',moduleIds:['book','film']}];
+  const {api,patches,fail}=fixture(settings),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
+  try{
+    const reading=el.all().find(child=>child.dataset.cardCollection==='book')!,exit=row(reading,'Dashboard：一').children[0];
+    fail('暂不可写');await exit.control!.click!();assert.deepEqual(api.getSnapshot().settings.dashboards![0].moduleIds,['book','film']);assert.ok(reading.all().some(child=>child.textContent==='暂不可写'&&!child.hidden));
+    await api.saveSettings({dashboards:[{id:'one',title:'外部更名',moduleIds:['book','film']}]});const count=patches.length;
+    await exit.control!.click!();assert.equal(patches.length,count);assert.equal(api.getSnapshot().settings.dashboards![0].title,'外部更名');assert.deepEqual(api.getSnapshot().settings.dashboards![0].moduleIds,['book','film']);
+  }finally{cleanup();}
+});
+
+test('native classification search reveals real controls and settings group types have independent icons and structural styles',async()=>{
+  const settings=freshCardsSettings();settings.dashboards=[{id:'one',title:'收藏分类',moduleIds:[]}];const module=newCustomModule('普通'),showcase={...newCustomModule('图片'),mode:'showcase' as const,showcaseNote:'图片.md'};settings.customModules=[module,showcase];
+  const {api}=fixture(settings),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const controller=new ui.CardsSettingsController(api),cleanup=await renderDeclared(controller,el);
+  try{
+    const definitions=controller.getDefinitions().flatMap(def=>'type' in def?def.items:[def]);assert.ok(definitions.some(def=>def.name==='普通 · Dashboard · 收藏分类'&&def.aliases?.includes('加入 Dashboard')));
+    const ordinary=el.all().find(child=>child.dataset.cardCollection===module.id)!,image=el.all().find(child=>child.dataset.cardCollection===showcase.id)!;
+    assert.equal(ordinary.dataset.cardSettingsKind,'module');assert.equal(image.dataset.cardSettingsKind,'showcase');
+    const kindIcons=new Map(el.all().filter(child=>child.dataset.cardSettingsKind).map(group=>[group.dataset.cardSettingsKind,group.children[0].all().find(child=>child.className==='bw-cards-settings-kind-icon')!.dataset.icon]));
+    assert.equal(new Set(kindIcons.values()).size,5);assert.deepEqual([...kindIcons.keys()].sort(),['add-module','add-showcase','examples','module','showcase']);
+    const target=row(ordinary,'Dashboard：收藏分类');target.classList.add('is-flashing');assert.equal(ordinary.open,true);assert.equal(doc.activeElement,target.children[0]);assert.equal(ordinary.all().find(child=>child.dataset.settingsGroup==='advanced')!.open,false);
+  }finally{for(const dispose of cleanup)dispose();controller.dispose();}
+});
+
+test('old shared runtimes retain settings drafts but refuse category edits and module deletion',async()=>{
+  const {api,patches}=fixture(freshCardsSettings());delete api.supportsDashboardOnlyNavigation;
+  const doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
+  try{
+    const add=el.all().find(child=>child.dataset.settingsGroup==='add-module')!;add.open=true;await row(add,'模块名称').children[0].control!.choose('旧运行时草稿');await button(add,'保存并收起').click!();
+    assert.equal(patches.length,0);assert.equal(add.open,true);assert.equal(row(add,'模块名称').children[0].value,'旧运行时草稿');assert.ok(add.all().some(child=>child.textContent.includes('请升级')&&!child.hidden));
+    const reading=el.all().find(child=>child.dataset.cardCollection==='book')!,start=ui.renderedRoots.length;await reading.all().find(child=>child.dataset.cardSettingsLevel==='header')!.children[0].control!.click!();
+    assert.equal(ui.renderedRoots.length,start);assert.equal(patches.length,0);
+  }finally{cleanup();}
+});
+
+test('settings classification refuses active IME or retained ordering drafts before saving any reference',async()=>{
+  const settings=freshCardsSettings();settings.dashboards=[{id:'one',title:'一',moduleIds:['book']}];const {api,patches}=fixture(settings),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
+  const surface={ownerDocument:{activeElement:null},querySelector:(selector:string)=>selector==='[data-editable-composing="true"]'?{}:null} as unknown as HTMLElement;
+  const release=registerCardModuleSurface(api,surface);
+  try{
+    const reading=el.all().find(child=>child.dataset.cardCollection==='book')!;await row(reading,'Dashboard：一').children[0].control!.click!();assert.equal(patches.length,0);assert.ok(reading.all().some(child=>child.textContent.includes('输入法')&&!child.hidden));
+    release();const operations=(api as unknown as Record<symbol,{drafts:Map<string,unknown>}>)[Symbol.for('magical-cards.module-operations.v1')];operations.drafts.set('closed-board',{order:['book']});
+    await row(reading,'Dashboard：一').children[0].control!.click!();assert.equal(patches.length,0);assert.ok(reading.all().some(child=>child.textContent.includes('排序草稿')&&!child.hidden));
+    operations.drafts.clear();await row(reading,'Dashboard：一').children[0].control!.click!();assert.equal(patches.length,1);assert.deepEqual(api.getSnapshot().settings.dashboards![0].moduleIds,[]);
+  }finally{release();cleanup();}
 });
 
 test('1.11.4 tab fallback renders the same rows without runtime SettingGroup and uses only version-supported refresh APIs',async()=>{

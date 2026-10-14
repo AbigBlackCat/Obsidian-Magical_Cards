@@ -1,14 +1,16 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { Notice, Setting } from 'obsidian';
+import { Notice, Setting, setIcon } from 'obsidian';
 import type { DropdownComponent, SettingDefinitionRender, SettingGroup, TextComponent, ToggleComponent } from 'obsidian';
-import type { CardsAPI } from './types';
-import { CARD_APPEARANCE_FIELDS, newModuleDraft, readModuleDraft, saveModuleDraft, setModuleHidden, type CardModuleDraft } from './settings';
+import type { CardsAPI, CardsDashboard } from './types';
+import { CARD_APPEARANCE_FIELDS, newModuleDraft, readModuleDraft, saveModuleDraft, type CardModuleDraft, type ModuleDashboardAssignment } from './settings';
 import { cardModuleChoices } from './module-choice';
 import { newCardsBlock } from './embed-source';
 import SettingsCardPreview from './SettingsCardPreview';
 import ModuleRemovalDialog from './ModuleRemovalDialog';
 import type { WorkPropertiesManager } from './WorkPropertiesSessions';
+import { saveDashboard } from './dashboards';
+import { assertCardModuleRemovalSettled, flushDashboardEdits } from './CardsSurface';
 
 interface ControllerOptions {
   directory?: { get: () => string; apply: (folder: string) => Promise<void> };
@@ -27,6 +29,9 @@ interface EditorState {
   errorEl?: HTMLElement;
   preview?: HTMLElement;
   root?: Root;
+  dashboardIds: string[];
+  baselineDashboards: CardsDashboard[];
+  newDashboard: { id: string; title: string };
 }
 interface MountedRow { element: HTMLElement; list: HTMLElement; section?: string; cleanup: () => void; }
 interface WrappedRows { outer: HTMLDetailsElement; cleanup: () => void; }
@@ -61,19 +66,32 @@ export class CardsSettingsController {
     this.structure = this.structureKey();
     this.unsubscribe = api.subscribe(this.sync);
   }
-  private structureKey() { const settings = this.api.getSnapshot().settings; return JSON.stringify([cardModuleChoices(settings, true), settings.hiddenModuleIds ?? []]); }
+  private structureKey() { const settings = this.api.getSnapshot().settings; return JSON.stringify([cardModuleChoices(settings, true), settings.dashboards ?? [], Boolean(this.api.supportsDashboardOnlyNavigation)]); }
   private editor(key: string, creator?: EditorState['creator']): EditorState {
     let state = this.editors.get(key);
     if (!state) {
       const draft = creator ? newModuleDraft(creator === 'add-showcase' ? 'showcase' : undefined) : readModuleDraft(this.api.getSnapshot().settings, key);
-      if (!draft) throw new Error('模块已移除，请重新打开设置。');
-      state = { key, draft, baseline: creator ? null : structuredClone(draft), creating: Boolean(creator), creator, busy: false, fields: new Map(), error: '' };
+      if (!draft) throw new Error('模块已删除，请重新打开设置。');
+      const dashboards = structuredClone(this.api.getSnapshot().settings.dashboards ?? []);
+      state = { key, draft, baseline: creator ? null : structuredClone(draft), creating: Boolean(creator), creator, busy: false, fields: new Map(), error: '', dashboardIds: dashboards.filter(board => board.moduleIds.includes(draft.id)).map(board => board.id), baselineDashboards: dashboards, newDashboard: { id: crypto.randomUUID(), title: '' } };
       this.editors.set(key, state);
     }
     return state;
   }
   private editorLabel(state: EditorState) { return state.creating ? state.creator === 'add-showcase' ? '添加图片橱窗' : '添加卡片模块' : state.draft.title; }
   private resetCreator(state: EditorState) { return newModuleDraft(state.creator === 'add-showcase' ? 'showcase' : undefined); }
+  private resetDashboardDraft(state: EditorState) {
+    state.baselineDashboards = structuredClone(this.api.getSnapshot().settings.dashboards ?? []);
+    state.dashboardIds = state.baselineDashboards.filter(board => board.moduleIds.includes(state.draft.id)).map(board => board.id);
+    state.newDashboard = { id: crypto.randomUUID(), title: '' };
+  }
+  private assignment(state: EditorState): ModuleDashboardAssignment {
+    const title = state.newDashboard.title.trim();
+    return { dashboardIds: [...state.dashboardIds, ...(title ? [state.newDashboard.id] : [])], newDashboards: title ? [{ id: state.newDashboard.id, title, moduleIds: [] }] : [], baselineDashboards: structuredClone(state.baselineDashboards) };
+  }
+  private classificationDirty(state: EditorState) {
+    return Boolean(state.newDashboard.title) || JSON.stringify(state.dashboardIds) !== JSON.stringify(state.baselineDashboards.filter(board => board.moduleIds.includes(state.draft.id)).map(board => board.id));
+  }
   private row(name: string, section: string | undefined, render: (setting: Setting) => void | (() => void), extras: Pick<SettingDefinitionRender, 'desc' | 'aliases' | 'searchable' | 'visible'> = {}): CardSettingRow {
     return { name, ...extras, render: (setting, group) => {
       if (this.disposed) return;
@@ -124,6 +142,11 @@ export class CardsSettingsController {
     outer.addEventListener('toggle', toggle);
     return { outer, body, cleanup: () => outer.removeEventListener('toggle', toggle) };
   }
+  private styleGroup(outer: HTMLDetailsElement, kind: 'module' | 'showcase' | 'examples' | 'add-module' | 'add-showcase') {
+    outer.dataset.cardSettingsKind = kind;
+    const summary = outer.querySelector('summary');
+    if (summary) { const icon = summary.createSpan({ cls: 'bw-cards-settings-kind-icon' }); icon.setAttribute('aria-hidden', 'true'); setIcon(icon, { module: 'panels-top-left', showcase: 'images', examples: 'sparkles', 'add-module': 'square-plus', 'add-showcase': 'image-plus' }[kind]); summary.insertBefore(icon, summary.firstChild); }
+  }
   private queueLayout() {
     if (this.layoutQueued) return;
     this.layoutQueued = true;
@@ -138,20 +161,21 @@ export class CardsSettingsController {
       current?.cleanup(); this.wraps.delete(list);
       const section = rows[0].section!;
       if (section.startsWith('examples/')) {
-        const examples = this.details(list, 'examples', '示例'); examples.outer.dataset.settingsGroup = 'examples';
-        const intro = examples.body.createEl('p'); intro.textContent = '阅读和影视是两个默认集合，可添加、编辑或移除作品。这里的设置会应用于对应集合。';
+        const examples = this.details(list, 'examples', '示例'); examples.outer.dataset.settingsGroup = 'examples'; this.styleGroup(examples.outer, 'examples');
+        const intro = examples.body.createEl('p'); intro.textContent = '阅读和影视是两个起步集合。可调整外观、加入 Dashboard，或删除模块；笔记和图片始终保留。';
         const cleanups = [examples.cleanup];
         for (const id of ['book', 'film']) {
           const moduleRows = rows.filter(row => row.section === `examples/${id}`); if (!moduleRows.length) continue;
-          const state = this.editor(id), child = this.details(examples.body, id, state.draft.title, true); child.outer.dataset.cardCollection = id;
+          const state = this.editor(id), child = this.details(examples.body, id, state.draft.title, true); child.outer.dataset.cardCollection = id; this.styleGroup(child.outer, 'module');
           cleanups.push(this.placeEditorRows(child.body, moduleRows, state), child.cleanup);
         }
         this.wraps.set(list, { outer: examples.outer, cleanup: () => cleanups.forEach(cleanup => cleanup()) });
       } else {
-        const state = this.editors.get(section), label = section === 'code' ? '笔记代码块生成' : section === 'removed' ? '已隐藏模块（旧版）' : state ? this.editorLabel(state) : section;
+        const state = this.editors.get(section), label = section === 'code' ? '笔记代码块生成' : state ? this.editorLabel(state) : section;
         const wrapped = this.details(list, section, label);
-        if (section === 'code' || section === 'removed' || state?.creating) wrapped.outer.dataset.settingsGroup = state?.creator ?? section;
+        if (section === 'code' || state?.creating) wrapped.outer.dataset.settingsGroup = state?.creator ?? section;
         else wrapped.outer.dataset.cardCollection = section;
+        if (state) this.styleGroup(wrapped.outer, state.creator ?? (state.draft.mode === 'showcase' ? 'showcase' : 'module'));
         const cleanup = state ? this.placeEditorRows(wrapped.body, rows, state) : undefined;
         if (!state) for (const row of rows) wrapped.body.append(row.element);
         this.wraps.set(list, { outer: wrapped.outer, cleanup: () => { cleanup?.(); wrapped.cleanup(); } });
@@ -189,10 +213,16 @@ export class CardsSettingsController {
   }
   private sync = () => {
     for (const state of this.editors.values()) {
-      if (state.creating || state.busy) continue;
-      const current = readModuleDraft(this.api.getSnapshot().settings, state.key);
-      if (current && JSON.stringify(state.draft) === JSON.stringify(state.baseline) && JSON.stringify(current) !== JSON.stringify(state.baseline)) {
-        state.draft = structuredClone(current); state.baseline = structuredClone(current); this.refreshFields(state);
+      if (state.busy) continue;
+      if (!state.creating) {
+        const current = readModuleDraft(this.api.getSnapshot().settings, state.key);
+        if (current && JSON.stringify(state.draft) === JSON.stringify(state.baseline) && JSON.stringify(current) !== JSON.stringify(state.baseline)) {
+          state.draft = structuredClone(current); state.baseline = structuredClone(current); this.refreshFields(state);
+        }
+      }
+      if (!this.classificationDirty(state)) {
+        state.baselineDashboards = structuredClone(this.api.getSnapshot().settings.dashboards ?? []);
+        state.dashboardIds = state.baselineDashboards.filter(board => board.moduleIds.includes(state.draft.id)).map(board => board.id);
       }
     }
     this.syncPreviews();
@@ -211,6 +241,8 @@ export class CardsSettingsController {
     state.fields.get('threeCardView')?.setValue(state.draft.appearance.threeCardView ?? this.api.getSnapshot().settings.threeCardView);
     state.fields.get('flipEnabled')?.setValue(state.draft.appearance.flipEnabled ?? true);
     state.fields.get('namePosition')?.setValue(state.draft.appearance.namePosition ?? 'back');
+    state.fields.get('newDashboard')?.setValue(state.newDashboard.title);
+    for (const board of this.api.getSnapshot().settings.dashboards ?? []) state.fields.get(`dashboard:${board.id}`)?.setValue(state.dashboardIds.includes(board.id));
     this.refreshConditionalRows(state);
   }
   private setError(state: EditorState, failure: unknown) {
@@ -242,6 +274,49 @@ export class CardsSettingsController {
     }
     this.options.domStateChanged?.();
   }
+  private dashboardRows(state: EditorState, section: string, label: string): CardSettingRow[] {
+    const supported = Boolean(this.api.supportsDashboardOnlyNavigation);
+    const rows = [this.row(`${label} · Dashboard`, section, setting => {
+      setting.setName('Dashboard').setDesc(supported
+        ? '可加入多个分类；不选择则留在设置中，随时可以加入。取消分类不删除模块、笔记或图片。'
+        : '请升级已启用的兼容卡片插件后再保存或分类。已有模块和资料已保留。');
+      setting.settingEl.dataset.cardField = 'dashboards';
+    }, { searchable: false })];
+    for (const board of this.api.getSnapshot().settings.dashboards ?? []) rows.push(this.row(`${label} · Dashboard · ${board.title}`, section, setting => {
+      setting.setName(`Dashboard：${board.title}`); setting.settingEl.dataset.cardDashboard = board.id;
+      if (!state.creating && board.moduleIds.includes(state.draft.id)) {
+        setting.setDesc('已加入').addButton(control => control.setIcon('log-out').setTooltip(`移出「${board.title}」`).setDisabled(!supported).onClick(async () => {
+          if (state.busy) return;
+          this.setBusy(state, true); this.setError(state, '');
+          try {
+            assertCardModuleRemovalSettled(this.api); await flushDashboardEdits(this.api, this.manager); assertCardModuleRemovalSettled(this.api);
+            await saveDashboard(this.api, { ...board, moduleIds: board.moduleIds.filter(id => id !== state.draft.id) }, board);
+            state.dashboardIds = state.dashboardIds.filter(id => id !== board.id);
+            state.baselineDashboards = state.baselineDashboards.map(item => item.id === board.id ? { ...board, moduleIds: board.moduleIds.filter(id => id !== state.draft.id) } : item);
+            new Notice(`已移出「${board.title}」。可在设置中重新加入。`, 4000);
+          } catch (failure) { if (!this.disposed) this.setError(state, failure); }
+          finally { this.setBusy(state, false); }
+        }));
+        setting.settingEl.querySelector('button')?.setAttribute('aria-label', `移出「${board.title}」`);
+      } else setting.addToggle(control => {
+        this.bindToggle(state, `dashboard:${board.id}`, control); control.toggleEl.setAttribute('aria-label', `加入「${board.title}」`);
+        control.setDisabled(!supported).setValue(state.dashboardIds.includes(board.id)).onChange(selected => {
+          if (selected && !state.baselineDashboards.some(item => item.id === board.id)) state.baselineDashboards.push(structuredClone(board));
+          state.dashboardIds = selected ? [...new Set([...state.dashboardIds, board.id])] : state.dashboardIds.filter(id => id !== board.id);
+        });
+      });
+      return () => state.fields.delete(`dashboard:${board.id}`);
+    }, { aliases: ['分类', '加入 Dashboard', '移出 Dashboard', board.title] }));
+    rows.push(this.row(`${label} · 新建 Dashboard`, section, setting => {
+      setting.setName('新建 Dashboard').setDesc('选填名称，与模块一起保存并加入；留空则不新建。').addText(control => {
+        this.bindField(state, 'newDashboard', control); control.inputEl.setAttribute('aria-label', '新建 Dashboard 名称');
+        control.setDisabled(!supported).setValue(state.newDashboard.title).onChange(title => { state.newDashboard.title = title; });
+      });
+      setting.settingEl.dataset.cardField = 'newDashboard';
+      return () => state.fields.delete('newDashboard');
+    }, { aliases: ['新建分类', '分类名称'] }));
+    return rows;
+  }
   private editorRows(state: EditorState): CardSettingRow[] {
     const section = state.key === 'book' || state.key === 'film' ? `examples/${state.key}` : state.key;
     const label = this.editorLabel(state), rows: CardSettingRow[] = [];
@@ -266,6 +341,7 @@ export class CardsSettingsController {
       return () => { state.fields.delete(field.field); };
     }, { aliases: [...Object.values(field.options), ...(field.field === 'imageFit' ? ['贴满卡片', '封面裁切'] : []), ...(field.field === 'style' && state.creator === 'add-showcase' ? ['添加图片橱窗', '橱窗式卡片'] : [])], ...(field.field === 'orientation' ? { visible: () => state.draft.appearance.layout === 'scroll-bend' } : {}) });
     rows.push(dropdown(CARD_APPEARANCE_FIELDS.find(field => field.field === 'ratio')!));
+    rows.push(...this.dashboardRows(state, section, label));
     rows.push(this.row(`${label} · 保存并收起`, section, setting => {
       setting.setName('').setDesc('点击左侧紫色卡片图标，在 Magical Cards 标签页体验。高级选项与基本设置一起保存。');
       const error = setting.settingEl.createEl('p'); error.setAttribute('role', 'alert'); error.className = 'bw-cards-settings-error'; error.textContent = state.error; error.hidden = !state.error; state.errorEl = error;
@@ -273,14 +349,17 @@ export class CardsSettingsController {
         if (state.busy) return; this.setBusy(state, true); this.setError(state, '');
         const appearanceChanged = Boolean(state.baseline && JSON.stringify(state.draft.appearance) !== JSON.stringify(state.baseline.appearance));
         try {
-          await saveModuleDraft(this.api, state.draft, state.baseline);
+          if (!this.api.supportsDashboardOnlyNavigation) throw new Error('请升级已启用的兼容卡片插件后再保存模块。已有模块和资料已保留。');
+          if (state.creating || this.classificationDirty(state)) { assertCardModuleRemovalSettled(this.api); await flushDashboardEdits(this.api, this.manager); assertCardModuleRemovalSettled(this.api); }
+          await saveModuleDraft(this.api, state.draft, state.baseline, this.assignment(state));
           if (this.disposed) return;
-          if (state.creating) { state.draft = this.resetCreator(state); state.baseline = null; this.refreshFields(state); }
+          if (state.creating) { state.draft = this.resetCreator(state); state.baseline = null; }
           else { const current = readModuleDraft(this.api.getSnapshot().settings, state.key); if (current) { state.baseline = current; state.draft = structuredClone(current); } }
+          this.resetDashboardDraft(state); this.refreshFields(state);
           this.closeEditor(state);
           new Notice(appearanceChanged
             ? '已保存。点击左侧紫色卡片图标体验；若标签页黑屏，请重启 Obsidian 后重新打开笔记库。'
-            : '已保存。点击左侧紫色卡片图标，在 Magical Cards 标签页体验。');
+            : '已保存。点击左侧紫色卡片图标，在 Magical Cards 标签页体验。', 4000);
         } catch (failure) { if (!this.disposed) this.setError(state, failure); }
         finally { this.setBusy(state, false); if (!this.disposed) this.refreshFields(state); }
       }));
@@ -309,33 +388,33 @@ export class CardsSettingsController {
       setting.addButton(control => control.setButtonText('重新载入').setTooltip('替换此处未保存的选择').onClick(() => {
         if (state.creating && state.draft.showcaseNote) { this.setError(state, '橱窗笔记已创建，请保留当前模块并重试保存。'); return; }
         const current = state.creating ? this.resetCreator(state) : readModuleDraft(this.api.getSnapshot().settings, state.key);
-        if (!current) { this.setError(state, '模块已移除，当前草稿仍保留。'); return; }
-        state.draft = structuredClone(current); state.baseline = state.creating ? null : structuredClone(current); this.setError(state, ''); this.refreshFields(state); this.syncPreviews();
+        if (!current) { this.setError(state, '模块已删除，当前草稿仍保留。'); return; }
+        state.draft = structuredClone(current); state.baseline = state.creating ? null : structuredClone(current); this.resetDashboardDraft(state); this.setError(state, ''); this.refreshFields(state); this.syncPreviews();
       }));
     }, { aliases: ['重新载入设置'] }));
     rows.push(this.row(`${label} · 预览`, section, setting => {
       setting.settingEl.replaceChildren(); setting.settingEl.className = 'bw-cards-settings-preview-host'; setting.settingEl.dataset.cardPreview = 'true'; state.preview = setting.settingEl;
       return () => { state.root?.unmount(); state.root = undefined; if (state.preview === setting.settingEl) state.preview = undefined; };
     }, { searchable: false }));
-    if (!state.creating) rows.push(this.row(`${label} · 移除模块`, section, setting => {
+    if (!state.creating) rows.push(this.row(`${label} · 删除模块`, section, setting => {
       setting.setName(''); setting.settingEl.className = 'bw-cards-settings-remove'; setting.settingEl.dataset.cardSettingsLevel = 'header';
       const stop = (event: Event) => { event.preventDefault(); event.stopPropagation(); }; setting.settingEl.addEventListener('click', stop);
-      setting.addButton(control => control.setIcon('trash-2').setTooltip('移除模块及全部分类引用，保留笔记和图片；此操作不能通过隐藏列表恢复').onClick(() => {
+      setting.addButton(control => control.setIcon('trash-2').setTooltip('删除模块及全部分类引用，保留笔记和图片').onClick(() => {
         if (state.busy || this.removal) return;
         const baseline = readModuleDraft(this.api.getSnapshot().settings, state.key);
-        if (!this.api.supportsModuleDeletion) { this.setError(state, '请升级已启用的兼容卡片插件后再移除模块。已有模块和资料已保留。'); return; }
-        if (!baseline) { this.setError(state, '模块已移除，当前草稿仍保留。'); return; }
+        if (!this.api.supportsModuleDeletion || !this.api.supportsDashboardOnlyNavigation) { this.setError(state, '请升级已启用的兼容卡片插件后再删除模块。已有模块和资料已保留。'); return; }
+        if (!baseline) { this.setError(state, '模块已删除，当前草稿仍保留。'); return; }
         this.setBusy(state, true); this.setError(state, '');
         const host = (setting.settingEl.ownerDocument.body ?? setting.settingEl).createDiv();
         const root = createRoot(host); this.removal = { root, host, state };
         root.render(React.createElement(ModuleRemovalDialog, { api: this.api, manager: this.manager, baseline: structuredClone(baseline), close: () => {
           if (this.removal?.root !== root) return;
           this.removal = undefined; root.unmount(); host.remove(); this.setBusy(state, false);
-        }, removed: () => new Notice('模块已移除，作品笔记和图片已保留。') }));
+        }, removed: () => new Notice('模块已删除，作品笔记和图片已保留。', 4000) }));
       }));
-      setting.settingEl.querySelector('button')?.setAttribute('aria-label', `移除模块：${state.draft.title}`);
+      setting.settingEl.querySelector('button')?.setAttribute('aria-label', `删除模块：${state.draft.title}`);
       return () => setting.settingEl.removeEventListener('click', stop);
-    }, { aliases: ['移除模块', '垃圾桶', '保留作品'] }));
+    }, { aliases: ['删除模块', '垃圾桶', '保留作品'] }));
     return rows;
   }
   private bindField(state: EditorState, field: string, control: DropdownComponent | TextComponent) { state.fields.set(field, { setValue: value => control.setValue(String(value)) }); }
@@ -348,23 +427,13 @@ export class CardsSettingsController {
       }));
     }, { desc: DIRECTORY_DESCRIPTION, aliases: ['作品文件夹', '保存目录'] }));
     const group = (items: CardSettingRow[]): CardSettingItem => ({ type: 'group', cls: 'bw-cards-settings-native-group', items });
-    const settings = this.api.getSnapshot().settings, hidden = new Set(settings.hiddenModuleIds ?? []);
-    const defaults = ['book', 'film'].filter(id => !hidden.has(id) && !settings.deletedModuleIds?.includes(id));
+    const settings = this.api.getSnapshot().settings;
+    const defaults = ['book', 'film'].filter(id => !settings.deletedModuleIds?.includes(id));
     if (defaults.length) definitions.push(group(defaults.flatMap(id => this.editorRows(this.editor(id)))));
     definitions.push(group(this.editorRows(this.editor('creator:add-module', 'add-module'))));
     definitions.push(group(this.editorRows(this.editor('creator:add-showcase', 'add-showcase'))));
-    for (const module of settings.customModules) if (!hidden.has(module.id) && !settings.deletedModuleIds?.includes(module.id)) definitions.push(group(this.editorRows(this.editor(module.id))));
-    const removed = cardModuleChoices(settings, true).filter(module => hidden.has(module.id));
-    if (removed.length) definitions.push(group(removed.map(module => this.row(`已隐藏模块（旧版） · 恢复${module.label}`, 'removed', setting => {
-      const state = this.editor(module.id);
-      setting.setName(module.label).setDesc('恢复模块，沿用原有作品、外观及顺序。').addButton(control => control.setButtonText('恢复').onClick(async () => {
-        if (state.busy) return; this.setBusy(state, true);
-        try { await setModuleHidden(this.api, module.id, false); }
-        catch (failure) { new Notice(failure instanceof Error ? failure.message : String(failure)); }
-        finally { this.setBusy(state, false); }
-      }));
-    }, { aliases: ['恢复模块', module.label] }))));
-    const available = cardModuleChoices(settings);
+    for (const module of settings.customModules) if (!settings.deletedModuleIds?.includes(module.id)) definitions.push(group(this.editorRows(this.editor(module.id))));
+    const available = cardModuleChoices(settings, true);
     for (const id of this.selected) if (!available.some(module => module.id === id)) this.selected.delete(id);
     const choices = available.map(module => this.row(`笔记代码块生成 · ${module.label}`, 'code', setting => {
       setting.setName(module.label).addToggle(control => { control.toggleEl.setAttribute('aria-label', module.label); control.setValue(this.selected.has(module.id)).onChange(value => {

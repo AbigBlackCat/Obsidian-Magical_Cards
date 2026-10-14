@@ -18,6 +18,7 @@ export interface OnboardingJournal {
   version: 1; rootFolder: string; status: 'pending' | 'complete' | 'skipped';
   items: StarterItem[]; defaultsBefore: Partial<CardsSettings>; defaultsDone: boolean;
   guideId: string; guidePath: string; guideCreated: boolean; helpOpened: boolean;
+  demoDashboardId?: string; demoDashboardDone?: boolean;
 }
 export interface CardsPluginData extends Record<string, unknown> {
   rootFolder: string; installationOrigin?: 'fresh' | 'legacy'; legacyCardsMigration?: boolean;
@@ -121,6 +122,7 @@ function journalValid(value: unknown, rootFolder: string): value is OnboardingJo
   const uuid=(id:unknown):id is string=>typeof id==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id);
   if (!record(value) || value.version !== 1 || value.rootFolder !== rootFolder || !['pending', 'complete', 'skipped'].includes(String(value.status)) || !Array.isArray(value.items) || !record(value.defaultsBefore) || !uuid(value.guideId) || typeof value.guidePath !== 'string' || !validFolder(value.guidePath) || normalizePath(value.guidePath)!==value.guidePath || !value.guidePath.startsWith(`${rootFolder}/`)) return false;
   if(!['defaultsDone','guideCreated','helpOpened'].every(key=>typeof value[key]==='boolean'))return false;
+  if (value.demoDashboardId !== undefined && (!uuid(value.demoDashboardId) || typeof value.demoDashboardDone !== 'boolean') || value.demoDashboardDone !== undefined && value.demoDashboardId === undefined) return false;
   try{validateCardsPatch(value.defaultsBefore);}catch{return false;}
   const assets=value.status==='skipped'?[]:value.items.length===STARTER_ASSETS.length?STARTER_ASSETS:value.items.length===8?[...STARTER_ASSETS,...RETIRED_STARTER_ASSETS]:undefined;
   if(!assets||value.items.length!==assets.length)return false;
@@ -183,7 +185,7 @@ export class CardsOnboarding {
     if (!journal && this.options.data().firstRunIntent && this.options.data().firstRunIntent!.rootFolder !== rootFolder) return;
     if (journal && !journalValid(journal, rootFolder)) throw new Error('首次展示进度格式无效，未重新导入或覆盖笔记。');
     if (!journal) {
-      const capable=typeof api.getInitializationInfo==='function'&&typeof api.saveStarterWork==='function';
+      const capable=typeof api.getInitializationInfo==='function'&&typeof api.saveStarterWork==='function'&&api.supportsDashboardOnlyNavigation===true;
       const info=capable?api.getInitializationInfo():{hadExistingFiles:true,hadConfig:true,usedLegacySettings:true}, snapshot = api.getSnapshot();
       const data = this.options.data(), intent = data.firstRunIntent;
       let resumed = false;
@@ -195,12 +197,22 @@ export class CardsOnboarding {
       const fresh = data.installationOrigin === 'fresh' && capable && (intent ? resumed : !info.hadExistingFiles && !info.hadConfig) && !info.usedLegacySettings && !snapshot.entities.length && !snapshot.error;
       const guideId = crypto.randomUUID();
       journal = { version: 1, rootFolder, status: fresh ? 'pending' : 'skipped', items: fresh ? makeItems(rootFolder) : [], defaultsBefore: fresh && intent?.rootFolder === rootFolder ? intent.defaultsBefore : starterSettingsPatch(snapshot.settings), defaultsDone: !fresh,
-        guideId, guidePath: this.guidePath(rootFolder, guideId), guideCreated: false, helpOpened: false };
+        guideId, guidePath: this.guidePath(rootFolder, guideId), guideCreated: false, helpOpened: false, ...(fresh ? { demoDashboardId: crypto.randomUUID(), demoDashboardDone: false } : {}) };
       await this.write(journal);
     }
     if(journal.status==='skipped')return;
     if (journal.status === 'pending') {
       if(typeof api.getInitializationInfo!=='function'||typeof api.saveStarterWork!=='function')throw new Error('当前卡片库版本暂不支持首次导入，请更新提供此卡片库的插件后重试；进度和原作品已保留。');
+      if (journal.demoDashboardId && !journal.demoDashboardDone) {
+        if (!api.supportsDashboardOnlyNavigation) throw new Error('当前卡片库版本暂不支持 Dashboard 首次展示，请升级兼容卡片插件后重试；进度和原资料已保留。');
+        const dashboardId = journal.demoDashboardId, settings = api.getSnapshot().settings, boards = settings.dashboards ?? [];
+        if (!boards.some(board => board.id === dashboardId)) {
+          assertActive();
+          await api.saveSettings({ dashboards: [...boards, { id: dashboardId, title: '示例', moduleIds: ['book', 'film'].filter(id => !settings.deletedModuleIds?.includes(id)) }] }, assertActive);
+          assertActive();
+        }
+        journal = { ...journal, demoDashboardDone: true }; await this.write(journal);
+      }
       if (!journal.defaultsDone) {
         const current = starterSettingsPatch(api.getSnapshot().settings), desired = starterSettingsPatch(freshCardsSettings());
         // A user edit between failed attempts always takes precedence over starter defaults.

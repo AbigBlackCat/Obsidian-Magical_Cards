@@ -5,13 +5,14 @@ import { createShowcaseService } from './showcase';
 import { validateWork } from './domain';
 import { entityFields,entityFromFields,replaceManaged,sourceMarkdown,validFolder,safeFilePart,contentRevision,coverPath,prepareNativeWrite } from './persistence';
 import { orderedWorks,readWorkOrder,reconcileWorkOrder,moveWorkOrder } from './work-order';
-import { CARD_SETTING_KEYS,readCardsSettings,validateCardsPatch } from './settings';
+import { CARD_SETTING_KEYS,readCardsSettings,validateCardsPatch,dashboardNavigationPatch } from './settings';
 import { type Book,type Film,type Work,type CardsAPI,type CardsSnapshot,type CardsSettings,type WorkKind,type WorkOrder,type WorkProperties,type WorkPropertyValues,type CardLayoutPatch,type CardLayoutResult,type CoverTemplate,type ShowcaseAPI } from './types';
 const FOLDERS={book:'书籍',film:'观影'};
 const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 export class CardsStore implements CardsAPI {
  readonly showcase:ShowcaseAPI;
  readonly supportsDashboards=true;
+ readonly supportsDashboardOnlyNavigation=true;
  readonly supportsStandaloneModuleVisibility=true;
  readonly supportsModuleDeletion=true;
  private snapshot:CardsSnapshot;
@@ -72,10 +73,12 @@ export class CardsStore implements CardsAPI {
    let legacy:unknown=this.migrationSettings;
    if(legacy===undefined){try{const adapter=this.app.vault.adapter;const old=normalizePath(`${this.app.vault.configDir}/plugins/barry-workbench/data.json`);if(adapter&&await adapter.exists(old)){const candidate:unknown=JSON.parse(await adapter.read(old));if(record(candidate)&&typeof candidate.rootFolder==='string'&&validFolder(candidate.rootFolder)&&normalizePath(candidate.rootFolder)===this.root())legacy=candidate;}}catch{throw new Error('已有工作台配置未能读取，未建立新配置，请检查后重试。');}}
    this.initializationInfo.usedLegacySettings=legacy!==undefined;
-   const settings=readCardsSettings(legacy);this.active();
+   const previous=readCardsSettings(legacy),settings={...previous,...dashboardNavigationPatch(previous)};this.active();
    await this.app.vault.create(path,`---\n${stringifyYaml({bw_view:'cards-config',bw_card_settings:settings})}---\n\n# 卡片配置\n\n书籍、影视和收藏模块由两个插件共享。旧插件配置与作品笔记均保留。\n`);
   }
   this.active();await this.refresh();
+  const navigation=dashboardNavigationPatch(this.snapshot.settings);
+  if(navigation){await this.saveSettings(navigation);this.active();}
  }
  async refresh(assertOwner:()=>void=()=>{}){
   if(this.destroyed)return;assertOwner();

@@ -1,42 +1,71 @@
-import React, { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { CardsAPI, CardsDashboard } from './types';
 import type { WorkPropertiesManager } from './WorkPropertiesSessions';
-import CardsSurface, { flushDashboardEdits } from './CardsSurface';
+import CardsSurface, { assertCardModuleRemovalSettled, claimDashboardTabDraft, flushDashboardEdits, readDashboardTabDraft, registerDashboardTabDraftView, retainDashboardTabDraft, type DashboardTabDraft } from './CardsSurface';
 export { flushDashboardEdits } from './CardsSurface';
-import { ALL_DASHBOARD_ID, deleteDashboard, saveDashboard } from './dashboards';
-import { cardModuleChoices } from './module-choice';
-import { Field, Icon } from './primitives';
-import { readModuleDraft, setStandaloneModuleHidden, type CardModuleDraft } from './settings';
-import ModuleRemovalDialog from './ModuleRemovalDialog';
+import { deleteDashboard, saveDashboard, saveDashboardTabOrder } from './dashboards';
+import { movedModule } from './ModuleList';
+import { Field } from './primitives';
+import ActionMenu from './ActionMenu';
 
 interface Props {
   api: CardsAPI;
   manager: WorkPropertiesManager;
   dashboardId: string;
+  viewId?: string;
   onDashboardChange: (id: string) => void;
 }
-interface DashboardEditorState { draft: CardsDashboard; baseline: CardsDashboard | null; }
+interface DashboardEditorState { draft: CardsDashboard; baseline: CardsDashboard | null; remove?: boolean; }
+interface TabPointer { id: number; dashboard: string; x: number; moved: boolean; handle: HTMLButtonElement; baseline: CardsDashboard[]; }
 
-export default function CardsDashboardView({ api, manager, dashboardId, onDashboardChange }: Props) {
+export default function CardsDashboardView({ api, manager, dashboardId, viewId, onDashboardChange }: Props) {
   const snapshot = useSyncExternalStore(api.subscribe, api.getSnapshot, api.getSnapshot);
   const boards = snapshot.settings.dashboards ?? [];
-  const existing = api.supportsDashboards ? boards.find(board => board.id === dashboardId) : undefined;
+  const supported = Boolean(api.supportsDashboardOnlyNavigation);
+  const existing = boards.find(board => board.id === dashboardId);
   const retained = useRef<CardsDashboard | undefined>(undefined);
   if (existing) retained.current = existing;
-  const dashboard = dashboardId === ALL_DASHBOARD_ID ? undefined : existing ?? (retained.current?.id === dashboardId ? retained.current : undefined);
+  const dashboard = existing ?? (retained.current?.id === dashboardId ? retained.current : undefined) ?? boards[0];
+  const selected = dashboard?.id ?? '';
+  const replacement = existing?.id ?? boards[0]?.id ?? '';
+  const panelId = useId(), draftOwner = viewId ?? panelId;
   const [editing, setEditing] = useState<DashboardEditorState | null>(null);
-  const [removal, setRemoval] = useState<CardModuleDraft | null>(null);
+  const [tabDraft, setTabDraft] = useState<DashboardTabDraft | null>(() => readDashboardTabDraft(api, draftOwner) ?? null);
+  const [before, setBefore] = useState<string | null | undefined>(undefined);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
-  const pending = useRef(false);
-  const mounted = useRef(true);
-  const composing = useRef(new Set<EventTarget>());
-  const panelId = useId();
-  const surface = useRef<HTMLElement>(null);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
-  const execute = async (action: () => void | Promise<void>) => {
+  const pending = useRef(false), mounted = useRef(true), composing = useRef(new Set<EventTarget>());
+  const pointer = useRef<TabPointer | null>(null), dropTarget = useRef<string | null>(null), suppressClick = useRef(false);
+  const clickReset = useRef<{ owner: Window; timer: number } | null>(null);
+  const restoreTabFocus = useRef<HTMLButtonElement | null>(null);
+  const surface = useRef<HTMLElement>(null), wrapper = useRef<HTMLDivElement>(null), tabList = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    mounted.current = true;
+    const release = registerDashboardTabDraftView(api, draftOwner);
+    setTabDraft(claimDashboardTabDraft(api, draftOwner));
+    return () => {
+      mounted.current = false; release();
+      if (clickReset.current) clickReset.current.owner.clearTimeout(clickReset.current.timer);
+      clickReset.current = null;
+      const current = pointer.current; pointer.current = null;
+      if (current?.handle.hasPointerCapture(current.id)) current.handle.releasePointerCapture(current.id);
+    };
+  }, [api, draftOwner]);
+  useEffect(() => {
+    const owner = wrapper.current?.ownerDocument.defaultView;
+    if (!status || !owner) return;
+    const timer = owner.setTimeout(() => setStatus(''), 4000);
+    return () => owner.clearTimeout(timer);
+  }, [status, selected]);
+  useLayoutEffect(() => {
+    if (busy || !restoreTabFocus.current) return;
+    const handle = restoreTabFocus.current; restoreTabFocus.current = null;
+    if (handle.isConnected && handle.ownerDocument.activeElement === handle.ownerDocument.body) handle.focus({ preventScroll: true });
+  }, [busy, boards]);
+  const execute = async (action: () => void | Promise<void>, retryTabs = false) => {
     if (pending.current) return;
+    if (tabDraft && !retryTabs) { setError('Dashboard 排序草稿尚未保存，请先重试或放弃草稿。'); return; }
     if (composing.current.size) { setError('请先结束输入法输入，当前草稿已保留。'); return; }
     pending.current = true; setBusy(true); setError(''); setStatus('');
     try { await flushDashboardEdits(api, manager, surface.current ?? undefined); if (composing.current.size) throw new Error('请先结束输入法输入，当前草稿已保留。'); if (mounted.current) await action(); }
@@ -44,104 +73,127 @@ export default function CardsDashboardView({ api, manager, dashboardId, onDashbo
     finally { pending.current = false; if (mounted.current) setBusy(false); }
   };
   const select = (id: string) => { if (id !== dashboardId) void execute(() => onDashboardChange(id)); };
-  useEffect(() => {
-    if (!snapshot.loading && dashboardId !== ALL_DASHBOARD_ID && !existing) select(ALL_DASHBOARD_ID);
-  }, [dashboardId, Boolean(existing), snapshot.loading]);
-  const openEditor = (board?: CardsDashboard) => {
-    if (!api.supportsDashboards) { setError('请升级已启用的兼容卡片插件并重启笔记库，再使用 Dashboard。已有模块和资料已保留。'); return; }
-    void execute(() => setEditing({ draft: board ? structuredClone(board) : { id: crypto.randomUUID(), title: '', moduleIds: [] }, baseline: board ? structuredClone(board) : null }));
+  useEffect(() => { if (!snapshot.loading && dashboardId !== replacement) select(replacement); }, [dashboardId, replacement, snapshot.loading]);
+  const openEditor = (board?: CardsDashboard, remove = false) => {
+    if (!supported) { setError('请升级已启用的兼容卡片插件并重启笔记库，再管理 Dashboard。已有模块和资料已保留。'); return; }
+    void execute(() => setEditing({ draft: board ? structuredClone(board) : { id: crypto.randomUUID(), title: '', moduleIds: [] }, baseline: board ? structuredClone(board) : null, remove }));
+  };
+  const persistTabs = (draft: DashboardTabDraft, keyboardHandle?: HTMLButtonElement) => {
+    if (!supported || pending.current) return;
+    restoreTabFocus.current = keyboardHandle ?? null;
+    retainDashboardTabDraft(api, draftOwner, draft); setTabDraft(draft);
+    void execute(async () => {
+      await saveDashboardTabOrder(api, draft.baseline, draft.order);
+      retainDashboardTabDraft(api, draftOwner, null);
+      if (mounted.current) { setTabDraft(claimDashboardTabDraft(api, draftOwner)); setStatus('Dashboard 顺序已保存。'); }
+    }, true);
   };
   const keyboard = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (event.nativeEvent.isComposing || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
+    if (event.altKey && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+      if (!supported || busy || tabDraft) return;
+      const target = index + (event.key === 'ArrowRight' ? 1 : -1);
+      if (target < 0 || target >= boards.length) return;
+      const order = boards.map(board => board.id), id = order[index];
+      [order[index], order[target]] = [order[target], id];
+      persistTabs({ baseline: structuredClone(boards), order }, event.currentTarget); return;
+    }
     const tabs = Array.from(event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? []);
     const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
-    tabs[next]?.focus();
+    tabs[next]?.focus({ preventScroll: true });
   };
-  const selected = dashboard?.id ?? ALL_DASHBOARD_ID;
   const blockComposition = (event: React.PointerEvent) => { if (composing.current.size) { event.preventDefault(); setError('请先结束输入法输入，当前草稿已保留。'); } };
-  const openRemoval = (id: string) => {
-    if (!api.supportsModuleDeletion) { setError('请升级已启用的兼容卡片插件后再移除模块。已有模块和资料已保留。'); return; }
-    void execute(() => {
-      const current = readModuleDraft(api.getSnapshot().settings, id);
-      if (!current) throw new Error('模块已改变，请重新载入后重试。');
-      setRemoval(structuredClone(current));
-    });
+  const releasePointer = () => {
+    const current = pointer.current; pointer.current = null;
+    if (current?.handle.hasPointerCapture(current.id)) current.handle.releasePointerCapture(current.id);
+    setBefore(undefined);
   };
-  const removalAction = (id: string) => <button type="button" className="bw-module-visibility-action" data-module-action="delete" data-module-collection={id} disabled={busy || snapshot.loading} onPointerDownCapture={blockComposition} onClick={() => openRemoval(id)}>移除模块</button>;
-  const headerAction = (id: string) => <><button type="button" className="bw-module-visibility-action" data-module-action={dashboard ? 'remove' : 'hide'} data-module-collection={id} disabled={busy || snapshot.loading} onPointerDownCapture={blockComposition} onClick={() => { void execute(async () => {
-    if (dashboard) await saveDashboard(api, { ...dashboard, moduleIds: dashboard.moduleIds.filter(moduleId => moduleId !== id) }, dashboard);
-    else await setStandaloneModuleHidden(api, id, true);
-    if (mounted.current) setStatus(dashboard ? '已从此 Dashboard 移出，可在“编辑 Dashboard”重新加入。' : '已隐藏，可在“全部”→“已隐藏模块”恢复。');
-  }); }}>{dashboard ? '移出此 Dashboard' : '隐藏模块'}</button>{removalAction(id)}</>;
-  const hidden = cardModuleChoices(snapshot.settings, true).filter(choice => snapshot.settings.hiddenModuleIds?.includes(choice.id) || snapshot.settings.standaloneHiddenModuleIds?.includes(choice.id));
-  const tabs = [{ id: ALL_DASHBOARD_ID, title: '全部' }, ...(api.supportsDashboards ? boards : [])];
-  if (dashboard && !existing) tabs.push({ id: dashboard.id, title: `${dashboard.title}（已删除）` });
-  return <div className="bw-app bw-dashboard-view" onCompositionStartCapture={event => composing.current.add(event.target)} onCompositionEndCapture={event => composing.current.delete(event.target)}>
+  const startDrag = (event: React.PointerEvent<HTMLButtonElement>, id: string) => {
+    suppressClick.current = false;
+    if (!supported || busy || pending.current || tabDraft || composing.current.size || event.button !== 0 || !event.isPrimary || !boards.some(board => board.id === id)) return;
+    pointer.current = { id: event.pointerId, dashboard: id, x: event.clientX, moved: false, handle: event.currentTarget, baseline: structuredClone(boards) };
+    dropTarget.current = id; event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const moveDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const current = pointer.current;
+    if (!current || current.id !== event.pointerId || (!current.moved && Math.abs(event.clientX - current.x) < 6)) return;
+    current.moved = true; event.preventDefault();
+    const targets = Array.from(tabList.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? []);
+    const next = targets.find(tab => { const rect = tab.getBoundingClientRect(); return event.clientX < rect.left + rect.width / 2; })?.dataset.dashboardId ?? null;
+    dropTarget.current = next; setBefore(next);
+    const container = tabList.current;
+    if (container) { const rect = container.getBoundingClientRect(); if (event.clientX > rect.right - 32) container.scrollBy(16, 0); else if (event.clientX < rect.left + 32) container.scrollBy(-16, 0); }
+  };
+  const finishDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const current = pointer.current; if (!current || current.id !== event.pointerId) return;
+    releasePointer();
+    if (!current.moved) return;
+    suppressClick.current = true;
+    const owner = current.handle.ownerDocument?.defaultView;
+    if (clickReset.current) clickReset.current.owner.clearTimeout(clickReset.current.timer);
+    if (owner) clickReset.current = { owner, timer: owner.setTimeout(() => { suppressClick.current = false; clickReset.current = null; }, 0) };
+    const order = movedModule(current.baseline.map(board => board.id), current.dashboard, dropTarget.current);
+    if (order.some((id, index) => id !== current.baseline[index].id)) persistTabs({ baseline: current.baseline, order });
+  };
+  const tabs = [...boards];
+  if (dashboard && !boards.some(board => board.id === dashboard.id)) tabs.push({ ...dashboard, title: `${dashboard.title}（已删除）` });
+  return <div ref={wrapper} className="bw-app bw-dashboard-view" onCompositionStartCapture={event => composing.current.add(event.target)} onCompositionEndCapture={event => composing.current.delete(event.target)}>
     <header className="bw-dashboard-toolbar" onPointerDownCapture={blockComposition}>
-      <div className="bw-dashboard-tabs" role="tablist" aria-label="Dashboard">
-        {tabs.map((board, index) => <button type="button" key={board.id} role="tab" id={`${panelId}-${board.id}`} aria-selected={selected === board.id} aria-controls={panelId} tabIndex={selected === board.id ? 0 : -1} disabled={busy} onKeyDown={event => keyboard(event, index)} onClick={() => select(board.id)}>{board.title}</button>)}
+      <div ref={tabList} className="bw-dashboard-tabs" role="tablist" aria-label="Dashboard">
+        {tabs.map((board, index) => <button type="button" key={board.id} role="tab" id={`${panelId}-${board.id}`} data-dashboard-id={board.id} data-drop-before={before === board.id ? 'true' : undefined} data-drop-after={before === null && index === tabs.length - 1 ? 'true' : undefined} aria-selected={selected === board.id} aria-controls={panelId} tabIndex={selected === board.id ? 0 : -1} title={`${board.title} · 拖动或 Alt / Option + ← / → 调整顺序`} disabled={busy} onKeyDown={event => { if (event.key === 'Escape' && pointer.current) { event.preventDefault(); releasePointer(); } else keyboard(event, index); }} onPointerDown={event => startDrag(event, board.id)} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={releasePointer} onLostPointerCapture={() => { if (pointer.current) releasePointer(); }} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return; } select(board.id); }}>{board.title}</button>)}
       </div>
-      <button type="button" className="bw-icon-button" aria-label="新建 Dashboard" title="新建 Dashboard" disabled={busy || snapshot.loading} onClick={() => openEditor()}><Icon name="plus" /></button>
-      {existing && <button type="button" disabled={busy} onClick={() => openEditor(existing)}>编辑 Dashboard</button>}
+      <ActionMenu label="Dashboard 操作" disabled={busy || snapshot.loading || !supported || Boolean(tabDraft)} actions={[
+        { id: 'create', label: '新建 Dashboard', icon: 'plus', select: () => openEditor() },
+        { id: 'rename', label: '重命名 Dashboard', icon: 'settings', disabled: !existing, select: () => openEditor(existing) },
+        { id: 'delete', label: '删除 Dashboard', icon: 'trash', danger: true, disabled: !existing, select: () => openEditor(existing, true) },
+      ]} />
     </header>
+    {!supported && <p className="bw-dashboard-read-only" role="status">当前共享运行时仅支持只读分类。请升级已启用的兼容卡片插件后再管理 Dashboard；已有模块、资料和草稿已保留。</p>}
     {error && <p className="bw-dashboard-error" role="alert">{error}</p>}
     {status && <p className="bw-dashboard-status" role="status">{status}</p>}
-    <section ref={surface} id={panelId} role="tabpanel" aria-labelledby={`${panelId}-${selected}`} aria-busy={busy} inert={busy}>
-      <CardsSurface key={selected} api={api} manager={manager} dashboard={dashboard} headerAction={headerAction} />
-    </section>
-    {selected === ALL_DASHBOARD_ID && hidden.length > 0 && <details className="bw-hidden-modules" data-hidden-modules><summary>已隐藏模块（{hidden.length}）</summary><p>恢复后重新显示，模块、卡片资料和原顺序都会保留。</p><ul>{hidden.map(choice => {
-      const legacyHidden = snapshot.settings.hiddenModuleIds?.includes(choice.id);
-      const alsoStandalone = snapshot.settings.standaloneHiddenModuleIds?.includes(choice.id);
-      return <li key={choice.id} data-hidden-module={choice.id}><span>{choice.label}</span>{legacyHidden ? <span className="bw-hidden-module-help">{alsoStandalone ? '此模块按旧版规则隐藏，请先前往设置恢复，再在此处恢复模块。' : '此模块按旧版规则隐藏，请前往设置恢复。'}</span> : <button type="button" data-module-action="restore" data-module-collection={choice.id} disabled={busy} onPointerDownCapture={blockComposition} onClick={() => { void execute(async () => { await setStandaloneModuleHidden(api, choice.id, false); if (mounted.current) setStatus('已恢复模块，将按原顺序显示。'); }); }}>恢复模块</button>}{removalAction(choice.id)}</li>;
-    })}</ul></details>}
-    {editing && <DashboardEditor api={api} manager={manager} state={editing} close={() => setEditing(null)} />}
-    {removal && <ModuleRemovalDialog api={api} manager={manager} baseline={removal} close={() => setRemoval(null)} removed={() => setStatus('模块已移除，作品笔记和图片已保留。')} />}
+    {tabDraft && <div className="bw-dashboard-tab-retry"><p>Dashboard 顺序尚未保存，已恢复原位置。草稿可重试或放弃。</p><button type="button" disabled={busy} onClick={() => persistTabs(tabDraft)}>重试 Dashboard 排序</button><button type="button" disabled={busy} onClick={() => { retainDashboardTabDraft(api, draftOwner, null); setTabDraft(claimDashboardTabDraft(api, draftOwner)); setError(''); }}>放弃 Dashboard 排序</button></div>}
+    {dashboard && !existing && dashboard.id !== replacement && <button type="button" disabled={busy} onClick={() => select(replacement)}>切换到可用 Dashboard</button>}
+    {dashboard ? <section ref={surface} id={panelId} role="tabpanel" aria-labelledby={`${panelId}-${selected}`} aria-busy={busy} inert={busy}>
+      <CardsSurface key={selected} api={api} manager={manager} dashboard={dashboard} />
+    </section> : <section ref={surface} id={panelId} className="bw-dashboard-empty" role="region" aria-label="Dashboard 起步" aria-busy={busy}><p>{snapshot.loading ? '正在读取 Dashboard…' : '还没有 Dashboard。新建分类后，可在插件设置中将已有卡片模块加入分类。'}</p>{supported && !snapshot.loading && <button type="button" disabled={busy || Boolean(tabDraft)} onPointerDownCapture={blockComposition} onClick={() => openEditor()}>新建 Dashboard</button>}</section>}
+    {editing && <DashboardEditor api={api} manager={manager} state={editing} close={id => { setEditing(null); if (id) { onDashboardChange(id); setStatus('Dashboard 已保存。请在插件设置中选择模块加入此分类。'); } else if (id === '') { const first = api.getSnapshot().settings.dashboards?.[0]?.id ?? ''; onDashboardChange(first); setStatus('Dashboard 已删除，模块、笔记和图片已保留。'); } }} />}
   </div>;
 }
 
-function DashboardEditor({ api, manager, state, close }: { api: CardsAPI; manager: WorkPropertiesManager; state: DashboardEditorState; close: () => void }) {
-  const snapshot = useSyncExternalStore(api.subscribe, api.getSnapshot, api.getSnapshot);
+export function DashboardEditor({ api, manager, state, close }: { api: CardsAPI; manager: WorkPropertiesManager; state: DashboardEditorState; close: (id?: string) => void }) {
   const [draft, setDraft] = useState(state.draft);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const pending = useRef(false);
-  const dialog = useRef<HTMLDialogElement>(null);
-  const mounted = useRef(true);
+  const [error, setError] = useState(''), [busy, setBusy] = useState(false);
+  const pending = useRef(false), composing = useRef(false), mounted = useRef(true), dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => {
     mounted.current = true;
     const element = dialog.current, trigger = element?.ownerDocument.activeElement as HTMLElement | null;
-    element?.showModal(); element?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
+    element?.showModal(); element?.querySelector<HTMLElement>(state.remove ? 'button' : 'input')?.focus({ preventScroll: true });
     return () => { mounted.current = false; element?.close(); if (trigger?.isConnected) trigger.focus({ preventScroll: true }); };
   }, []);
-  const settings = snapshot.settings, choices = cardModuleChoices(settings, true);
-  for (const id of draft.moduleIds) if (!choices.some(choice => choice.id === id)) choices.push({ id, label: `未找到模块：${id}` });
-  const submit = async (remove = false) => {
+  const submit = async () => {
     if (pending.current) return;
+    if (composing.current) { setError('请先结束输入法输入，名称草稿已保留。'); return; }
     pending.current = true; setBusy(true); setError('');
     try {
+      if (!api.supportsDashboardOnlyNavigation) throw new Error('请升级兼容卡片插件后再管理 Dashboard。草稿已保留。');
+      if (state.remove) assertCardModuleRemovalSettled(api);
       await flushDashboardEdits(api, manager);
-      if (remove && state.baseline) await deleteDashboard(api, state.baseline);
-      else await saveDashboard(api, draft, state.baseline);
-      if (mounted.current) close();
+      if (!mounted.current) return;
+      if (composing.current) throw new Error('请先结束输入法输入，名称草稿已保留。');
+      if (state.remove) assertCardModuleRemovalSettled(api);
+      if (state.remove && state.baseline) { await deleteDashboard(api, state.baseline); if (mounted.current) close(''); }
+      else { await saveDashboard(api, draft, state.baseline); if (mounted.current) close(draft.id); }
     } catch (failure) { if (mounted.current) setError(failure instanceof Error ? failure.message : '保存未完成，草稿已保留，请重试。'); }
     finally { pending.current = false; if (mounted.current) setBusy(false); }
   };
-  return <dialog ref={dialog} className="bw-editor bw-editor-dialog bw-dashboard-editor" aria-labelledby={titleId} onKeyDown={event => event.stopPropagation()} onCancel={event => { event.preventDefault(); if (!busy) close(); }}>
-    <header className="bw-section-head"><h2 id={titleId}>{state.baseline ? '编辑' : '新建'} Dashboard</h2><button type="button" disabled={busy} onClick={close}>关闭</button></header>
+  return <dialog ref={dialog} className="bw-editor bw-editor-dialog bw-dashboard-editor" aria-labelledby={titleId} onCompositionStartCapture={() => { composing.current = true; }} onCompositionEndCapture={() => { composing.current = false; }} onKeyDown={event => event.stopPropagation()} onCancel={event => { event.preventDefault(); if (!busy) close(); }}>
+    <header className="bw-section-head"><h2 id={titleId}>{state.remove ? '删除' : state.baseline ? '重命名' : '新建'} Dashboard</h2><button type="button" disabled={busy} onClick={() => close()}>关闭</button></header>
     <form onSubmit={event => { event.preventDefault(); void submit(); }}><fieldset disabled={busy}>
-      <Field label="Dashboard 名称"><input required maxLength={180} value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} /></Field>
-      <p className="bw-dashboard-help">选择要展示的已有模块。只有主动勾选，才会同时出现在多个 Dashboard；笔记和图片共用一份。</p>
-      <div className="bw-dashboard-choices">{choices.map(choice => {
-        const other = (settings.dashboards ?? []).filter(board => board.id !== draft.id && board.moduleIds.includes(choice.id)).map(board => board.title);
-        const hidden = settings.hiddenModuleIds?.includes(choice.id) || settings.standaloneHiddenModuleIds?.includes(choice.id);
-        return <label key={choice.id} className="bw-dashboard-choice"><input type="checkbox" checked={draft.moduleIds.includes(choice.id)} onChange={event => { const checked = event.target.checked; setDraft(current => ({ ...current, moduleIds: checked ? [...current.moduleIds, choice.id] : current.moduleIds.filter(id => id !== choice.id) })); }} /><span><span>{choice.label}</span>{(other.length > 0 || hidden) && <small>{[other.length > 0 ? `已加入：${other.join('、')}` : '', hidden ? '已隐藏，恢复后显示' : ''].filter(Boolean).join('；')}</small>}</span></label>;
-      })}</div>
+      {state.remove ? <p>确认删除“{draft.title}”？仅删除此分类，模块、笔记和图片都会保留。</p> : <><Field label="Dashboard 名称"><input required maxLength={180} value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} /></Field><p className="bw-dashboard-help">模块分类在插件设置中调整。新建 Dashboard 不会自动加入模块。</p></>}
       {error && <p className="bw-dashboard-error" role="alert">{error}</p>}
-      <footer className="bw-dashboard-editor-actions"><button type="button" onClick={close}>取消</button><button type="submit" className="bw-primary">{busy ? '保存中…' : '保存 Dashboard'}</button></footer>
-      {state.baseline && <div className="bw-dashboard-delete">{confirmDelete ? <><p>仅删除此分类，模块、笔记和图片都会保留。</p><button type="button" onClick={() => setConfirmDelete(false)}>取消删除</button><button type="button" className="bw-danger" onClick={() => { void submit(true); }}>确认删除 Dashboard</button></> : <button type="button" onClick={() => setConfirmDelete(true)}><Icon name="trash" />删除 Dashboard</button>}</div>}
+      <footer className="bw-dashboard-editor-actions"><button type="button" onClick={() => close()}>取消</button><button type="submit" className={state.remove ? 'bw-danger' : 'bw-primary'}>{busy ? '保存中…' : state.remove ? '确认删除 Dashboard' : '保存 Dashboard'}</button></footer>
     </fieldset></form>
   </dialog>;
 }

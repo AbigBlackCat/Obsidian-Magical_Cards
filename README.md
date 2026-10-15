@@ -44,6 +44,10 @@ The Chinese instructions below cover all settings, screenshots and the author's 
 <img width="600" height="480" alt="8小" src="https://github.com/user-attachments/assets/981b0095-e2e8-470d-98eb-caafe2137bfa" />
 </p>
 
+| 番剧游戏演示 | 明星小卡演示 |
+| --- | --- |
+| ![原生笔记中的封面流轮播](<img width="600" height="480" alt="番剧游戏" src="https://github.com/user-attachments/assets/676f7587-8d7d-4153-8ef1-5e786c76e47c" />) | ![原生笔记中的黑胶专辑架，仅展示封套](<img width="600" height="480" alt="8小" src="https://github.com/user-attachments/assets/981b0095-e2e8-470d-98eb-caafe2137bfa" />) |
+
 
 
 **已上传Obsidian社区，我会不定时维护和更新，欢迎体验插件，希望你喜欢～**

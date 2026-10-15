@@ -8,24 +8,7 @@ Magical Cards is a desktop Obsidian plugin for book, film, and image showcase ca
 
 Choose five layouts, organize modules into Dashboards, and edit summaries on the back of a card. Removing a module from a Dashboard changes that category only. Deleting a module preserves its notes and images. Works remain local Markdown notes; appearance and ordering are stored in the selected card directory. Remote covers load only from their image servers. The linked-note picker searches vault paths when invoked. Copy writes generated embed code only after a click, and pasting reads plain text from that paste event; the plugin does not monitor the clipboard or upload note contents.
 
-## Installation
-
-Requires **Obsidian desktop 1.11.4 or later**. In Settings → Community plugins → Browse, search for **Magical Cards**, install and enable it. [Community listing](https://community.obsidian.md/plugins/magical-cards).
-
-For manual installation:
-
-1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/latest).
-2. Put all three files in your vault's configuration folder under `plugins/magical-cards/`; the default path is `<vault>/.obsidian/plugins/magical-cards/`.
-3. Reload Obsidian and enable **Magical Cards** in Settings → Community plugins.
-
 ## Usage
-
-On first use in an empty card directory, the plugin creates three book cards, three film cards and an offline guide, then opens the guide. Existing collections and appearances are preserved; deleted examples are not recreated.
-
-1. Open the cards view with the purple stacked-card ribbon icon or the **打开卡片视图** (Open cards view) command. Browse by swiping, scrolling or using the arrow keys.
-2. Open a module's horizontal action menu to add a work, or flip a card to edit its summary. For an image collection, use **添加图片橱窗** (Add image showcase) in Settings and import selected images.
-3. Create Dashboards to group existing modules, then assign modules in Settings. There is no All tab. Removing a module from one Dashboard changes that category only. Deleting a module removes its configuration and all Dashboard references, while preserving its notes and images.
-4. To embed modules in a note, run **插入卡片模块** (Insert cards modules) and select existing modules. Settings also provides a code generator with a Copy button. Embeds reference the original collections rather than duplicating data.
 
 The Chinese instructions below cover all settings, screenshots and the author's development notes. The [full English guide](README_en.md) includes the same operations and the original interface labels. Desktop macOS has been tested; Windows has not been tested on physical hardware.
 
@@ -43,8 +26,16 @@ The Chinese instructions below cover all settings, screenshots and the author's 
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/issues">反馈问题</a>
 </p>
 
-**作者惯用卡片风格（该插件提供多种样式供选择）：**
+**阅读影视推荐卡片风格：**
 <img width="1509" height="947" alt="image" src="https://github.com/user-attachments/assets/b4a68687-3389-4eb4-8da3-5a91ffc45ca9" />
+
+**橱窗展示功能：明星小卡演示**
+<img width="506" height="480" alt="8小" src="https://github.com/user-attachments/assets/981b0095-e2e8-470d-98eb-caafe2137bfa" />
+
+
+
+
+
 
 **已上传Obsidian社区，我会不定时维护和更新，欢迎体验插件，希望你喜欢～**
 https://community.obsidian.md/plugins/magical-cards

@@ -26,7 +26,7 @@ The Chinese instructions below cover all settings, screenshots and the author's 
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/issues">反馈问题</a>
 </p>
 
-<p align="center">**阅读影视推荐卡片风格：**</p>
+<h2 align="center"><strong>阅读影视推荐卡片风格:</strong></h2>
 
 <p align="center">
  <img width="500" height="480" alt="阅读影视演示3秒" src="https://github.com/user-attachments/assets/cd1d7a3a-fed2-4612-ac7c-b4785c300218" />

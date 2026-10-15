@@ -27,7 +27,8 @@ The Chinese instructions below cover all settings, screenshots and the author's 
 </p>
 
 **阅读影视推荐卡片风格：**
-<img width="1509" height="947" alt="image" src="https://github.com/user-attachments/assets/b4a68687-3389-4eb4-8da3-5a91ffc45ca9" />
+<img width="790" height="720" alt="阅读影视演示3秒" src="https://github.com/user-attachments/assets/cd1d7a3a-fed2-4612-ac7c-b4785c300218" />
+
 
 **橱窗展示功能：明星小卡演示**
 <img width="506" height="480" alt="8小" src="https://github.com/user-attachments/assets/981b0095-e2e8-470d-98eb-caafe2137bfa" />

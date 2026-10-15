@@ -26,13 +26,19 @@ The Chinese instructions below cover all settings, screenshots and the author's 
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/issues">反馈问题</a>
 </p>
 
-**阅读影视推荐卡片风格：**
+<p align="center">**阅读影视推荐卡片风格：**</p>
 
 <p align="center">
- <img width="790" height="720" alt="阅读影视演示3秒" src="https://github.com/user-attachments/assets/cd1d7a3a-fed2-4612-ac7c-b4785c300218" />
+ <img width="500" height="480" alt="阅读影视演示3秒" src="https://github.com/user-attachments/assets/cd1d7a3a-fed2-4612-ac7c-b4785c300218" />
 </p>
 
-**橱窗展示功能：明星小卡演示**
+<p align="center">**番剧游戏dashboard演示**</p>
+
+<p align="center">
+<img width="500" height="480" alt="番剧游戏" src="https://github.com/user-attachments/assets/676f7587-8d7d-4153-8ef1-5e786c76e47c" />
+</p>
+
+<p align="center">**橱窗展示功能：明星小卡演示**</p>
 
 <p align="center">
 <img width="506" height="480" alt="8小" src="https://github.com/user-attachments/assets/981b0095-e2e8-470d-98eb-caafe2137bfa" />

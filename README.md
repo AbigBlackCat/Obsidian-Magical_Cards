@@ -28,14 +28,15 @@ The Chinese instructions below cover all settings, screenshots and the author's 
 
 **阅读影视推荐卡片风格：**
 
-<img width="790" height="720" alt="阅读影视演示3秒" src="https://github.com/user-attachments/assets/cd1d7a3a-fed2-4612-ac7c-b4785c300218" />
-
+<p align="center">
+ <img width="790" height="720" alt="阅读影视演示3秒" src="https://github.com/user-attachments/assets/cd1d7a3a-fed2-4612-ac7c-b4785c300218" />
+</p>
 
 **橱窗展示功能：明星小卡演示**
+
+<p align="center">
 <img width="506" height="480" alt="8小" src="https://github.com/user-attachments/assets/981b0095-e2e8-470d-98eb-caafe2137bfa" />
-
-
-
+</p>
 
 
 
@@ -45,7 +46,7 @@ https://community.obsidian.md/plugins/magical-cards
 
 **插件的开发思路** 
 
-我开发了一个自己用的工作台，最近改造到obsidian里后发现，这个卡片轮播的视觉效果出奇的好，大大提高了我的记录动力，不得不说颜值是第一生产力。
+我开发了一个工作台，改造到obsidian后发现，这个卡片轮播的视觉效果出奇的好，大大提高了我的记录动力，不得不说颜值是第一生产力。
 以前经常想要写读书笔记、观影笔记，最后总因为笔记长期维护难度大，反馈小而拖延放弃，而这个卡片轮播像集卡收藏一样，
 书籍影视就这么美丽地展现到我面前，我一回忆起曾经阅读或者观看的画面就忍不住点击进入笔记写上一两句作为记录。
 

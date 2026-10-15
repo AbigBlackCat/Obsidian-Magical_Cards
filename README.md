@@ -118,7 +118,6 @@ Dashboard 用来分类卡片模块，每个分类同等，可以放入任意数�
 | 横向滚动弯曲画廊 | 倾斜轮播 |
 | ![原生笔记中的横向滚动弯曲画廊](previews/scroll-bend.png) | ![原生笔记中的倾斜轮播](previews/skewed-carousel.png) |
 
-![Dashboard 分类：同一模块可主动加入多个分类，各自保存顺序](previews/dashboards.png)
 
 ## 外观与设置
 

@@ -108,7 +108,7 @@ Dashboard 用来分类卡片模块，每个分类同等，可以放入任意数�
 - **删除模块**：展开标题右侧的垃圾桶删除模块配置、全部分类引用及模块位置。作品笔记、橱窗笔记、图片和作品 ID 保留；原嵌入会提示模块已删除，没有模块恢复入口。
 - **删除当前卡片／图片**：在模块横向菜单中操作，仅针对当前单张卡片。删除前确认窗口会明确显示名称。
 
-新用户首次安装会得到可改名、可删除的普通“示例” Dashboard，包含阅读和影视。已有库不自动增加分类；升级时旧隐藏模块移为未分类，旧隐藏状态取消，相关笔记嵌入和工作台恢复展示。若同时启用兼容宿主，请升级到 **0.1.38**；旧共享运行时缺少能力时只读展示已有分类并提示升级，资料和草稿保留。
+新用户首次安装会得到可改名、可删除的普通“示例” Dashboard，包含阅读和影视。
 
 ### 五种动效布局
 
@@ -117,10 +117,6 @@ Dashboard 用来分类卡片模块，每个分类同等，可以放入任意数�
 | ![原生笔记中的封面流轮播](previews/coverflow-carousel.png) | ![原生笔记中的黑胶专辑架，仅展示封套](previews/album-rail.png) |
 | 横向滚动弯曲画廊 | 倾斜轮播 |
 | ![原生笔记中的横向滚动弯曲画廊](previews/scroll-bend.png) | ![原生笔记中的倾斜轮播](previews/skewed-carousel.png) |
-
-圆柱弧面见首页预览。滚动弯曲画廊还支持竖向：
-
-![原生笔记中的竖向滚动弯曲画廊](previews/scroll-bend-vertical.png)
 
 ![Dashboard 分类：同一模块可主动加入多个分类，各自保存顺序](previews/dashboards.png)
 
@@ -173,17 +169,6 @@ Dashboard 用来分类卡片模块，每个分类同等，可以放入任意数�
 ![阅读与影视模块嵌入原生 Obsidian 笔记](previews/note-embed.png)
 
 展开设置中的「笔记代码块生成」，选择一个或多个已有模块，然后生成并复制代码，粘贴进笔记即可。也可在笔记内执行「插入卡片模块」命令，选择模块后直接插入代码块。每次生成新的代码块 ID 和模块实例 ID；引用原作品，默认继承集合设置。
-
-````markdown
-```magical-cards
-id: reading-and-films
-modules:
-  - id: reading-instance
-    collection: book
-  - id: films-instance
-    collection: film
-```
-````
 
 同一集合可以出现在多篇笔记中。嵌入中的模块顺序只影响该代码块；排序原子更新 `modules` 数组，保留其余正文。重复 ID、源码冲突或未保存的原生编辑会阻止覆盖并保留草稿。复制代码到同一笔记时，请重新生成 ID。
 
@@ -244,15 +229,5 @@ modules:
 ## 开发与版权
 
 [示例笔记库](examples/vault/) 仅包含三本书、三部影视及独立示例 ID；安装三个插件文件后用 Obsidian 打开即可。其卡片目录为「示例」。[说明页模板](examples/Magical_Cards示例及用法说明.md) 用于首次体验。
-
-```sh
-npm ci
-npm run lint
-npm run typecheck
-npm test
-npm run build
-```
-
-浏览器开发预览：`npm run preview`，打开 `http://127.0.0.1:4319`。原生验收与平台限制见 [VERIFICATION.md](VERIFICATION.md)，社区审核进度见 [COMMUNITY.md](COMMUNITY.md)。
 
 代码采用 [MIT](LICENSE)。第三方封面及含封面的预览图不受代码许可证授权，其权利归各自权利人；请保留[封面来源与版权](examples/SOURCES.md)。布局、React 及构建适配说明见 [THIRD_PARTY.md](THIRD_PARTY.md)。

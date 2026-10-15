@@ -27,6 +27,7 @@ The Chinese instructions below cover all settings, screenshots and the author's 
 </p>
 
 **阅读影视推荐卡片风格：**
+
 <img width="790" height="720" alt="阅读影视演示3秒" src="https://github.com/user-attachments/assets/cd1d7a3a-fed2-4612-ac7c-b4785c300218" />
 
 

@@ -47,13 +47,13 @@ For manual installation:
 
 Supports Obsidian for iOS/iPadOS and Android. HarmonyOS devices that can run Android Obsidian use the same plugin files. Native HarmonyOS hosts and compatibility containers depend on their ability to run Obsidian plugins and are unverified; the [official mobile downloads](https://obsidian.md/download) currently list iOS and Android. Mobile browser emulation is not physical-device acceptance. iOS, Android, HarmonyOS and Windows have not been tested on physical hardware.
 
-On mobile, run **打开 Magical Cards** from the command palette. Use the module menu to select multiple images or SVGs (choose SVGs through the system file picker). Swipe to browse, tap the transparent top-right area to flip, and tap elsewhere to open the note. In the vertical gallery, swipe vertically through cards; scroll the page from outside the gallery. Swipe the Dashboard tab strip to see more categories; use **Dashboard 向前移动 / 向后移动** in its menu to reorder. Module title handles still support dragging. Finish syncing notes and attachments with your chosen vault sync tool before opening cards; the plugin itself performs no sync.
+On mobile, choose **打开 Magical Cards** (Open Magical Cards) from the bottom menu, or run **Magical Cards：打开卡片视图** from the command palette. Use **上一张 / 下一张** (Previous / Next) below the cards: tap once to advance one card, or hold for 400ms to begin advancing every 160ms; release to stop. Single-finger swipes remain available to Obsidian sidebars and page scrolling, and pinch zoom stays available. Both gallery directions use the same paging buttons. Tap a neighboring card to center it, the transparent top-right area to flip, or elsewhere on the current card to open its note. The back expands inside its module for editing and pauses paging; returning to the front keeps your position. Three cards fit the module width and visible height without changing saved ratios or appearance. Use the module menu to select multiple images or SVGs (choose SVGs through the system file picker). Swipe the Dashboard tab strip to see more categories; use **Dashboard 向前移动 / 向后移动** in its menu to reorder. Module title handles still support dragging. Finish syncing notes and attachments with your chosen vault sync tool before opening cards; the plugin itself performs no sync.
 
 ## Usage
 
 On first use in an empty directory, the plugin creates a guide, three books, and three films in `卡片库` and opens the guide. The six editable covers are bundled with the plugin and work offline.
 
-The initial appearance is **cylindrical layout, full cover, fill and crop, paper material, 2:3, and at most three visible cards**. You can still browse every work by swiping or using the arrow keys.
+The initial appearance is **cylindrical layout, full cover, fill and crop, paper material, 2:3, and at most three visible cards**. You can still browse every work using paging buttons on mobile, or dragging and arrow keys on desktop.
 
 1. **Open cards:** use the ribbon cards icon or the **打开卡片视图** (Open cards view) command.
 2. **Add a work:** click `+` in a module and enter its title, cover, and details.

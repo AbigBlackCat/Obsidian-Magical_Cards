@@ -11,6 +11,42 @@ export function cardGeometry(width: number, heightFactor: number, layout: CardLa
   return { width, cardWidth, cardHeight, pitch, angle, radius: pitch / (2 * Math.sin(angle * Math.PI / 360)), sides: width >= 1000 ? 2 : 1 };
 }
 
+export function cardPerspective(layout: CardLayout, cardWidth: number): number {
+  return layout === 'coverflow-carousel' ? cardWidth * 3 : layout === 'album-rail' ? Math.max(700, cardWidth * 4.5) : layout === 'skewed-carousel' ? 800 : 1400;
+}
+
+/** Project the front corners, including the face's small depth, just as CSS does. */
+export function cardBounds(layout: CardLayout, offset: number, geometry: CardGeometry, vertical = false) {
+  const t = cardTransform(layout, offset, geometry, vertical), perspective = cardPerspective(layout, geometry.cardWidth);
+  const ry = t.rotateY * Math.PI / 180, rz = t.rotateZ * Math.PI / 180;
+  const points = [-1, 1].flatMap(sx => [-1, 1].map(sy => {
+    const x = sx * geometry.cardWidth / 2 * t.scale, y = sy * geometry.cardHeight / 2 * t.scale;
+    const rotatedX = x * Math.cos(rz) - y * Math.sin(rz), rotatedY = x * Math.sin(rz) + y * Math.cos(rz);
+    const z = t.z - rotatedX * Math.sin(ry) + 3 * Math.cos(ry);
+    const projection = perspective / (perspective - z);
+    return { x: (t.x + rotatedX * Math.cos(ry) + 3 * Math.sin(ry)) * projection, y: (t.y + rotatedY) * projection };
+  }));
+  return { x: Math.max(...points.map(point => Math.abs(point.x))), y: Math.max(...points.map(point => Math.abs(point.y))) };
+}
+
+export function mobileCardGeometry(width: number, heightFactor: number, layout: CardLayout, vertical: boolean, viewportHeight: number) {
+  const base = cardGeometry(width, heightFactor, layout, vertical);
+  const maxHeight = Math.min(360, viewportHeight * 0.55), margin = 14;
+  const scaled = (scale: number): CardGeometry => ({ ...base, cardWidth: base.cardWidth * scale, cardHeight: base.cardHeight * scale, pitch: base.pitch * scale, radius: base.radius * scale, sides: 1 });
+  const bounds = (g: CardGeometry) => {
+    const cards = [-1, 0, 1].map(offset => cardBounds(layout, offset, g, vertical));
+    return { x: Math.max(...cards.map(card => card.x)), y: Math.max(...cards.map(card => card.y)) };
+  };
+  let low = 0.001, high = 1;
+  for (let step = 0; step < 24; step++) {
+    const middle = (low + high) / 2, b = bounds(scaled(middle));
+    if (b.x * 2 + margin * 2 <= width && b.y * 2 + margin * 2 <= maxHeight) low = middle;
+    else high = middle;
+  }
+  const geometry = scaled(low);
+  return { geometry, height: Math.min(maxHeight, bounds(geometry).y * 2 + margin * 2) };
+}
+
 export function cardTransform(layout: CardLayout, offset: number, geometry: CardGeometry, vertical = false) {
   const { cardWidth, cardHeight, pitch, radius, angle } = geometry;
   const distance = Math.abs(offset), direction = Math.sign(offset);

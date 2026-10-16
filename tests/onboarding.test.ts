@@ -132,7 +132,8 @@ test('starter Dashboard progress retries its persisted ID and preserves user edi
 test('the generated guide preserves the authored visible bytes, substitutes only root paths and has a unique invisible identity', async () => {
   const template = await readFile(resolve(directory, '../examples/Magical_Cards示例及用法说明.md'), 'utf8');
   const authored = template.replaceAll('{{rootFolder}}', () => '卡片库');
-  assert.equal(createHash('sha256').update(authored).digest('hex'), '0f186d75bda4f103e85d22522f65f8a0386d68db0fc2ca15e86cedae6d09fa89');
+  assert.equal(createHash('sha256').update(authored).digest('hex'), '57b5ac079e2aebb793c329e6d37a68713f325e21f81e04081029cf37f3b6c248');
+  assert.match(authored, /400ms 后每 160ms/);
   assert.match(authored, /批量导入图片／SVG/);
   assert.match(authored, /32:15 宽幅横图/);
   assert.match(authored, /右上角的透明区域/);

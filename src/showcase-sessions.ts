@@ -134,10 +134,12 @@ export class ShowcaseSessionsManager {
     return session;
   }
   flush(moduleId: string, id: string) { return this.sessions.get(`${moduleId}\0${id}`)?.flush() ?? Promise.resolve(); }
-  async flushAll() {
-    const results = await Promise.allSettled([...this.sessions.values()].map(session => session.flush()));
+  flushAll() { return this.flushSessions([...this.sessions.values()]); }
+  flushModules(moduleIds: string[]) { return this.flushSessions([...this.sessions.values()].filter(session => moduleIds.includes(session.moduleId))); }
+  private async flushSessions(sessions: ShowcaseDescriptionSession[]) {
+    const results = await Promise.allSettled(sessions.map(session => session.flush()));
     const failed = results.find(result => result.status === 'rejected'); if (failed?.status === 'rejected') throw failed.reason;
-    if ([...this.sessions.values()].some(session => session.getSnapshot().dirty)) throw new Error('输入法尚未结束，橱窗草稿已保留。');
+    if (sessions.some(session => session.getSnapshot().dirty)) throw new Error('输入法尚未结束，橱窗草稿已保留。');
   }
   recoveryDrafts() {
     const drafts: Array<{ moduleId: string; id: string; path: string; name: string; description: string }> = [];

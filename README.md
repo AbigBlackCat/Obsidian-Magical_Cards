@@ -8,11 +8,20 @@ Magical Cards is an Obsidian plugin that brings book, film, and image showcase c
 
 Choose five layouts, organize modules into Dashboards, and edit summaries on the back of a card. Removing a module from a Dashboard changes that category only. Deleting a module preserves its notes and images. Works remain local Markdown notes; appearance and ordering are stored in the selected card directory. Remote covers load only from their image servers. The linked-note picker searches vault paths when invoked. Copy writes generated embed code only after a click, and pasting reads plain text from that paste event; the plugin does not monitor the clipboard or upload note contents.
 
+## Native workbench integration
+
+Magical Cards 0.7.0 provides the native DOM host API defined in [`src/host-api.ts`](src/host-api.ts). Compatible Barry workbenches can select existing modules and render their full card UI directly. Workbench placement never changes Dashboard classification or copies notes. Enable Magical Cards to show the modules; disabling it keeps workbench references for the next launch.
+
+The bridge is discovered through Obsidian Workspace events: `magical-cards:request-api` accepts a callback, `magical-cards:api-ready` publishes the API, and `magical-cards:api-unavailable` carries its `instanceId`. Hosts call `prepareModules` before moving or removing modules, hold its returned release callback through persistence, then dispose old mounts before reusing a container. Failed saves keep the old mount available for retry. Unfinished native forms, text, sorting and image imports are backed up as a `native-card-drafts-recovery-*.json` file in the plugin directory on forced shutdown; import recovery includes the original image bytes and retry IDs.
+
 ## Usage
 
 The Chinese instructions below cover all settings, screenshots and the author's development notes. The [full English guide](README_en.md) includes the same operations and the original interface labels. Desktop macOS has been tested; Windows has not been tested on physical hardware.
 
 ## 中文说明
+
+0.7.0 支持 Barry 工作台原生接入：在工作台选择 Magical Cards 的已有模块，即可直接浏览、翻面、编辑、新增及批量导入卡片。工作台只保存模块引用与位置，不改动 Dashboard 分类。暂停或停用 Magical Cards 时保留引用，启用后可重新显示。强制停用时仍未完成的表单、标题、排序及图片导入会写入插件目录的 `native-card-drafts-recovery-*.json` 恢复文件；图片包含原字节和重试标识。
+
 
 <p align="center">把阅读、观影与图片收藏，变成可以浏览、编辑、嵌入笔记的卡片。</p>
 <p align="center">
@@ -187,7 +196,7 @@ Dashboard 用来分类卡片模块，每个分类同等，可以放入任意数�
 
 支持 iOS／iPadOS 和 Android 版 Obsidian。能正常运行 Android 版 Obsidian 的鸿蒙设备使用同一安装包；鸿蒙原生版或兼容容器取决于宿主的插件能力，尚未验证。Obsidian 当前官方手机客户端下载入口为 [iOS 和 Android](https://obsidian.md/download)。
 
-手机上从命令面板执行「打开 Magical Cards」；模块操作菜单可批量选择图片或 SVG。SVG 可从系统文件选择器导入。左右滑动浏览卡片，点击当前卡右上角透明区域翻面，其他位置打开笔记；竖向画廊上下滑动，可从模块标题附近滚动整页。Dashboard 标签左右滑动查看，在分类菜单用「向前移动／向后移动」排序。模块仍可拖动标题手柄调整位置。
+手机上在底部菜单选择「打开 Magical Cards」，或在命令面板执行「Magical Cards：打开卡片视图」。模块菜单可批量选择图片或 SVG，SVG 可从系统文件选择器导入。卡片下方的「上一张／下一张」用于翻页；按住 400ms 后每 160ms 切换一张，松手停止。单指滑动留给 Obsidian 侧栏和页面滚动，双指仍可缩放；横向、竖向画廊都使用按钮翻页。点击邻卡先居中，点击当前卡右上角透明区域翻面，其他位置打开笔记。翻面后在原模块内放大背面并暂停翻页，返回正面保留当前位置。三张卡会按模块宽度和可视高度缩放，不改变已保存的比例和外观。Dashboard 标签左右滑动查看，在分类菜单用「向前移动／向后移动」排序。模块仍可拖动标题手柄调整位置。
 
 手机设置和卡片资料与桌面版共用 Markdown 文件。请先让所使用的笔记同步工具完整同步笔记及附件，再打开卡片。手机浏览器模拟检查不等同于实机验收；iOS、Android、鸿蒙和 Windows 尚未实机验证。插件界面目前为中文。
 

@@ -139,12 +139,20 @@ export class WorkPropertiesManager {
     return session;
   }
   flush(id: string) { return this.sessions.get(id)?.flush() ?? Promise.resolve(); }
-  async flushAll() {
-    if ([...this.sessions.values()].some(session => session.isComposing)) throw new Error('输入法仍在编辑，请完成输入后重试。卡片草稿已保留。');
-    const results = await Promise.allSettled([...this.sessions.values()].map(session => session.flush()));
+  flushAll() { return this.flushSessions([...this.sessions.values()]); }
+  flushModules(moduleIds: string[]) {
+    const ids = new Set(moduleIds);
+    return this.flushSessions([...this.sessions.values()].filter(session => {
+      const properties = session.getSnapshot().properties;
+      return properties && ids.has(properties.moduleId ?? properties.kind);
+    }));
+  }
+  private async flushSessions(sessions: WorkPropertiesSession[]) {
+    if (sessions.some(session => session.isComposing)) throw new Error('输入法仍在编辑，请完成输入后重试。卡片草稿已保留。');
+    const results = await Promise.allSettled(sessions.map(session => session.flush()));
     const failure = results.find(result => result.status === 'rejected');
     if (failure?.status === 'rejected') throw failure.reason;
-    if ([...this.sessions.values()].some(session => session.isComposing || session.getSnapshot().dirty)) throw new Error('卡片仍有未保存的输入，请完成输入后重试。草稿已保留。');
+    if (sessions.some(session => session.isComposing || session.getSnapshot().dirty)) throw new Error('卡片仍有未保存的输入，请完成输入后重试。草稿已保留。');
   }
   recoveryDrafts() {
     const drafts: Array<{ id: string; path: string; values: WorkPropertyValues }> = [];

@@ -116,7 +116,7 @@ const nodes = (value: React.ReactNode): React.ReactElement<any>[] => {
 const directory = dirname(fileURLToPath(import.meta.url)), require = createRequire(import.meta.url);
 const source = await readFile(resolve(directory, '../src/main.tsx'), 'utf8');
 const memoryBundle = await build({
-  stdin: { contents: `${source}\nexport { CardsView };\nexport { default as Dashboard, DashboardEditor, flushDashboardEdits } from './CardsDashboardView';\nexport { default as ActionMenu } from './ActionMenu';\nexport { default as ModuleRemovalDialog } from './ModuleRemovalDialog';\nexport { default as Surface, registerCardModuleSurface, assertCardModuleRemovalSettled } from './CardsSurface';\nexport { default as Text } from './EditableText';\nexport { default as ModuleList } from './ModuleList';\nexport { WorkOrderList } from './WorkOrder';\nexport { default as WorkCollection } from './WorkCollection';\nexport { default as ShowcaseCollection } from './ShowcaseCollection';\nexport { DeleteWorkDialog } from './WorkEditor';\nexport { renderedRoots } from 'react-dom/client';`, resolveDir: resolve(directory, '../src'), loader: 'tsx' },
+  stdin: { contents: `${source}\nexport { CardsView };\nexport { default as Dashboard, DashboardEditor, flushDashboardEdits } from './CardsDashboardView';\nexport { default as ActionMenu } from './ActionMenu';\nexport { default as ModuleRemovalDialog } from './ModuleRemovalDialog';\nexport { default as Surface, registerCardModuleSurface, assertCardModuleRemovalSettled } from './CardsSurface';\nexport { default as Text } from './EditableText';\nexport { flushSurfaceDrafts, surfaceRecoveryDrafts } from './draft-lifecycle';\nexport { default as ModuleList } from './ModuleList';\nexport { WorkOrderList } from './WorkOrder';\nexport { default as WorkCollection } from './WorkCollection';\nexport { default as ShowcaseCollection } from './ShowcaseCollection';\nexport { DeleteWorkDialog } from './WorkEditor';\nexport { renderedRoots } from 'react-dom/client';`, resolveDir: resolve(directory, '../src'), loader: 'tsx' },
   bundle: true, platform: 'node', format: 'cjs', write: false, external: ['react', 'react/jsx-runtime'],
   plugins: [{ name: 'dashboard-view-platform', setup(builder) {
     builder.onResolve({ filter: /^obsidian$/ }, () => ({ path: 'platform', namespace: 'dashboard-test' }));
@@ -135,6 +135,8 @@ interface ViewStub { getState(): { existing: string; dashboardId: string }; setS
 const ui = memoryModule.exports as {
   Dashboard: typeof CardsDashboardView; DashboardEditor: typeof import('../src/CardsDashboardView').DashboardEditor; ActionMenu: typeof import('../src/ActionMenu').default; Surface: typeof CardsSurface; renderedRoots: RootStub[];
   Text: typeof import('../src/EditableText').default;
+  flushSurfaceDrafts: typeof import('../src/draft-lifecycle').flushSurfaceDrafts;
+  surfaceRecoveryDrafts: typeof import('../src/draft-lifecycle').surfaceRecoveryDrafts;
   ModuleList: typeof import('../src/ModuleList').default;
   WorkOrderList: typeof import('../src/WorkOrder').WorkOrderList;
   WorkCollection: typeof import('../src/WorkCollection').default;
@@ -1032,4 +1034,23 @@ test('keyboard tab ordering restores the same owner-document tab focus after dis
     nodes(tree).find(node => node.props['data-dashboard-id'] === boardA.id)!.props.onKeyDown({ key: 'ArrowRight', altKey: true, nativeEvent: { isComposing: false }, currentTarget: handle, preventDefault() {} }); await tick(); tree = hooks.render(ui.Dashboard, props); hooks.runEffects(); assert.equal(focused, 1); assert.equal(doc.activeElement, handle);
     doc.activeElement = body; nodes(tree).find(node => node.props['data-dashboard-id'] === boardA.id)!.props.onKeyDown({ key: 'ArrowLeft', altKey: true, nativeEvent: { isComposing: false }, currentTarget: handle, preventDefault() {} }); await tick(); hooks.render(ui.Dashboard, props); hooks.runEffects(); assert.equal(focused, 2); assert.deepEqual(f.api.getSnapshot().settings.dashboards, [boardA, boardB]);
   } finally { hooks.dispose(); f.dispose(); }
+});
+
+
+test('native title lifecycle awaits its save and preserves composing or failed text for recovery', async () => {
+  const hooks = new Hooks(), writes: string[] = [];
+  let failure = true;
+  const element = { textContent: '原标题', dataset: {} as Record<string, string>, ownerDocument: { getSelection: () => null }, contains: (node: unknown) => node === element };
+  const target = element as unknown as HTMLElement;
+  try {
+    const title = nodes(hooks.render(ui.Text, { value: '原标题', onSave: async value => { writes.push(value); return !failure; } })).find(node => node.props.contentEditable)!;
+    title.props.ref.current = element; hooks.runEffects();
+    title.props.onCompositionStart({ currentTarget: element }); element.textContent = '中文标题草稿';
+    await assert.rejects(ui.flushSurfaceDrafts(target), /输入法/);
+    assert.equal((ui.surfaceRecoveryDrafts(target) as any[])[0].value, '中文标题草稿'); assert.deepEqual(writes, []);
+    title.props.onCompositionEnd({ currentTarget: element });
+    await assert.rejects(ui.flushSurfaceDrafts(target), /尚未保存/); assert.equal(element.textContent, '中文标题草稿');
+    failure = false; await ui.flushSurfaceDrafts(target);
+    assert.deepEqual(writes, ['中文标题草稿', '中文标题草稿']); assert.deepEqual(ui.surfaceRecoveryDrafts(target), []);
+  } finally { hooks.dispose(); }
 });

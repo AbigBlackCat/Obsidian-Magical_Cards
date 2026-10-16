@@ -42,3 +42,18 @@ test('a composition that starts during a slow write stops the next flush iterati
   session.update({ summary: '最终完成的输入' }); session.endComposition(); await manager.flushAll();
   assert.equal(patches.length, 2); assert.equal(stored.values.summary, '最终完成的输入'); assert.equal(session.getSnapshot().dirty, false);
 });
+
+test('native module flush saves its own sessions while another module is composing', async t => {
+  const values = { title: '卡片', cover: '', summary: '', rating: null, pinned: false, status: 'want' as const };
+  const records = new Map<string, WorkProperties>([
+    ['default', { id: 'default', kind: 'book', path: '书.md', coverPresent: false, values }],
+    ['custom', { id: 'custom', kind: 'book', moduleId: 'collection', path: '收藏.md', coverPresent: false, values }],
+  ]);
+  const writes: string[] = [];
+  const manager = new WorkPropertiesManager({ subscribe: () => () => {}, readWorkProperties: async id => structuredClone(records.get(id)!), patchWorkProperties: async (id, patch) => { writes.push(id); const next = { ...records.get(id)!, values: { ...records.get(id)!.values, ...patch } }; records.set(id, next); return structuredClone(next); } }, { setTimeout: () => 1, clearTimeout() {} } as unknown as Window);
+  t.after(() => manager.dispose());
+  const book = manager.getSession('default'), custom = manager.getSession('custom'); await Promise.all([book.refresh(), custom.refresh()]);
+  book.startComposition(); book.update({ summary: '输入中' }); custom.update({ summary: '完成的收藏摘要' });
+  await manager.flushModules(['collection']); assert.deepEqual(writes, ['custom']); assert.equal(book.getSnapshot().dirty, true);
+  await assert.rejects(manager.flushModules(['book']), /输入法/); assert.deepEqual(writes, ['custom']);
+});

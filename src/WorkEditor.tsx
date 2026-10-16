@@ -1,8 +1,9 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useId, useRef, useState } from 'react';
 import type { Work, CardsAPI, CoverTemplate } from './types';
 import { CoverImage } from './CoverImage';
 import { Field } from './primitives';
 import NotePicker from './NotePicker';
+import { registerCardDraft, type CardDraftSession } from './draft-lifecycle';
 
 export type Run = (action: () => Promise<unknown>) => Promise<boolean>;
 
@@ -13,6 +14,14 @@ export default function WorkEditor({ entity, genericCard = false, api, run, clos
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const dialog = useRef<HTMLDialogElement>(null);
+  const element = useRef<HTMLElement | null>(null);
+  const composing = useRef(false);
+  const writing = useRef<Promise<void> | null>(null);
+  const committed = useRef(false);
+  const lifecycle = useRef<CardDraftSession | null>(null);
+  useLayoutEffect(() => {
+    if (element.current) return registerCardDraft(element.current, { flush: () => lifecycle.current!.flush(), recoveryDrafts: () => lifecycle.current!.recoveryDrafts() });
+  }, []);
   const modalEditor = !entity.path;
   const busy = saving || uploading;
   useEffect(() => {
@@ -36,12 +45,26 @@ export default function WorkEditor({ entity, genericCard = false, api, run, clos
     setError('');
     return run(async () => { try { await action(); } catch (err) { setError(err instanceof Error ? err.message : String(err)); throw err; } });
   };
-  const submit = async (event: React.SyntheticEvent<HTMLFormElement>) => { event.preventDefault(); if (busy) return; if (draft.type === 'film' && (draft.directorLabel ?? '') !== (entity.type === 'film' ? entity.directorLabel ?? '' : '') && api.supportsWorkPropertyLabels !== true) { setError('修改字段名称需要升级正在提供卡片数据的插件；草稿已保留。'); return; } setSaving(true); try { const value = { ...draft }; delete value.body; const saved = await execute(() => api.save(value)); if (saved) close(); } finally { setSaving(false); } };
+  const saveDraft = (): Promise<void> => {
+    if (committed.current) return Promise.resolve();
+    if (writing.current) return writing.current;
+    if (composing.current) return Promise.reject(new Error('请先结束输入法输入，卡片表单草稿已保留。'));
+    if (uploading) return Promise.reject(new Error('封面仍在处理，卡片表单草稿已保留。'));
+    const form = element.current?.querySelector('form');
+    if (form && !form.checkValidity()) return Promise.reject(new Error('请补全卡片表单中的必填信息，草稿已保留。'));
+    if (draft.type === 'film' && (draft.directorLabel ?? '') !== (entity.type === 'film' ? entity.directorLabel ?? '' : '') && api.supportsWorkPropertyLabels !== true) return Promise.reject(new Error('修改字段名称需要升级正在提供卡片数据的插件；草稿已保留。'));
+    const value = { ...draft }; delete value.body;
+    setSaving(true); setError('');
+    writing.current = Promise.resolve().then(() => api.save(value)).then(() => { committed.current = true; element.current?.removeAttribute('data-cards-pending'); close(); }).catch(failure => { setError(failure instanceof Error ? failure.message : String(failure)); throw failure; }).finally(() => { writing.current = null; setSaving(false); });
+    return writing.current;
+  };
+  const submit = async (event: React.SyntheticEvent<HTMLFormElement>) => { event.preventDefault(); if (busy) return; await saveDraft(); };
+  lifecycle.current = { flush: saveDraft, recoveryDrafts: () => committed.current ? [] : [{ type: 'work-editor', work: { ...draft }, fields: [...(element.current?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input, textarea, select') ?? [])].map(field => ({ label: field.getAttribute('aria-label') ?? field.closest('label')?.textContent ?? '', value: field.value, checked: 'checked' in field ? field.checked : undefined })), composing: composing.current, uploading, saving: !!writing.current }] };
   const changeCover = async (action: () => Promise<string>) => { if (busy) return; setUploading(true); try { await execute(async () => update({ cover: await action() })); } finally { setUploading(false); } };
   const kind = genericCard ? '卡片' : draft.type === 'book' ? '书籍' : '影片';
   const Container = modalEditor ? 'dialog' : 'section';
   const canEditLabels = api.supportsWorkPropertyLabels === true;
-  return <Container ref={modalEditor ? dialog : undefined} className={`bw-editor${modalEditor ? ' bw-editor-dialog' : ''}`} data-bw-editor data-cards-pending="card-editor" aria-label={`${kind}编辑`} onKeyDown={modalEditor ? event => { event.stopPropagation(); if (busy && event.key === 'Escape') event.preventDefault(); } : undefined} onCancel={modalEditor ? event => { event.preventDefault(); if (!busy) close(); } : undefined}>
+  return <Container ref={node => { element.current = node; if (modalEditor) dialog.current = node; }} onCompositionStartCapture={() => { composing.current = true; }} onCompositionEndCapture={() => { composing.current = false; }} className={`bw-editor${modalEditor ? ' bw-editor-dialog' : ''}`} data-bw-editor data-cards-pending="card-editor" aria-label={`${kind}编辑`} onKeyDown={modalEditor ? event => { event.stopPropagation(); if (busy && event.key === 'Escape') event.preventDefault(); } : undefined} onCancel={modalEditor ? event => { event.preventDefault(); if (!busy) close(); } : undefined}>
     <header className="bw-section-head"><h2>{entity.path ? '编辑' : '新建'}{kind}</h2><button type="button" disabled={busy} onClick={close}>{modalEditor ? '关闭' : '收起编辑'}</button></header>
     {error && !busy && <p className="bw-sync-note is-error" role="alert">{error}</p>}
     <form onSubmit={event => { void submit(event).catch(error => setError(error instanceof Error ? error.message : '保存未完成，请重试。')); }} onInvalidCapture={event => { const details = (event.target as HTMLElement).closest('details'); if (details) details.open = true; }}><fieldset className="bw-form" disabled={busy}>

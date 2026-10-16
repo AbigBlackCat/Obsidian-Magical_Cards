@@ -655,13 +655,13 @@ test('1.11.4 tab fallback renders the same rows without runtime SettingGroup and
   assert.equal(listeners.size,0);assert.equal(doc.observers.size,0);
 });
 
-test('plugin unload disposes cards UI and releases its lease without detaching or replacing the open leaf',()=>{
+test('plugin unload disposes cards UI and releases its lease without detaching or replacing the open leaf',async()=>{
   let detached=0,disposed=0,released=0;
   const state={type:'barry-cards',pinned:true,position:{parent:'right',index:2}},leaf={state,detach(){detached++;}};
   const app={workspace:{getLeavesOfType:()=>[leaf]}};
   const plugin=new ui.MagicalCardsPlugin(app as unknown as import('obsidian').App,{id:'magical-cards'} as import('obsidian').PluginManifest);
   Object.assign(plugin,{cardsLease:{release:()=>{released++;return Promise.resolve();}},cardViews:new Set([{dispose(){disposed++;}}])});
-  plugin.onunload();assert.equal(disposed,1);assert.equal(released,1);assert.equal(detached,0);assert.equal(leaf.state,state);assert.deepEqual(leaf.state.position,{parent:'right',index:2});
+  plugin.onunload();await new Promise(resolve=>setTimeout(resolve,0));assert.equal(disposed,1);assert.equal(released,1);assert.equal(detached,0);assert.equal(leaf.state,state);assert.deepEqual(leaf.state.position,{parent:'right',index:2});
 });
 
 

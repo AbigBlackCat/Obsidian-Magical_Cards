@@ -1,4 +1,5 @@
 import React, {createContext, useContext, useLayoutEffect, useRef, useState} from 'react';
+import {registerCardDraft} from './draft-lifecycle';
 import {editableTextDraft, editableTextValue, type EditableTextKind} from './editable-text';
 
 interface WorkbenchTextContextValue {
@@ -48,6 +49,11 @@ export default function EditableText(props: EditableTextProps) {
   const pending = useRef(0);
   const request = useRef(0);
   const saves = useRef<Promise<void>>(Promise.resolve());
+  const lifecycle = useRef<{flush(): Promise<void>; recoveryDrafts(): unknown[]} | null>(null);
+  useLayoutEffect(() => {
+    const target = element.current;
+    if (target) return registerCardDraft(target, {flush: () => lifecycle.current!.flush(), recoveryDrafts: () => lifecycle.current!.recoveryDrafts()});
+  }, []);
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
 
   useLayoutEffect(() => {
@@ -105,6 +111,19 @@ export default function EditableText(props: EditableTextProps) {
       if (element.current) { element.current.dataset.editableSaving = String(pending.current > 0); element.current.dataset.editableError = String(pending.current === 0 && !saved && dirty.current); }
       if (id === request.current) setStatus(saved || !dirty.current ? 'idle' : 'error');
     });
+  };
+
+  lifecycle.current = {
+    flush: async () => {
+      if (composing.current) throw new Error('请先结束输入法输入，标题草稿已保留。');
+      await saves.current;
+      if (composing.current) throw new Error('请先结束输入法输入，标题草稿已保留。');
+      const target = element.current;
+      if (target && dirty.current) commit(target);
+      await saves.current;
+      if (dirty.current) throw new Error('标题尚未保存，草稿已保留。');
+    },
+    recoveryDrafts: () => dirty.current || composing.current || pending.current > 0 ? [{type: 'inline-text', key: textKey, label: ariaLabel, value: element.current?.textContent ?? '', committed: committed.current, composing: composing.current}] : [],
   };
 
   const text = React.createElement(as, {

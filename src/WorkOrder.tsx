@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { CoverImage } from './CoverImage';
 import type { Book, Film, CardsAPI, CustomCardModule, WorkOrder, WorkKind } from './types';
 import { orderedWorks } from './work-order';
+import { registerCardDraft, type CardDraftSession } from './draft-lifecycle';
 import { useOwnerWindow } from './owner-window';
 
 export interface WorkOrderAPI extends Pick<CardsAPI, 'subscribe' | 'moveWork' | 'coverUrl' | 'readCoverSvg' | 'openNote'> { getSnapshot: () => { entities: Array<{id: string; type: string; moduleId?: string}>; workOrder: WorkOrder | null; settings: { customModules: CustomCardModule[] }; }; }
@@ -32,6 +33,8 @@ export function WorkOrderList({ api, kind, moduleId }: { api: WorkOrderAPI; kind
   const press = useRef<Press | null>(null);
   const scroll = useRef({ frame: 0, speed: 0 });
   const mounted = useRef(true);
+  const lifecycle = useRef<CardDraftSession | null>(null);
+  useLayoutEffect(() => { if (root.current) return registerCardDraft(root.current, { flush: () => lifecycle.current!.flush(), recoveryDrafts: () => lifecycle.current!.recoveryDrafts() }); }, []);
   const label = moduleId !== undefined ? module?.title ?? '卡片' : kind === 'book' ? '书籍' : '影视';
 
   const stopScroll = () => { owner?.cancelAnimationFrame(scroll.current.frame); scroll.current = { frame: 0, speed: 0 }; };
@@ -128,6 +131,15 @@ export function WorkOrderList({ api, kind, moduleId }: { api: WorkOrderAPI; kind
       session.current = null;
       if (mounted.current) { setDraft(null); setDropBefore(undefined); setBusy(false); }
     }
+  };
+  lifecycle.current = {
+    flush: async () => {
+      if (session.current) throw new Error('卡片排序尚未结束，草稿已保留。');
+      const retry = pendingMove.current;
+      if (retry) await save(retry.id, retry);
+      if (pendingMove.current) throw new Error('卡片排序尚未保存，草稿已保留。');
+    },
+    recoveryDrafts: () => pendingMove.current || session.current ? [{ type: 'work-sort', kind, moduleId, pending: pendingMove.current, drag: session.current, order: [...idsRef.current] }] : [],
   };
   const pointerDown = (event: React.PointerEvent<HTMLButtonElement>, work: Book | Film) => {
     if (event.button !== 0 || !event.isPrimary || busy || session.current || pendingMove.current || idsRef.current.length < 2) return;

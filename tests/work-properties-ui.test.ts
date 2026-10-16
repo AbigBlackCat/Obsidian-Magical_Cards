@@ -30,6 +30,7 @@ class Hooks {
       this.slots[index] = dependencies; this.effects.push(effect);
     }
   };
+  useLayoutEffect = (effect: () => void | (() => void), dependencies: unknown[]) => this.useEffect(effect, dependencies);
   render<P>(component: (props: P) => React.ReactNode, props: P) {
     active = this; this.cursor = 0;
     try { return component(props); } finally { active = undefined; }
@@ -38,18 +39,18 @@ class Hooks {
   dispose() { for (const cleanup of this.cleanups.splice(0)) cleanup(); }
 }
 let active: Hooks | undefined;
-const reactProxy = { ...React, ...Object.fromEntries(['useState', 'useRef', 'useEffect', 'useSyncExternalStore'].map(name => [name, (...args: unknown[]) => {
+const reactProxy = { ...React, ...Object.fromEntries(['useState', 'useRef', 'useEffect', 'useLayoutEffect', 'useSyncExternalStore'].map(name => [name, (...args: unknown[]) => {
   const owner = active ?? React;
   return Reflect.apply(Reflect.get(owner, name) as (...args: unknown[]) => unknown, owner, args);
 }])) };
 const directory = dirname(fileURLToPath(import.meta.url)), require = createRequire(import.meta.url);
 const bundle = await build({
-  stdin: { contents: "export { WorkPropertiesPanel as Panel } from './WorkProperties'; export { default as Editor } from './WorkEditor';", resolveDir: resolve(directory, '../src'), loader: 'tsx' },
+  stdin: { contents: "export { WorkPropertiesPanel as Panel } from './WorkProperties'; export { default as Editor } from './WorkEditor'; export { flushSurfaceDrafts, surfaceRecoveryDrafts } from './draft-lifecycle';", resolveDir: resolve(directory, '../src'), loader: 'tsx' },
   bundle: true, platform: 'node', format: 'cjs', write: false, external: ['react', 'react/jsx-runtime'],
 });
 const memory = { exports: {} };
 new Function('require', 'module', 'exports', bundle.outputFiles[0].text)((name: string) => name === 'react' ? reactProxy : require(name), memory, memory.exports);
-const ui = memory.exports as { Panel: typeof WorkPropertiesPanel; Editor: typeof WorkEditor };
+const ui = memory.exports as { Panel: typeof WorkPropertiesPanel; Editor: typeof WorkEditor; flushSurfaceDrafts: typeof import('../src/draft-lifecycle').flushSurfaceDrafts; surfaceRecoveryDrafts: typeof import('../src/draft-lifecycle').surfaceRecoveryDrafts };
 const nodes = (value: React.ReactNode): React.ReactElement<any>[] => {
   if (Array.isArray(value)) return value.flatMap(nodes);
   if (!React.isValidElement<{ children?: React.ReactNode }>(value)) return [];
@@ -180,4 +181,26 @@ test('an editor losing label capability refuses that save and keeps all entered 
   let tree = hooks.render(ui.Editor, props); nodes(tree).find(node => node.type === 'form')!.props.onSubmit({ preventDefault() {} }); await tick();
   tree = hooks.render(ui.Editor, props); assert.ok(renderToStaticMarkup(tree).includes('草稿已保留')); assert.equal(control(tree, '字段名称（默认导演）').props.value, '开发商');
   assert.equal(f.saves.length, 0); assert.equal(closed, false);
+});
+
+
+test('native lifecycle commits WorkEditor forms and retains live IME values or failed saves for recovery', async t => {
+  const f = await fixture('film', true), hooks = new Hooks(); t.after(() => { hooks.dispose(); f.manager.dispose(); });
+  let closed = 0;
+  const props = { entity: f.entity, genericCard: true, api: f.api, run: async (action: () => Promise<unknown>) => { await action(); return true; }, close: () => { closed++; } };
+  const rawField = { value: '仍在输入的中文', checked: false, getAttribute: () => '名称', closest: () => null };
+  const element = { removeAttribute() {}, querySelector: () => ({ checkValidity: () => true }), querySelectorAll: () => [rawField], contains: (node: unknown) => node === element } as unknown as HTMLElement;
+  let tree = hooks.render(ui.Editor, props), editor = nodes(tree).find(node => node.props['data-bw-editor'])!;
+  editor.props.ref(element); hooks.runEffects();
+  control(tree, '摘要').props.onChange({ target: { value: '未提交的表单摘要' } });
+  tree = hooks.render(ui.Editor, props); editor = nodes(tree).find(node => node.props['data-bw-editor'])!;
+  editor.props.onCompositionStartCapture();
+  await assert.rejects(ui.flushSurfaceDrafts(element), /输入法/);
+  const recovery = ui.surfaceRecoveryDrafts(element) as any[];
+  assert.equal(recovery[0].work.summary, '未提交的表单摘要'); assert.equal(recovery[0].fields[0].value, '仍在输入的中文');
+  assert.equal(f.saves.length, 0); assert.equal(closed, 0);
+  editor.props.onCompositionEndCapture(); await ui.flushSurfaceDrafts(element);
+  assert.equal(f.saves.length, 1); assert.equal(f.saves[0].summary, '未提交的表单摘要'); assert.equal(closed, 1);
+  assert.deepEqual(ui.surfaceRecoveryDrafts(element), []);
+  await ui.flushSurfaceDrafts(element); assert.equal(f.saves.length, 1);
 });

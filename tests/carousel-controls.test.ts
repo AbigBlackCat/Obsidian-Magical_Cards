@@ -111,3 +111,32 @@ test('stage shortcuts preserve note opening and gated previews never mount a bac
     }
   }
 });
+
+test('mobile preserves host gestures, expands the same back and blocks paging while editing', () => {
+  for (const layout of layouts) {
+    const hooks = new Hooks(); let edits = 0;
+    const props: WorkCarouselProps<{ id: string; title: string }> = {
+      mobile: true, works: ['one', 'two', 'three'].map(id => ({ id, title: id })), label: '卡片，左右滑动切换',
+      appearance: { material: 'paper', style: 'cover', layout }, empty: null, renderWork: () => null,
+      renderBack: () => { edits++; return React.createElement('textarea'); },
+    };
+    const render = () => nodes(hooks.render(props));
+    const stage = () => render().find(node => node.props.className === 'bw-paper-stage')!;
+    const target = { closest: () => null };
+    const currentTarget = { setPointerCapture() { assert.fail('mobile must leave host gestures alone'); }, removeAttribute() {}, hasPointerCapture() { return false; } };
+    stage().props.onPointerDown({ target, currentTarget, button: 0, isPrimary: true, pointerId: 1, clientX: 150, clientY: 100 });
+    stage().props.onPointerMove({ target, currentTarget, pointerId: 1, clientX: 250, clientY: 101 });
+    stage().props.onPointerUp({ target, currentTarget, pointerId: 1 });
+    assert.equal(stage().props['data-mobile-editing'], false);
+    assert.equal(edits, 0);
+    stage().props.onKeyDown(key('f'));
+    assert.equal(stage().props['data-mobile-editing'], true);
+    const pager = render().find(node => typeof node.props.step === 'function')!;
+    assert.equal(pager.props.disabled, true);
+    assert.equal(pager.props.step(1), false);
+    assert.ok(edits > 0);
+    stage().props.onKeyDown(key('Escape'));
+    assert.equal(stage().props['data-mobile-editing'], false);
+    assert.equal(render().find(node => typeof node.props.step === 'function')!.props.disabled, false);
+  }
+});

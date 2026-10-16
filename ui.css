@@ -86,3 +86,26 @@
   .bw-cards-settings-body .setting-item-control { flex-wrap:wrap; max-width:100%; }
   .bw-cards-settings-body input[type="text"],.bw-cards-settings-body select { max-width:100%; }
 }
+
+/* Native hosts supply their own layout; the module retains only its own header. */
+.bw-app.bw-native-card-surface { max-width:none; margin:0; padding:0; background:transparent; }
+.bw-native-module-actions { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; }
+.bw-native-module-actions:empty { display:none; }
+
+/* Mobile cards leave page, sidebar and pinch gestures to the host. */
+.bw-app .bw-paper-stage[data-mobile="true"],
+.bw-app .bw-paper-stage[data-mobile="true"] .bw-paper-open { touch-action:auto; cursor:default; }
+.bw-carousel-pager { display:flex; justify-content:center; align-items:center; gap:12px; padding:4px 0 10px; }
+.bw-app .bw-carousel-pager button { min-width:72px; min-height:44px; padding:8px 10px; touch-action:manipulation; user-select:none; -webkit-touch-callout:none; }
+.bw-carousel-pager > span { min-width:48px; text-align:center; font-variant-numeric:tabular-nums; font-size:13px; color:var(--bw-muted); }
+.bw-paper-stage[data-mobile="true"] .bw-paper-copy { padding:6px 8px; gap:3px; overflow:hidden; }
+.bw-paper-stage[data-mobile="true"][data-card-style="cover"] .bw-paper-copy { padding:22px 8px 8px; }
+.bw-paper-stage[data-mobile="true"] .bw-paper-copy h3 { font-size:13px; line-height:1.3; -webkit-line-clamp:1; }
+.bw-paper-stage[data-mobile="true"] .bw-paper-copy p { font-size:11px; line-height:1.3; -webkit-line-clamp:1; }
+.bw-paper-stage[data-mobile="true"] .bw-paper-copy footer { font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bw-app .bw-paper-stage[data-mobile-editing="true"] .bw-paper[data-flipped="true"] { width:calc(100% - 28px); height:calc(100% - 28px); }
+.bw-app .bw-paper-stage[data-mobile-editing="true"] .bw-card-back-content { padding:12px; gap:10px; overflow-y:auto; }
+.bw-app .bw-paper-stage[data-mobile-editing="true"] .bw-card-summary-editor { min-height:120px; }
+.bw-app .bw-paper-stage[data-mobile-editing="true"] .bw-card-summary-editor textarea { min-height:88px; font-size:16px; }
+.bw-app .bw-paper-stage[data-mobile-editing="true"] button { min-height:44px; min-width:44px; }
+.bw-paper-stage[data-mobile-editing="true"] .bw-card-back-footer { flex-wrap:wrap; }

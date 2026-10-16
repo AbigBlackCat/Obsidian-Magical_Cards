@@ -12,6 +12,8 @@ Checked on 2026-10-16 with compatible host **0.1.40**. The standalone manifest p
 | Touch presentation | No page horizontal overflow; 16px summary input, touch controls, visible menu labels and explicit inactive-face hiding |
 | Bundle | Below 5,000,000 bytes, three installation files; no runtime Node, Electron or remote decoder dependencies |
 
+Released as [0.6.1](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.6.1), with compatible host 0.1.40. Both tag workflows passed; downloaded files match clean builds, and all three public files passed workflow-, tag- and commit-bound attestation verification. Two backed-up local vaults received nine installation-file updates with no other file changes during installation; enabled lists, plugin data and twelve local Gantt files were preserved. Native reload remains pending because keyboard input could not be reliably delivered. [Release record](verification/release-0.6.1.json).
+
 [Sanitized mobile record](verification/mobile-0.6.1.json). Browser emulation does **not** establish native mobile Obsidian or physical-device acceptance. iOS, Android, HarmonyOS and Windows have not been tested on physical devices. HarmonyOS support requires a working Obsidian host; native HarmonyOS hosts and compatibility containers remain unverified. No new community review or desktop black-screen fix is claimed. Historical records follow unchanged.
 
 ---

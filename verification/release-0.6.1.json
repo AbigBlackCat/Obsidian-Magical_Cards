@@ -1,0 +1,71 @@
+{
+  "version": "0.6.1",
+  "sourceCommit": "738d2206942d158552f0333619a99213dedb3402",
+  "date": "2026-10-16",
+  "release": "https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/tag/0.6.1",
+  "tagWorkflow": "https://github.com/AbigBlackCat/Obsidian-Magical_Cards/actions/runs/38870593194",
+  "tagWorkflowResult": "success",
+  "publicAttestation": {
+    "files": [
+      "main.js",
+      "manifest.json",
+      "styles.css"
+    ],
+    "signerWorkflow": "AbigBlackCat/Obsidian-Magical_Cards/.github/workflows/ci.yml",
+    "sourceRef": "refs/tags/0.6.1",
+    "sourceDigest": "738d2206942d158552f0333619a99213dedb3402",
+    "result": "all pass"
+  },
+  "compatibleHost": {
+    "version": "0.1.40",
+    "sourceCommit": "4decf70a6ab0a1372cc3c8d15e3ab85ae3e2506a",
+    "tagWorkflowResult": "success",
+    "privateAttestationClaimed": false
+  },
+  "files": [
+    {
+      "release": "public",
+      "files": {
+        "main.js": {
+          "bytes": 4937973,
+          "sha256": "c409c9a80089c81e81a67112706448cb6b36393eadeee208a2ea5cf3151999f8"
+        },
+        "manifest.json": {
+          "bytes": 286,
+          "sha256": "5bca5f5a49c9ab6e636fa86e9940452693c7bde657fd83a610b44ae5b5f8ba63"
+        },
+        "styles.css": {
+          "bytes": 42105,
+          "sha256": "6a498310f2208c33fcba0c363e89366af41d5dc9d12217a57ad2e7bd0b2e24f1"
+        }
+      }
+    },
+    {
+      "release": "private",
+      "files": {
+        "main.js": {
+          "bytes": 759705,
+          "sha256": "27778f2535cdc39bb98f3040d67a4c1bff77d77c25ffd3424ae57194c8e79fa5"
+        },
+        "manifest.json": {
+          "bytes": 291,
+          "sha256": "4d44a9953300cbd666e3ccdee7e14fca18649ea0b7d86cb5e4e7af2cf00c43fc"
+        },
+        "styles.css": {
+          "bytes": 72686,
+          "sha256": "ac1f7b13063b23834ab6760ac2283b86132238f11a1d4d46b75f51a8ac525ba9"
+        }
+      }
+    }
+  ],
+  "deployment": {
+    "vaults": 2,
+    "installationFilesChanged": 9,
+    "otherFileChangesDuringInstallation": 0,
+    "enabledListsAndPluginDataPreserved": true,
+    "localGanttFilesPreserved": 12,
+    "nativeReloadPerformed": false,
+    "nativeReloadReason": "Native keyboard input could not be reliably delivered; normal close and reopen is required."
+  },
+  "physicalDevicesTested": []
+}

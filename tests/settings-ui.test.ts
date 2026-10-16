@@ -223,7 +223,7 @@ const directory=dirname(fileURLToPath(import.meta.url));
 const uiBundle=await build({stdin:{contents:"export {addCardsSettings,CardsSettingsController} from '../src/settings-tab';export {cardModuleChoices} from '../src/module-choice';export {CardsSettingsTab,default as MagicalCardsPlugin} from '../src/main';export {renderedRoots} from 'react-dom/client';export {Notice} from 'obsidian';",resolveDir:directory,loader:'ts'},bundle:true,platform:'node',format:'cjs',write:false,external:['react'],plugins:[{
   name:'settings-platform',setup(builder){
     builder.onResolve({filter:/^obsidian$/},()=>({path:'platform',namespace:'settings-platform'}));
-    builder.onLoad({filter:/.*/,namespace:'settings-platform'},()=>({contents:`export * from ${JSON.stringify(resolve(directory,'obsidian-mock.ts'))};export const Setting=globalThis.__settingsSetting;export const PluginSettingTab=globalThis.__settingsTab;export const Platform={isDesktopApp:true};export const requireApiVersion=()=>Boolean(globalThis.__settingsModern);export function addIcon(){} export function setIcon(element,icon){element.dataset.icon=icon;} export class ItemView {} export class Modal {}`,resolveDir:directory,loader:'js'}));
+    builder.onLoad({filter:/.*/,namespace:'settings-platform'},()=>({contents:`export * from ${JSON.stringify(resolve(directory,'obsidian-mock.ts'))};export const Setting=globalThis.__settingsSetting;export const PluginSettingTab=globalThis.__settingsTab;export const Platform={isDesktopApp:true,get isMobile(){return Boolean(globalThis.__settingsMobile);}};export const requireApiVersion=()=>Boolean(globalThis.__settingsModern);export function addIcon(){} export function setIcon(element,icon){element.dataset.icon=icon;} export class ItemView {} export class Modal {}`,resolveDir:directory,loader:'js'}));
     builder.onResolve({filter:/^react-dom\/client$/},()=>({path:'client',namespace:'settings-roots'}));
     builder.onLoad({filter:/.*/,namespace:'settings-roots'},()=>({contents:'export const renderedRoots=[];export function createRoot(){const root={element:null,unmounted:false,render(element){this.element=element;},unmount(){this.unmounted=true;}};renderedRoots.push(root);return root;}',loader:'js'}));
   },
@@ -662,4 +662,18 @@ test('plugin unload disposes cards UI and releases its lease without detaching o
   const plugin=new ui.MagicalCardsPlugin(app as unknown as import('obsidian').App,{id:'magical-cards'} as import('obsidian').PluginManifest);
   Object.assign(plugin,{cardsLease:{release:()=>{released++;return Promise.resolve();}},cardViews:new Set([{dispose(){disposed++;}}])});
   plugin.onunload();assert.equal(disposed,1);assert.equal(released,1);assert.equal(detached,0);assert.equal(leaf.state,state);assert.deepEqual(leaf.state.position,{parent:'right',index:2});
+});
+
+
+test('mobile settings save directs users to the command palette without depending on a desktop ribbon',async()=>{
+  const {api}=fixture(freshCardsSettings()),doc=new DocumentStub(),el=doc.createElement('div');el.connected=true;
+  (globalThis as any).__settingsMobile=true;
+  const cleanup=ui.addCardsSettings(el as unknown as HTMLElement,api,()=>{});
+  try{
+    const reading=el.all().find(child=>child.dataset.cardCollection==='book')!;
+    await row(reading,'模块名称').children[0].control!.choose('手机阅读');
+    await button(reading,'保存并收起').click!();
+    assert.match(ui.Notice.messages.at(-1)!,/命令面板/);assert.doesNotMatch(ui.Notice.messages.at(-1)!,/左侧/);
+    assert.equal(api.getSnapshot().settings.workbenchText['book.title'],'手机阅读');
+  }finally{cleanup();delete (globalThis as any).__settingsMobile;}
 });

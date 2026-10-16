@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { Plugin, ItemView, PluginSettingTab, Notice, Platform, requireApiVersion } from 'obsidian';
+import { Plugin, ItemView, PluginSettingTab, Notice, requireApiVersion } from 'obsidian';
 import type { SettingDefinitionItem, ViewStateResult, WorkspaceLeaf } from 'obsidian';
 import { acquireCards, type CardsLease } from './runtime';
 import CardsDashboardView, { flushDashboardEdits } from './CardsDashboardView';
@@ -84,7 +84,6 @@ export default class MagicalCardsPlugin extends Plugin {
     });
   }
   async onload() {
-    if (!Platform.isDesktopApp) { new Notice('Magical Cards 仅支持桌面版。'); return; }
     registerCardsIcon();
     const saved: unknown = await this.loadData(); this.assertActive();
     const loaded = await loadCardsPluginData(this.app, saved); this.assertActive();

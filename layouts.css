@@ -16,3 +16,8 @@
 .bw-app .bw-scroll-bend-actions > button { min-height: 30px; padding: 4px 7px; font-size: 12px; }
 .bw-app .bw-scroll-bend-actions > button[aria-label] { min-width: 30px; font-size: 20px; line-height: 1; }
 @container (max-width: 620px) { .bw-scroll-bend-current { flex-direction: column; } .bw-scroll-bend-actions { justify-content: flex-start; } }
+
+/* The back is an editor, including inside a vertical gallery. */
+.bw-paper-stage[data-layout][data-scroll-editing="true"] { touch-action: pan-y pinch-zoom; }
+.bw-card-back-content { overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y pinch-zoom; }
+.bw-card-back-header,.bw-card-back-footer { flex-shrink:0; }

@@ -1,5 +1,5 @@
 .bw-cards-surface { width:100%; max-width:1400px; padding:16px; box-sizing:border-box; }
-.bw-dashboard-view { width:100%; max-width:1400px; padding:16px; }
+.bw-dashboard-view { width:100%; max-width:1400px; padding:16px; box-sizing:border-box; }
 .bw-dashboard-view .bw-cards-surface { padding:0; }
 .bw-dashboard-toolbar { display:flex; align-items:center; gap:8px; margin-bottom:20px; min-width:0; }
 .bw-dashboard-tabs { display:flex; gap:4px; flex:1; min-width:0; overflow-x:auto; padding:4px; }
@@ -58,3 +58,31 @@
 .bw-cards-settings-module:not([open]) .bw-cards-settings-remove { display: none; }
 .bw-cards-settings-remove button { color: var(--text-muted); }
 .bw-cards-settings-remove button:hover { color: var(--text-error); }
+
+.is-mobile .bw-paper[data-flipped="false"] .bw-card-back,
+.is-mobile .bw-paper[data-flipped="true"] .bw-card-front { visibility:hidden; }
+
+@media (pointer: coarse) {
+  /* WebKit can paint an empty reverse face over the cover in nested 3D layers. */
+  .bw-paper[data-flipped="false"] .bw-card-back,.bw-paper[data-flipped="true"] .bw-card-front { visibility:hidden; }
+  .bw-app button:not(.bw-paper-open), .bw-app .bw-scroll-bend-actions > button { min-height:44px; }
+  .bw-app button.bw-icon-button,.bw-app .bw-order-handle { width:44px; min-width:44px; height:44px; flex-basis:44px; }
+  .bw-app input:not([type="checkbox"]):not([type="radio"]),.bw-app select,.bw-app textarea,.bw-app .bw-card-summary-editor textarea,.bw-app [contenteditable="true"] { font-size:16px; }
+  .bw-app .bw-work-search input[type="search"][aria-label] { height:44px; }
+  .bw-work-search > svg { top:15px; }
+  .bw-app .bw-action-menu-label { position:static; width:auto; height:auto; margin:0; clip-path:none; white-space:nowrap; }
+  .bw-app .bw-action-menu button.bw-action-menu-item { width:auto; flex-basis:auto; padding-inline:10px; }
+  .bw-dashboard-tabs { touch-action:pan-x pan-y pinch-zoom; }
+  .bw-cards-settings-group button { min-height:44px; min-width:44px; }
+}
+@media (max-width:600px) {
+  .bw-dashboard-view,.bw-cards-surface { padding:8px; }
+  .bw-app .bw-form { grid-template-columns:minmax(0,1fr); }
+  .bw-app .bw-editor { padding:16px; }
+  .bw-app .bw-editor-dialog { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); margin-block:auto; }
+  .bw-app .bw-card-back-content { padding:12px; gap:10px; }
+  .bw-app .bw-card-back-footer,.bw-app .bw-form-footer { flex-wrap:wrap; }
+  .bw-cards-settings-body .setting-item { flex-wrap:wrap; gap:8px; }
+  .bw-cards-settings-body .setting-item-control { flex-wrap:wrap; max-width:100%; }
+  .bw-cards-settings-body input[type="text"],.bw-cards-settings-body select { max-width:100%; }
+}

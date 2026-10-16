@@ -16,7 +16,8 @@ export async function installationLicenseBanner(){
     ...['react','react-dom','scheduler'].map(name=>readFile(join(dirname(resolve(`${name}/package.json`)),'LICENSE'),'utf8')),
   ]);
   if(reactLicenses.some(license=>license!==reactLicenses[0]))throw new Error('React library license notices changed; review before combining them.');
-  const notice=`Magical Cards author code license (only code the author has the right to license):\n${author.trim()}\n\nReact, React DOM and Scheduler license:\n${reactLicenses[0].trim()}\n\nSample cover images and previews are excluded from the code MIT license. Their rights belong to the respective rights holders; no new image redistribution or commercial-use rights are granted. Coverflow source arrived without an attached license; this notice does not grant new rights to it. Sources and third-party notices: https://github.com/AbigBlackCat/Obsidian-Magical_Cards/blob/main/THIRD_PARTY.md and examples/SOURCES.md.`;
+  const brotliLicense=await readFile(new URL('../src/vendor/brotli/LICENSE',import.meta.url),'utf8');
+  const notice=`Magical Cards author code license (only code the author has the right to license):\n${author.trim()}\n\nReact, React DOM and Scheduler license:\n${reactLicenses[0].trim()}\n\nGoogle Brotli decoder license:\n${brotliLicense.trim()}\n\nSample cover images and previews are excluded from the code MIT license. Their rights belong to the respective rights holders; no new image redistribution or commercial-use rights are granted. Coverflow source arrived without an attached license; this notice does not grant new rights to it. Sources and third-party notices: https://github.com/AbigBlackCat/Obsidian-Magical_Cards/blob/main/THIRD_PARTY.md and examples/SOURCES.md.`;
   if(notice.includes('*/'))throw new Error('License notice cannot safely fit in the installation banner.');
   return `/*!\n${notice}\n*/`;
 }

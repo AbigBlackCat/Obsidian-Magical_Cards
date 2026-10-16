@@ -112,6 +112,8 @@ export default function CardsDashboardView({ api, manager, dashboardId, viewId, 
   };
   const startDrag = (event: React.PointerEvent<HTMLButtonElement>, id: string) => {
     suppressClick.current = false;
+    // Touch scrolls the tab strip; explicit menu actions reorder without stealing that gesture.
+    if (event.pointerType === 'touch') return;
     if (!supported || busy || pending.current || tabDraft || composing.current.size || event.button !== 0 || !event.isPrimary || !boards.some(board => board.id === id)) return;
     pointer.current = { id: event.pointerId, dashboard: id, x: event.clientX, moved: false, handle: event.currentTarget, baseline: structuredClone(boards) };
     dropTarget.current = id; event.currentTarget.setPointerCapture(event.pointerId);
@@ -138,6 +140,14 @@ export default function CardsDashboardView({ api, manager, dashboardId, viewId, 
     if (order.some((id, index) => id !== current.baseline[index].id)) persistTabs({ baseline: current.baseline, order });
   };
   const tabs = [...boards];
+  const selectedIndex = boards.findIndex(board => board.id === selected);
+  const moveSelected = (direction: -1 | 1) => {
+    const target = selectedIndex + direction;
+    if (selectedIndex < 0 || target < 0 || target >= boards.length) return;
+    const order = boards.map(board => board.id);
+    [order[selectedIndex], order[target]] = [order[target], order[selectedIndex]];
+    persistTabs({ baseline: structuredClone(boards), order });
+  };
   if (dashboard && !boards.some(board => board.id === dashboard.id)) tabs.push({ ...dashboard, title: `${dashboard.title}（已删除）` });
   return <div ref={wrapper} className="bw-app bw-dashboard-view" onCompositionStartCapture={event => composing.current.add(event.target)} onCompositionEndCapture={event => composing.current.delete(event.target)}>
     <header className="bw-dashboard-toolbar" onPointerDownCapture={blockComposition}>
@@ -147,6 +157,8 @@ export default function CardsDashboardView({ api, manager, dashboardId, viewId, 
       <ActionMenu label="Dashboard 操作" disabled={busy || snapshot.loading || !supported || Boolean(tabDraft)} actions={[
         { id: 'create', label: '新建 Dashboard', icon: 'plus', select: () => openEditor() },
         { id: 'rename', label: '重命名 Dashboard', icon: 'settings', disabled: !existing, select: () => openEditor(existing) },
+        { id: 'move-before', label: 'Dashboard 向前移动', icon: 'sort', disabled: selectedIndex <= 0, select: () => moveSelected(-1) },
+        { id: 'move-after', label: 'Dashboard 向后移动', icon: 'sort', disabled: selectedIndex < 0 || selectedIndex >= boards.length - 1, select: () => moveSelected(1) },
         { id: 'delete', label: '删除 Dashboard', icon: 'trash', danger: true, disabled: !existing, select: () => openEditor(existing, true) },
       ]} />
     </header>

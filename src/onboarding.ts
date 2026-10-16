@@ -1,6 +1,5 @@
 import { TFile, normalizePath, type App } from 'obsidian';
-import { brotliDecompress } from 'node:zlib';
-import { Buffer } from 'node:buffer';
+import { BrotliDecode } from './vendor/brotli/decode';
 import { createWork } from './domain';
 import { safeFilePart, validFolder } from './persistence';
 import { freshCardsSettings, readCardsSettings, validateCardsPatch } from './settings';
@@ -35,12 +34,9 @@ const RETIRED_STARTER_ASSETS = [
 export async function decodeStarterAsset(asset: StarterAsset): Promise<Uint8Array<ArrayBuffer>> {
   let bytes: Uint8Array<ArrayBuffer>;
   try {
-    if(asset.encoding!=='brotli-base64'||!Number.isSafeInteger(asset.byteLength)||asset.byteLength<=0)throw new Error('格式无效');
-    const compressed=Buffer.from(asset.data,'base64');
-    const decoded=await new Promise<Uint8Array>((resolve,reject)=>{
-      brotliDecompress(compressed,{maxOutputLength:asset.byteLength},(error,result)=>{if(error)reject(error);else resolve(result);});
-    });
-    bytes=new Uint8Array(decoded);
+    if(asset.encoding!=='brotli-base64'||!Number.isSafeInteger(asset.byteLength)||asset.byteLength<=0||asset.byteLength>10*1024*1024)throw new Error('格式无效');
+    const compressed=Int8Array.from(atob(asset.data),value=>value.charCodeAt(0));
+    bytes=new Uint8Array(BrotliDecode(compressed,{maxOutputLength:asset.byteLength}));
   }catch{throw new Error(`示例封面解压失败：${asset.title}。首次导入进度已保留，请检查插件文件后重试。`);}
   const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes.buffer)),value=>value.toString(16).padStart(2,'0')).join('');
   if(bytes.byteLength!==asset.byteLength||hash!==asset.sha256)throw new Error(`示例封面校验失败：${asset.title}。未写入封面，首次导入进度已保留。`);

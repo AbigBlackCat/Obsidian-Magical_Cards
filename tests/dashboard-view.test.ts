@@ -869,6 +869,27 @@ test('tab dragging uses horizontal midpoint targets and suppresses the trailing 
   } finally { hooks.dispose(); f.dispose(); }
 });
 
+test('touch scrolls Dashboard labels without reordering; menu moves preserve membership and reject save failures', async () => {
+  const f = fixture(), hooks = new Hooks(), props = dashboardProps(f);
+  try {
+    const before = structuredClone(f.api.getSnapshot());
+    let tree = hooks.render(ui.Dashboard, props); hooks.runEffects();
+    const tab = nodes(tree).find(node => node.props.role === 'tab')!;
+    tab.props.onPointerDown({ pointerType: 'touch', button: 0, isPrimary: true, pointerId: 7, clientX: 20, currentTarget: { setPointerCapture() { assert.fail('touch must keep native tab scrolling'); } } });
+    tab.props.onPointerMove({ pointerId: 7, clientX: 180, preventDefault() { assert.fail('touch scrolling must not be cancelled'); } });
+    tab.props.onPointerUp({ pointerId: 7 });
+    assert.deepEqual(f.api.getSnapshot(), before);
+    assert.equal(menuAction(tree, 'move-before').disabled, true);
+    f.settingsFail('移动保存失败'); menuAction(tree, 'move-after').select(); await tick();
+    assert.deepEqual(f.api.getSnapshot(), before);
+    tree = hooks.render(ui.Dashboard, props);
+    assert.ok(nodes(tree).some(node => node.props.role === 'alert' && String(node.props.children).includes('移动保存失败')));
+    f.settingsFail(''); nodes(tree).find(node => node.props.children === '重试 Dashboard 排序')!.props.onClick(); await tick();
+    assert.deepEqual(f.api.getSnapshot().settings.dashboards, [boardB, boardA]);
+    assert.deepEqual(f.api.getSnapshot().entities, before.entities);
+  } finally { hooks.dispose(); f.dispose(); }
+});
+
 test('Dashboard success notices use the owner window timer and disappear while errors remain', async () => {
   const f = fixture(), hooks = new Hooks(), props = dashboardProps(f), timers: Array<{ callback: () => void; delay: number }> = [], cleared: number[] = [];
   try {

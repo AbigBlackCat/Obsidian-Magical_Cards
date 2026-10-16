@@ -1,6 +1,6 @@
 # Magical Cards
 
-Magical Cards is a desktop Obsidian plugin for book, film, and image showcase cards, with draggable modules and note embeds. It works offline with six editable starter examples. The interface is currently in Chinese; see the [full English guide](README_en.md).
+Magical Cards is an Obsidian plugin that brings book, film, and image showcase cards to desktop and mobile, with draggable modules and note embeds. It works offline with six editable starter examples. The interface is currently in Chinese; see the [full English guide](README_en.md).
 
 [简体中文说明](#中文说明) · [Full English guide](README_en.md)
 
@@ -185,7 +185,11 @@ Dashboard 用来分类卡片模块，每个分类同等，可以放入任意数�
 
 **可以在手机上使用吗？**
 
-目前仅支持桌面版。原生验收使用 macOS；Windows 尚未实机验证。插件界面目前为中文。
+支持 iOS／iPadOS 和 Android 版 Obsidian。能正常运行 Android 版 Obsidian 的鸿蒙设备使用同一安装包；鸿蒙原生版或兼容容器取决于宿主的插件能力，尚未验证。Obsidian 当前官方手机客户端下载入口为 [iOS 和 Android](https://obsidian.md/download)。
+
+手机上从命令面板执行「打开 Magical Cards」；模块操作菜单可批量选择图片或 SVG。SVG 可从系统文件选择器导入。左右滑动浏览卡片，点击当前卡右上角透明区域翻面，其他位置打开笔记；竖向画廊上下滑动，可从模块标题附近滚动整页。Dashboard 标签左右滑动查看，在分类菜单用「向前移动／向后移动」排序。模块仍可拖动标题手柄调整位置。
+
+手机设置和卡片资料与桌面版共用 Markdown 文件。请先让所使用的笔记同步工具完整同步笔记及附件，再打开卡片。手机浏览器模拟检查不等同于实机验收；iOS、Android、鸿蒙和 Windows 尚未实机验证。插件界面目前为中文。
 
 <details>
 <summary>由旧 Barry Cards 升级与草稿恢复</summary>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { Notice, Setting, setIcon } from 'obsidian';
+import { Notice, Platform, Setting, setIcon } from 'obsidian';
 import type { DropdownComponent, SettingDefinitionRender, SettingGroup, TextComponent, ToggleComponent } from 'obsidian';
 import type { CardsAPI, CardsDashboard } from './types';
 import { CARD_APPEARANCE_FIELDS, newModuleDraft, readModuleDraft, saveModuleDraft, type CardModuleDraft, type ModuleDashboardAssignment } from './settings';
@@ -343,7 +343,7 @@ export class CardsSettingsController {
     rows.push(dropdown(CARD_APPEARANCE_FIELDS.find(field => field.field === 'ratio')!));
     rows.push(...this.dashboardRows(state, section, label));
     rows.push(this.row(`${label} · 保存并收起`, section, setting => {
-      setting.setName('').setDesc('点击左侧紫色卡片图标，在 Magical Cards 标签页体验。高级选项与基本设置一起保存。');
+      setting.setName('').setDesc(Platform.isMobile ? '在命令面板运行「打开 Magical Cards」体验。高级选项与基本设置一起保存。' : '点击左侧紫色卡片图标，在 Magical Cards 标签页体验。高级选项与基本设置一起保存。');
       const error = setting.settingEl.createEl('p'); error.setAttribute('role', 'alert'); error.className = 'bw-cards-settings-error'; error.textContent = state.error; error.hidden = !state.error; state.errorEl = error;
       setting.addButton(control => control.setButtonText('保存并收起').setCta().onClick(async () => {
         if (state.busy) return; this.setBusy(state, true); this.setError(state, '');
@@ -357,7 +357,7 @@ export class CardsSettingsController {
           else { const current = readModuleDraft(this.api.getSnapshot().settings, state.key); if (current) { state.baseline = current; state.draft = structuredClone(current); } }
           this.resetDashboardDraft(state); this.refreshFields(state);
           this.closeEditor(state);
-          new Notice(appearanceChanged
+          new Notice(Platform.isMobile ? `已保存。在命令面板运行「打开 Magical Cards」体验。${appearanceChanged ? '若标签页黑屏，请重启 Obsidian 后重新打开笔记库。' : ''}` : appearanceChanged
             ? '已保存。点击左侧紫色卡片图标体验；若标签页黑屏，请重启 Obsidian 后重新打开笔记库。'
             : '已保存。点击左侧紫色卡片图标，在 Magical Cards 标签页体验。', 4000);
         } catch (failure) { if (!this.disposed) this.setError(state, failure); }

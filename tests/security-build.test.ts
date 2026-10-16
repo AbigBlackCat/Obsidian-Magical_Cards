@@ -56,7 +56,7 @@ test('actual production build has no executable script creation and stays below 
   assert.ok(text.includes('Magical Cards does not load executable script resources.'));
   const banner=await policy.installationLicenseBanner();
   assert.ok(text.startsWith(banner));assert.match(banner,/Copyright \(c\) 2026 AbigBlackCat/);assert.match(banner,/Copyright \(c\) Meta Platforms/);
-  assert.equal((banner.match(/Permission is hereby granted/g)??[]).length,2);
+  assert.equal((banner.match(/Permission is hereby granted/g)??[]).length,3);
   assert.match(banner,/Sample cover images and previews are excluded/);assert.match(banner,/Scheduler license/);
 });
 test('release workflow attests and publishes only installation files using pinned official actions',async()=>{

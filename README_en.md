@@ -21,7 +21,7 @@
 
 <img width="688" height="761" alt="Magical Cards community listing" src="https://github.com/user-attachments/assets/e37d8e9a-3b02-46fe-8985-22c086d64986" />
 
-Magical Cards is a desktop Obsidian plugin for browsing and editing book, film and image showcase cards. Open a dedicated cards view or embed collections in your notes. Both use the same work notes, with search, sorting, linked notes, and editable summaries on the back of each card.
+Magical Cards is an Obsidian plugin for browsing and editing book, film and image showcase cards on desktop and mobile. Open a dedicated cards view or embed collections in your notes. Both use the same work notes, with search, sorting, linked notes, and editable summaries on the back of each card.
 
 **The interface is currently in Chinese.** This guide includes the original labels so you can find the controls. Install from the community browser or use the manual steps below.
 
@@ -37,7 +37,7 @@ Magical Cards is a desktop Obsidian plugin for browsing and editing book, film a
 
 ## Installation
 
-Requires **Obsidian desktop 1.11.4 or later**. In Settings → Community plugins → Browse, search for **Magical Cards**, install and enable it.
+Requires **Obsidian 1.11.4 or later**. In Settings → Community plugins → Browse, search for **Magical Cards**, install and enable it.
 
 For manual installation:
 
@@ -45,7 +45,9 @@ For manual installation:
 2. Put all three files in `<vault>/.obsidian/plugins/magical-cards/`.
 3. Reload Obsidian and enable **Magical Cards** in Settings → Community plugins.
 
-Mobile is not supported. Native verification is performed on macOS; Windows has not been tested on physical hardware.
+Supports Obsidian for iOS/iPadOS and Android. HarmonyOS devices that can run Android Obsidian use the same plugin files. Native HarmonyOS hosts and compatibility containers depend on their ability to run Obsidian plugins and are unverified; the [official mobile downloads](https://obsidian.md/download) currently list iOS and Android. Mobile browser emulation is not physical-device acceptance. iOS, Android, HarmonyOS and Windows have not been tested on physical hardware.
+
+On mobile, run **打开 Magical Cards** from the command palette. Use the module menu to select multiple images or SVGs (choose SVGs through the system file picker). Swipe to browse, tap the transparent top-right area to flip, and tap elsewhere to open the note. In the vertical gallery, swipe vertically through cards; scroll the page from outside the gallery. Swipe the Dashboard tab strip to see more categories; use **Dashboard 向前移动 / 向后移动** in its menu to reorder. Module title handles still support dragging. Finish syncing notes and attachments with your chosen vault sync tool before opening cards; the plugin itself performs no sync.
 
 ## Usage
 

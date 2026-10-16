@@ -206,7 +206,7 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
       paint();
     };
     const wheel = (event: WheelEvent) => {
-      if ((event.target as Element).closest('textarea, input, select, [data-card-control]')) return;
+      if ((event.target as Element).closest('textarea, input, select, [data-card-control], .bw-card-back')) return;
       if (event.ctrlKey || worksRef.current.length < 2 || (layout !== 'scroll-bend' && Math.abs(event.deltaX) <= Math.abs(event.deltaY))) return;
       const delta = vertical ? event.deltaY : layout === 'scroll-bend' && Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
       if (!delta) return;
@@ -276,7 +276,7 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
   const pointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     const input = interaction.current;
     input.suppressClick = false;
-    if ((event.target as Element).closest('textarea, input, select, [data-card-control]')) return;
+    if ((event.target as Element).closest('textarea, input, select, [data-card-control], .bw-card-back')) return;
     if (event.button !== 0 || !event.isPrimary || works.length < 2) return;
     input.press = { id: event.pointerId, x: event.clientX, y: event.clientY, position: motion.current.position, moved: false, samples: [{ time: (owner?.performance ?? performance).now(), position: motion.current.position }] };
   };
@@ -372,7 +372,7 @@ export default function WorkCarousel<Card extends CarouselCard>({ works, label, 
       const central = index === activeIndex;
       const flip = () => { if (canFlip) setFlippedId(current => current === work.id ? null : work.id); };
       return <article className="bw-paper" key={work.id} data-work-id={work.id} data-flipped={flipped} ref={node => { if (node) cards.current.set(work.id, node); else cards.current.delete(work.id); }} onPointerMove={event => {
-        if (flipped || interaction.current.press?.moved || !central || reducedRef.current || layout === 'scroll-bend') return;
+        if (event.pointerType === 'touch' || flipped || interaction.current.press?.moved || !central || reducedRef.current || layout === 'scroll-bend') return;
         const rect = event.currentTarget.getBoundingClientRect();
         event.currentTarget.style.setProperty('--bw-tilt-x', `${(0.5 - (event.clientY - rect.top) / rect.height) * 6}deg`);
         event.currentTarget.style.setProperty('--bw-tilt-y', `${((event.clientX - rect.left) / rect.width - 0.5) * 6}deg`);

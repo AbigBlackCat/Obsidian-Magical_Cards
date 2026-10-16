@@ -18,7 +18,7 @@ React 与 React DOM 固定为 19.3.0，采用其原始 MIT 许可证。构建仅
 
 React and React DOM 19.3.0 are distributed under their original MIT license. The build adapts only the three executable script-resource creation paths in the production client renderer. Those paths explicitly throw instead of creating a script resource. The version, upstream source SHA-256, and expected match count are checked at build time; an upstream change requires another review. The adaptation is in `scripts/react-script-policy.mjs` and is covered by refusal and build-mismatch tests.
 
-Eight sample covers are stored as Brotli-compressed image bytes and decoded with the desktop runtime's built-in Node API. Only image assets are compressed. Each decoded image is verified against its original SHA-256 before it is written; original cover bytes and rights remain unchanged.
+Six sample covers are stored as Brotli-compressed image bytes and decoded by the bundled Google Brotli JavaScript decoder on desktop and mobile. Its pinned source, two local adaptations (lazy initialization and output-size limit), and MIT license are recorded in [src/vendor/brotli/ORIGIN.md](src/vendor/brotli/ORIGIN.md). No decoder code is downloaded at runtime. Only image assets are compressed. Each decoded image is verified against its original SHA-256 before it is written; original cover bytes and rights remain unchanged.
 
 ### React license
 

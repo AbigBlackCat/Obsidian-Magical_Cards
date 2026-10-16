@@ -10,7 +10,7 @@ export async function checkRelease(tag){
   const [manifest,metadata,versions]=await Promise.all(['manifest.json','package.json','versions.json'].map(async file=>JSON.parse(await readFile(new URL(file,project),'utf8'))));
   if(manifest.version!==metadata.version||versions[manifest.version]!==manifest.minAppVersion)throw new Error('Manifest, package and versions.json disagree.');
   if(tag!==undefined&&tag!==manifest.version)throw new Error(`Release tag ${tag} does not match manifest ${manifest.version}.`);
-  if(manifest.isDesktopOnly!==true)throw new Error('Brotli decoding requires the declared desktop-only runtime.');
+  if(manifest.isDesktopOnly!==false)throw new Error('Magical Cards must declare mobile support.');
   const hashes={};
   for(const name of RELEASE_FILES){
     const bytes=await readFile(new URL(name,project));if(!bytes.length)throw new Error(`Empty release file: ${name}`);

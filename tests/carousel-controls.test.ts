@@ -46,6 +46,19 @@ const key = (name: string, composing = false) => {
   return { key: name, nativeEvent: { isComposing: composing }, target: { closest: () => null }, currentTarget: { focus() {} }, preventDefault() { prevented = true; }, get prevented() { return prevented; } };
 };
 
+test('touch never tilts a cover and swiping the back does not capture the editor gesture', () => {
+  const hooks = new Hooks();
+  const props: WorkCarouselProps<{ id: string; title: string }> = {
+    works: [{ id: 'first', title: '一' }, { id: 'second', title: '二' }], label: '卡片', appearance: { material: 'paper', style: 'cover', layout: 'cylinder' },
+    renderWork: () => null, renderBack: () => null, empty: null,
+  };
+  const tree = nodes(hooks.render(props));
+  tree.find(node => node.type === 'article')!.props.onPointerMove({ pointerType: 'touch', currentTarget: { getBoundingClientRect() { assert.fail('touch must not calculate hover tilt'); } } });
+  const stage = tree.find(node => node.props.className === 'bw-paper-stage')!;
+  stage.props.onPointerDown({ pointerType: 'touch', target: { closest: (selector: string) => selector.includes('.bw-card-back') ? {} : null }, button: 0, isPrimary: true, pointerId: 1, clientX: 0, clientY: 0 });
+  stage.props.onPointerMove({ pointerId: 1, clientX: 0, clientY: 90, currentTarget: { setPointerCapture() { assert.fail('editing must not become a carousel swipe'); } } });
+});
+
 test('a transparent hotspot flips without opening the note, and its keyboard action preserves composition', () => {
   for (const layout of layouts) {
     const hooks = new Hooks(), opened: string[] = [];

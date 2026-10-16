@@ -1,3 +1,21 @@
+# Magical Cards 0.6.1 mobile compatibility verification
+
+Checked on 2026-10-16 with compatible host **0.1.40**. The standalone manifest permits mobile loading. Runtime code no longer requires Node or Electron: bundled covers use a bounded, hash-checked JavaScript Brotli decoder. Existing note formats, identifiers, settings and authored starter instructions are retained.
+
+| Check | Result |
+| --- | --- |
+| Automated standalone suite | 284 / 284 tests; type check, resource check and reproducible build pass |
+| Compatible host | Clean official source: 256 / 256; separate local Gantt variant: 260 / 260; shared cards: 284 / 284; type checks pass |
+| Typed lint | 0 errors, the same 3 compatibility/fixture warnings |
+| Browser emulation | WebKit at iPhone 13 size (390px) and Chromium at Pixel 7 size (412px); real components with an in-memory vault adapter |
+| Mobile browser flows | Six original covers load; five layouts flip, edit and save; mixed image/SVG import succeeds; Dashboard menu reordering and vertical back scrolling work |
+| Touch presentation | No page horizontal overflow; 16px summary input, touch controls, visible menu labels and explicit inactive-face hiding |
+| Bundle | Below 5,000,000 bytes, three installation files; no runtime Node, Electron or remote decoder dependencies |
+
+[Sanitized mobile record](verification/mobile-0.6.1.json). Browser emulation does **not** establish native mobile Obsidian or physical-device acceptance. iOS, Android, HarmonyOS and Windows have not been tested on physical devices. HarmonyOS support requires a working Obsidian host; native HarmonyOS hosts and compatibility containers remain unverified. No new community review or desktop black-screen fix is claimed. Historical records follow unchanged.
+
+---
+
 # Magical Cards 0.6.0 candidate verification
 
 Checked on 2026-10-14 as a local **0.6.0** candidate with compatible host **0.1.39**. These candidates are not published and the current vault was not updated. Ordinary modules import multiple images or safe SVGs into separate work notes; work information starts with Name and Summary, film field labels are editable per card, and 32:15 wide cards use an accessible transparent flip region.

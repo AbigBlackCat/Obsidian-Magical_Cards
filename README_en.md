@@ -230,6 +230,10 @@ New versions preserve existing collections, editing and sorting drafts. If a dra
 
 </details>
 
+## 0.9.1 fixes
+
+Fix transparent module deletion confirmations overlapping Settings. The dialog supports separate settings windows, light and dark themes, and narrow panels, including when another plugin loads older styles with the same class name.
+
 ## 0.9.0 changes
 
 - **WeRead bookshelf import:** authorize in Settings, load your shelf, search and select ebooks or audio albums, then import into the built-in reading module or an ordinary book module. Existing cards are skipped within a module; other modules can hold independent copies.

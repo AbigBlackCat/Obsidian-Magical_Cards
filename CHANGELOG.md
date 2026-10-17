@@ -1,5 +1,14 @@
 # Magical Cards changelog
 
+## 0.9.1 — 2026-10-17
+
+- Fix transparent module deletion confirmations in native Settings, including separate settings windows and conflicting legacy plugin styles.
+- Give the dialog its own theme-aware background, centered layout, wrapping controls and bounded scrolling on narrow panels.
+- Close the native modal before unmounting, restore its entry focus, and keep Escape from closing the Settings window.
+- Update the version-specific release notice. No work-data or module-configuration migration.
+
+修复删除模块时确认信息与背景重叠的问题，适配明暗主题及窄面板。
+
 ## 0.9.0 — 2026-10-17
 
 - Import selected ebooks and audio albums from your current WeRead shelf in Settings. Save the API Key in Obsidian SecretStorage, search by title or author, select books and choose a valid book module. Nothing is selected automatically.

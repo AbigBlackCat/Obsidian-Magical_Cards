@@ -1,32 +1,11 @@
 # Magical Cards
 
-Magical Cards is an Obsidian plugin that brings book, film, and image showcase cards to desktop and mobile, with draggable modules and note embeds. It works offline with six editable starter examples. The interface is currently in Chinese; see the [full English guide](README_en.md).
-
-[简体中文说明](#中文说明) · [Full English guide](README_en.md)
-
-## Overview
-
-Choose five layouts, organize modules into Dashboards, and edit summaries on the back of a card. Removing a module from a Dashboard changes that category only. Deleting a module preserves its notes and images. Works remain local Markdown notes; appearance and ordering are stored in the selected card directory. Remote covers load only from their image servers. The linked-note picker searches vault paths when invoked. Copy writes generated embed code only after a click, and pasting reads plain text from that paste event; the plugin does not monitor the clipboard or upload note contents.
-
-## Native workbench integration
-
-Magical Cards 0.7.0 provides the native DOM host API defined in [`src/host-api.ts`](src/host-api.ts). Compatible Barry workbenches can select existing modules and render their full card UI directly. Workbench placement never changes Dashboard classification or copies notes. Enable Magical Cards to show the modules; disabling it keeps workbench references for the next launch.
-
-The bridge is discovered through Obsidian Workspace events: `magical-cards:request-api` accepts a callback, `magical-cards:api-ready` publishes the API, and `magical-cards:api-unavailable` carries its `instanceId`. Hosts call `prepareModules` before moving or removing modules, hold its returned release callback through persistence, then dispose old mounts before reusing a container. Failed saves keep the old mount available for retry. Unfinished native forms, text, sorting and image imports are backed up as a `native-card-drafts-recovery-*.json` file in the plugin directory on forced shutdown; import recovery includes the original image bytes and retry IDs.
-
-## Usage
-
-The Chinese instructions below cover all settings, screenshots and the author's development notes. The [full English guide](README_en.md) includes the same operations and the original interface labels. Desktop macOS has been tested; Windows has not been tested on physical hardware.
-
-## 中文说明
-
-0.7.0 支持 Barry 工作台原生接入：在工作台选择 Magical Cards 的已有模块，即可直接浏览、翻面、编辑、新增及批量导入卡片。工作台只保存模块引用与位置，不改动 Dashboard 分类。暂停或停用 Magical Cards 时保留引用，启用后可重新显示。强制停用时仍未完成的表单、标题、排序及图片导入会写入插件目录的 `native-card-drafts-recovery-*.json` 恢复文件；图片包含原字节和重试标识。
-
+[English guide](README_en.md) · [更新日志](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases)
 
 <p align="center">把阅读、观影与图片收藏，变成可以浏览、编辑、嵌入笔记的卡片。</p>
 <p align="center">
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/AbigBlackCat/Obsidian-Magical_Cards?style=flat-square"></a>
-  <a href="LICENSE"><img alt="Code license: MIT" src="https://img.shields.io/badge/code-MIT-blue?style=flat-square"></a>
+  <a href="LICENSE"><img alt="License: free use, restricted redistribution" src="https://img.shields.io/badge/license-free_use-blue?style=flat-square"></a>
 </p>
 <p align="center">
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/latest">下载插件</a> ·
@@ -58,28 +37,23 @@ The Chinese instructions below cover all settings, screenshots and the author's 
 https://community.obsidian.md/plugins/magical-cards
 
 
-**插件的开发思路** 
+Magical Cards 是桌面和手机上的 Obsidian 卡片插件，用于浏览、编辑和嵌入书籍、影视与图片橱窗。作品保存在自己的 Markdown 笔记中，六张可编辑示例封面随插件提供，断网也能开始使用。插件界面目前为中文。
 
-我开发了一个工作台，改造到obsidian后发现，这个卡片轮播的视觉效果出奇的好，大大提高了我的记录动力，不得不说颜值是第一生产力。
-以前经常想要写读书笔记、观影笔记，最后总因为笔记长期维护难度大，反馈小而拖延放弃，而这个卡片轮播像集卡收藏一样，
-书籍影视就这么美丽地展现到我面前，我一回忆起曾经阅读或者观看的画面就忍不住点击进入笔记写上一两句作为记录。
-
-进一步思考，我想到这个卡片轮播也可以单纯的只展示不记录，于是新增了橱窗功能，大家喜欢的照片、角色、明星等可以通过用橱窗功能，呈现在Magical Cards窗口以及你的任意笔记里。
-
-这个插件是从我的Obsidian工作台里独立出来的，等我的工作台开发完善了我会带它和大家见面。关于这个插件，如果你有任何建议和反馈，欢迎给我提issue,或者作为contributor参与进一步开发我的插件，你也可以fork我的插件去自定义你的功能。
-
-传送门:https://github.com/AbigBlackCat/Obsidian-Magical_Cards/ 
+从 **0.9.0** 起，完整源码在私有仓库维护；本公开仓库继续提供安装更新、使用文档及 Issues。个人与企业可免费正常使用，许可与再分发限制见[使用许可](#使用许可与源码)。
 
 ## 目录
 
 - [开始使用](#开始使用)
 - [功能](#功能)
+- [微信读书书目导入](#微信读书书目导入)
 - [外观与设置](#外观与设置)
 - [嵌入笔记](#嵌入笔记)
 - [常见问题与数据](#常见问题与数据)
-- [开发与版权](#开发与版权)
+- [使用许可与源码](#使用许可与源码)
 
 ## 开始使用
+
+需要 **Obsidian 1.11.4 或更新版本**。在「设置 → 第三方插件 → 浏览」搜索 **Magical Cards**，安装并启用。手动安装时，从[最新 Release](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`，将三个文件放入 `<笔记库>/.obsidian/plugins/magical-cards/`，重新加载 Obsidian 后启用插件。
 
 首次在空目录启用，插件会在 `卡片库` 中创建说明页、3 本书与 3 部影视，并自动打开说明页。六张封面随插件打包，断网也能查看；示例作品可以编辑或删除。
 
@@ -100,6 +74,8 @@ https://community.obsidian.md/plugins/magical-cards
 | 翻面摘要 | 翻到背面记录感想；布局切换保留当前卡和摘要草稿。 |
 | 图片橱窗 | 每个模块共用一篇笔记，批量导入图片、可选名称及翻面描述。 |
 | Dashboard 分类 | 在顶部切换同等分类、拖动分类标签；在设置选择已有模块，各分类独立排序。 |
+| 微信读书书目导入 | 在设置保存 API Key，读取书架并勾选要导入到书籍模块的书目。 |
+| 模组作品 Dashboard | 点击模块菜单中搜索左侧的传送图标，查看该模块的统计、最近更新、搜索、筛选、临时排序与封面墙。 |
 | 模块排序 | 拖动标题前的手柄；键盘聚焦手柄后按 Alt / Option + ↑ / ↓。 |
 | 笔记嵌入 | 阅读模式和实时预览均可展示集合，同一集合可以重复引用。 |
 
@@ -118,6 +94,14 @@ Dashboard 用来分类卡片模块，每个分类同等，可以放入任意数�
 
 新用户首次安装会得到可改名、可删除的普通“示例” Dashboard，包含阅读和影视。
 
+### 模组作品 Dashboard
+
+点击模块菜单中搜索左侧的传送图标，展开该模块的全部作品。在 Magical Cards 分类页内打开时，使用当前标签页；从笔记嵌入打开时，复用同一窗口已有的 Magical Cards 标签页，没有时新建。页面顶部只有「返回」与模组名称，搜索、筛选、临时排序和封面比例继续沿用原有行为；临时排序不改写模块保存的顺序。
+
+点击「返回」恢复来源页面的滚动位置与传送入口焦点。来源已经关闭，或重启后恢复作品页时，返回 Magical Cards 分类页。自定义卡片优先打开关联笔记，图片橱窗打开模块笔记；书籍、影视和橱窗的既有字段与封面行为保留。
+
+插件设置中的「启用模组作品 Dashboard」默认开启，只保存在本机插件配置中。关闭后各处传送入口立即隐藏，已经打开的作品页显示关闭提示，仍可返回。已有安装升级后首次加载会打开 Magical Cards 设置并显示本版本更新说明；关闭或点击「知道了」后记为当前版本已读。全新安装继续显示原有示例引导。本次无需迁移作品数据，也不改变 Dashboard 分类配置。
+
 ### 五种动效布局
 
 | 封面流轮播 | 黑胶专辑架 |
@@ -127,11 +111,25 @@ Dashboard 用来分类卡片模块，每个分类同等，可以放入任意数�
 | ![原生笔记中的横向滚动弯曲画廊](previews/scroll-bend.png) | ![原生笔记中的倾斜轮播](previews/skewed-carousel.png) |
 
 
+## 微信读书书目导入
+
+在「设置 → Magical Cards」展开默认收起的「微信读书」：
+
+1. 打开[获取 API Key](https://weread.qq.com/r/weread-skills)，按微信读书指引获取密钥。粘贴后点击「保存授权」；成功后输入框清空，不会回显密钥。
+2. 点击「读取书架」，按书名或作者搜索并勾选书目。电子书与有声书均可导入，默认不勾选任何书目。
+3. 选择目标书籍模块，点击「导入所选」。未选择时使用内置阅读模块，并显示它当前的名称。若该模块已删除，需要选择有效目标；不会自动恢复模块。
+
+目标只提供内置阅读与普通书籍模块。新建普通模块时可选择「作品类型：影视／书籍」，默认影视；已有模块不支持类型转换。同一模块已有的相同来源书目会跳过，保留所有手工内容；同一本书可在不同模块保留独立笔记。手工添加且没有来源标识的同名作品不会自动匹配。
+
+失败书目保留勾选，可直接重试；成功或已存在的书目取消勾选。导入时不能修改授权、目标或卡片目录，关闭设置后已开始的导入会继续，插件停用或目标删除时停止后续写入。选择、目标和书架列表只保留在当前设置会话中。
+
+密钥仅存于 Obsidian SecretStorage 独立槽位，不写入插件配置、卡片配置或作品笔记。仅在点击「读取书架」时向微信读书官方接口请求当前书架，不自动同步，不请求划线、想法、阅读时长或逐书详情，不创建文章收藏入口卡片。源中缺失的摘要、个人评分及其他资料保持为空。有声书的「已完结」不会被当作你的「已读」。
+
 ## 外观与设置
 
-设置依次为：**卡片目录 → 示例 → 添加卡片模块 → 添加图片橱窗 → 已有模块 → 笔记代码块生成**。
+设置依次为：**启用模组作品 Dashboard → 卡片目录 → 微信读书 → 示例 → 添加卡片模块 → 添加图片橱窗 → 已有模块 → 笔记代码块生成**。
 
-按用途展开“添加卡片模块”或“添加图片橱窗”，填写**模块名称**、选择**比例**，可选一个或多个 Dashboard，也可新建分类并放入，然后点击**保存并收起**。不选择分类也能保存。两个入口的类型固定、草稿独立；高级样式仅选择整幅封面或简约，不转换存储类型。保存后点击左侧紫色叠卡图标，在 **Magical Cards** 标签页体验。设置中的预览仅能浏览和滑动，不会翻面或打开描述编辑。
+按用途展开“添加卡片模块”或“添加图片橱窗”，填写**模块名称**、选择**作品类型**（普通模块）和**比例**，可选一个或多个 Dashboard，也可新建分类并放入，然后点击**保存并收起**。不选择分类也能保存。两个入口的类型固定、草稿独立；高级样式仅选择整幅封面或简约，不转换存储类型。保存后点击左侧紫色叠卡图标，在 **Magical Cards** 标签页体验。设置中的预览仅能浏览和滑动，不会翻面或打开描述编辑。
 
 
 “高级设置”依次包含：**卡片样式 → 显示方式 → 卡片材质 → 动效布局 → 仅显示三张卡片**。弯曲画廊才显示方向。新模块预设为 **整幅封面、填满裁切、纸感、2:3、倾斜轮播、关闭仅三张**；阅读／影视示例和已有模块保留原外观。三卡选项分别作用于各模块，仍可浏览全部图片。
@@ -182,7 +180,7 @@ Dashboard 用来分类卡片模块，每个分类同等，可以放入任意数�
 
 **数据保存在哪里？**
 
-作品是卡片目录中的普通 Markdown 笔记；外观与模块顺序保存在 `_数据/卡片配置.md`。插件本地配置保存目录、首次体验状态及必要恢复信息。切换目录不会重新导入示例或迁移原作品。
+作品是卡片目录中的普通 Markdown 笔记；外观与模块顺序保存在 `_数据/卡片配置.md`。插件本地配置保存目录、首次体验状态、模组作品 Dashboard 开关、更新说明已读状态及必要恢复信息。切换目录不会重新导入示例或迁移原作品。
 
 **修改外观后标签页黑屏怎么办？**
 
@@ -190,7 +188,7 @@ Dashboard 用来分类卡片模块，每个分类同等，可以放入任意数�
 
 **是否联网或读取剪贴板？**
 
-插件不连接账户，不执行联网同步。内置示例离线可用；自行填写远程封面 URL 时会向相应图片服务器加载资源。「复制」只在用户点击后写入生成的代码；编辑标题时，主动粘贴仅读取该次粘贴的纯文本，不在后台读取剪贴板。关联笔记选择器搜索笔记库中的笔记路径，不向外发送笔记内容。
+微信读书导入是可选功能：只有主动点击「读取书架」时，才向微信读书官方网关 `https://i.weread.qq.com/api/agent/gateway` 请求当前书架，并发送保存在 SecretStorage 中的授权密钥；不自动同步，也不上传笔记内容。内置示例离线可用；远程封面 URL（包括导入书目的封面）会向相应图片服务器加载资源。插件不收集遥测。「复制」只在用户点击后写入生成的代码；编辑标题时，主动粘贴仅读取该次粘贴的纯文本，不在后台读取剪贴板。关联笔记选择器搜索笔记库中的笔记路径，不向外发送笔记内容。
 
 **可以在手机上使用吗？**
 
@@ -201,28 +199,28 @@ Dashboard 用来分类卡片模块，每个分类同等，可以放入任意数�
 手机设置和卡片资料与桌面版共用 Markdown 文件。请先让所使用的笔记同步工具完整同步笔记及附件，再打开卡片。手机浏览器模拟检查不等同于实机验收；iOS、Android、鸿蒙和 Windows 尚未实机验证。插件界面目前为中文。
 
 <details>
-<summary>由旧 Barry Cards 升级与草稿恢复</summary>
+<summary>旧版插件升级与草稿恢复</summary>
 
 原 `barry-cards` 代码块、作品 ID、`bw_*` 属性、视图和恢复草稿继续兼容；旧目录及未知配置字段保留。
 
 先备份原 `.obsidian/plugins/barry-cards/` 与卡片目录，再停用旧插件，等待未保存修改写入完成。将三个新文件安装到 `magical-cards`，把原 `data.json` 和恢复 JSON 一并保留到新目录，最后按原启用状态启用新插件。不要同时启用两个独立插件。
 
-兼容宿主可以共享同一运行时。新版仅补充缺少的代码块语言与封面读取能力，保留现有作品、编辑和排序草稿。最终停用时保存失败的草稿会写入插件目录的恢复 JSON，并提示位置。
+新版保留现有作品、编辑和排序草稿。最终停用时保存失败的草稿会写入插件目录的恢复 JSON，并提示位置。
 
 </details>
 
-**0.3.0 更新**：新增橱窗式卡片，支持批量图片、可选名称与翻面描述；模块设置简化为名称和比例，高级项默认收起，三卡分别按模块设置；阅读、影视和自定义模块可移除展示并恢复，保留原数据和顺序。设置预览仅供浏览，编辑请使用左侧紫色卡片图标打开 Magical Cards 标签页。
+## 0.9.0 更新
 
-**0.3.1 更新**：修正弯曲画廊退出时的 WebGL 上下文释放，比例和方向变化复用画布；首次说明页采用作者修订的正文；新建橱窗的选项改为“添加图片橱窗”；补充外观更改后的黑屏恢复提示。
+- **微信读书书目导入**：在设置中授权、读取书架、搜索并勾选电子书或有声书，导入内置阅读或普通书籍模块。同模块去重，跨模块可留独立副本，已有内容保持不变。
+- **独立模组作品 Dashboard**：点击搜索左侧的传送图标，进入紧凑的统计、作品横幅与封面墙；支持搜索、状态筛选和临时排序，返回时恢复来源位置。
+- **书籍模块**：新建普通模块时可选影视或书籍，默认保留影视类型；已有模块不转换类型。
 
-**0.4.0 更新**：添加卡片模块与添加图片橱窗分为独立折叠入口，各自保留草稿；卡片标签页新增“全部”和 Dashboard 分类，可主动选择已有模块、编辑或删除分类，并分别保存模块顺序。分类共用原资料，新模块不自动加入，模块隐藏仍全局生效。
+完整版本记录见 [Releases](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases)。
 
-**0.4.2 更新**：区分隐藏、移出分类和真正移除模块。隐藏仍可恢复；“移出此 Dashboard”仅取消当前分类引用；“移除模块”经确认删除模块配置、全部分类引用及模块位置，保留作品笔记和图片，原有嵌入提示模块已移除，不提供模块恢复入口。删除前检查未保存编辑与排序，失败或冲突保留原模块和草稿。兼容宿主为 **0.1.37**。
+## 使用许可与源码
 
-**0.5.0 更新**：Dashboard 分类同等，取消固定“全部”页和隐藏操作。分类标签可以拖动排序；模块加入、移出与删除集中在设置，创建模块可同时创建分类。普通卡片、橱窗和创建入口采用不同样式，工具栏合并为横向动画菜单。历史隐藏模块转为未分类，清空旧隐藏状态，相关嵌入和兼容宿主恢复展示。兼容宿主为 **0.1.38**。
+从 **0.9.0** 起，Magical Cards 的作者代码采用[专有许可](LICENSE)：个人和企业可以免费正常使用，允许个人备份与私人修改；未经作者许可，不得二次发布、改名分发或售卖插件及该版本起的源码。完整工程、测试与构建流程在私有源码仓库维护，本公开仓库用于安装、更新、文档和[问题反馈](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/issues)。
 
-## 开发与版权
+已经以 MIT 发布的旧版本仍适用其原有 [MIT 许可](LICENSE-LEGACY-MIT)，新许可不撤销旧版已授予的权利。第三方组件继续适用各自许可证，见 [THIRD_PARTY.md](THIRD_PARTY.md)。第三方封面及含封面的预览图归各自权利人，不受作者代码许可授权；请保留[封面来源与版权](examples/SOURCES.md)。
 
 [示例笔记库](examples/vault/) 仅包含三本书、三部影视及独立示例 ID；安装三个插件文件后用 Obsidian 打开即可。其卡片目录为「示例」。[说明页模板](examples/Magical_Cards示例及用法说明.md) 用于首次体验。
-
-代码采用 [MIT](LICENSE)。第三方封面及含封面的预览图不受代码许可证授权，其权利归各自权利人；请保留[封面来源与版权](examples/SOURCES.md)。布局、React 及构建适配说明见 [THIRD_PARTY.md](THIRD_PARTY.md)。

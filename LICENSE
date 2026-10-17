@@ -1,16 +1,43 @@
-MIT License
+Magical Cards Personal and Business Use License
+Version 1.0 — applicable to Magical Cards 0.9.0 and later
 
-Copyright (c) 2026 AbigBlackCat
+Copyright (c) 2026 AbigBlackCat. All rights reserved except as granted below.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. Scope
+This license applies only to original code and documentation that AbigBlackCat
+has the right to license in this distribution (the "Software"). Third-party
+components, sample covers and other images retain their own licenses or rights;
+see THIRD_PARTY.md and examples/SOURCES.md. No rights to them are granted here.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. Free personal and business use
+You may use and install the Software without charge for personal, educational,
+professional and commercial purposes on devices and in vaults controlled by you
+or your organization. You may make private backup and synchronization copies,
+deploy it internally within your organization, and modify it for your own or
+your organization's private use. These permissions do not grant a right to
+publicly distribute the Software, its source code or modified versions.
+
+3. Redistribution requires permission
+Except for the private and internal copies permitted above, you may not copy
+for redistribution, publish, mirror, sublicense, sell, rent, rebrand, or
+distribute the Software, its source code or derivative versions, whether free
+or paid and whether separately or as part of another product, without separate
+prior written permission from AbigBlackCat. Using the plugin in a business is
+permitted; selling or redistributing the plugin is not.
+
+4. Notices and third-party rights
+Keep this license, copyright notices and all applicable third-party notices in
+every permitted copy. Do not represent a modified copy as an official release.
+This license does not replace or restrict rights granted by third-party licenses.
+
+5. Previously distributed versions
+Versions and copies previously distributed under the MIT License retain the
+rights granted with those copies. This license does not revoke those grants.
+LICENSE-LEGACY-MIT records that prior license; it does not place the author's
+0.9.0-and-later distribution under MIT. Rights in code obtained under an earlier
+MIT grant remain subject to that grant.
+
+6. No warranty
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

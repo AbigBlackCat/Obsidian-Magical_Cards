@@ -4,7 +4,7 @@
 <p align="center">Browse your books and films as cover cards, and bring them into your notes.</p>
 <p align="center">
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/AbigBlackCat/Obsidian-Magical_Cards?style=flat-square"></a>
-  <a href="LICENSE"><img alt="Code license: MIT" src="https://img.shields.io/badge/code-MIT-blue?style=flat-square"></a>
+  <a href="LICENSE"><img alt="License: free use, restricted redistribution" src="https://img.shields.io/badge/license-free_use-blue?style=flat-square"></a>
 </p>
 <p align="center">
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/latest">Download</a> ·
@@ -23,6 +23,8 @@
 
 Magical Cards is an Obsidian plugin for browsing and editing book, film and image showcase cards on desktop and mobile. Open a dedicated cards view or embed collections in your notes. Both use the same work notes, with search, sorting, linked notes, and editable summaries on the back of each card.
 
+From **0.9.0**, the complete source is maintained in a private repository. This public repository continues to provide installation, updates, documentation and Issues. Personal and business use is free under the [license and redistribution terms](#license-and-source).
+
 **The interface is currently in Chinese.** This guide includes the original labels so you can find the controls. Install from the community browser or use the manual steps below.
 
 ## Contents
@@ -30,10 +32,11 @@ Magical Cards is an Obsidian plugin for browsing and editing book, film and imag
 - [Installation](#installation)
 - [Usage](#usage)
 - [Features and layouts](#features-and-layouts)
-- [Settings](#settings)
+- [WeRead bookshelf import](#weread-bookshelf-import)
+- [Appearance and settings](#appearance-and-settings)
 - [Note embeds](#note-embeds)
 - [FAQ and data](#faq-and-data)
-- [Development and license](#development-and-license)
+- [License and source](#license-and-source)
 
 ## Installation
 
@@ -69,6 +72,8 @@ The **查看示例及用法说明** (Open examples and guide) command reopens th
 | Manage works | Add or edit covers and details, link notes, delete works, and change their order. |
 | Back-of-card summaries | Flip the card and write. Switching layouts preserves the current card and summary draft. |
 | Dashboards | Organize modules into equal categories, assign them in Settings, and drag tabs to reorder categories. Each category has an independent module order. |
+| WeRead import | Authorize in Settings, load the current shelf, and select books to import into a book module. |
+| Module works Dashboard | Use the portal action before search to open the module’s statistics, latest work, filters and cover grid. |
 | Reorder modules | Drag the title handle, or focus it and press Alt / Option + ↑ / ↓. |
 | Embed collections | Use reading mode or Live Preview; the same collection can appear in multiple notes. |
 
@@ -85,7 +90,15 @@ Manage module membership in **Settings**:
 - **Delete module:** the trash icon beside an expanded module title removes its configuration, category references and positions after confirmation. Work notes, showcase notes, images and work IDs remain intact. Existing embeds report a deleted module; there is no module restoration control.
 - **Delete current card or image:** use the module's horizontal action menu. The confirmation identifies the individual card being deleted.
 
-First-time users get a normal, renameable and deletable 示例 (Example) Dashboard containing Reading and Films. Existing libraries do not receive an automatic category. During upgrade, historically hidden modules become unassigned, both old hiding states are cleared, and affected note embeds and compatible host views display those modules again. Upgrade an enabled compatible host to **0.1.38**; an older shared runtime displays existing categories read-only and prompts an upgrade without replacing the library or drafts.
+First-time users get a normal, renameable and deletable 示例 (Example) Dashboard containing Reading and Films. Existing libraries do not receive an automatic category. During upgrade, historically hidden modules become unassigned, old hiding states are cleared, and affected note embeds display those modules again.
+
+### Module works Dashboard
+
+Click the portal action immediately before search in a module menu to browse its statistics, latest update, search, filters, temporary sorting and cover grid. Opening from the Magical Cards category view uses the same tab; note embeds reuse a Magical Cards tab in the same window, creating one only when needed. The page header contains only **返回** (Return) and the module name. Temporary sorting does not rewrite saved module order; existing cover proportions and note-opening behavior are retained.
+
+Return restores the source page's scroll position and portal focus. If the source was closed, or the works page was restored after restarting Obsidian, Return opens the Magical Cards category view. Custom cards prefer their linked note; showcase cards open the module note.
+
+**启用模组作品 Dashboard** (Enable module works Dashboard) is enabled by default and saved in local plugin configuration. Turning it off immediately hides portal actions and shows a disabled message on open works pages, with Return still available. Existing installations open Magical Cards Settings after an upgrade and show the update dialog once for that version; closing it or choosing **知道了** records it as read. Fresh installations keep the existing starter guide. No work-data migration, film fields or Dashboard category changes are introduced.
 
 ### Five layouts
 
@@ -103,11 +116,21 @@ Layouts do not autoplay. Album rail displays sleeves without playback controls o
 
 ![Dashboard categories reference shared modules and save their own order](previews/dashboards.png)
 
+## WeRead bookshelf import
+
+In Settings → Magical Cards, expand **微信读书** (collapsed by default). Open [获取 API Key](https://weread.qq.com/r/weread-skills), paste your key, and choose **保存授权**. The password field clears after saving. Choose **读取书架**, search by title or author, and select books; none are selected initially. Ebooks and audio albums are supported.
+
+Choose a book module and select **导入所选**. Leaving the target unset uses the built-in reading module under its current name. Deleted targets require a valid replacement and are never restored automatically. New ordinary modules offer **作品类型：影视／书籍** (Film / Book), defaulting to Film; existing types cannot be converted. Showcases and film modules are excluded.
+
+The same source book is skipped within a target without changing existing notes or manual content. Other modules receive independent notes; manual books without source IDs are not matched by title. Successful and skipped books are deselected; failed books stay selected for retry. Import locks authorization, target and directory changes. Closing Settings allows the import to finish; disabling the plugin or deleting the target stops subsequent writes. The target, shelf and selection last only for this Settings session.
+
+The key is stored only in an independent Obsidian SecretStorage slot, never in plugin settings, card configuration or work notes. Only the official current-shelf endpoint is requested after your click. No automatic sync, highlights, thoughts, reading time, per-book details or article-collection cards are included. Missing summaries and personal ratings stay empty. Audio-series completion is not treated as your reading completion.
+
 ## Appearance and settings
 
-Settings are ordered as **Card directory → Examples → Add cards module → Add image showcase → Existing modules → Note code generator**. Both creation groups, examples, existing modules and advanced settings start collapsed.
+Settings are ordered as **Enable module works Dashboard → Card directory → WeRead → Examples → Add cards module → Add image showcase → Existing modules → Note code generator**. Both creation groups, examples, existing modules and advanced settings start collapsed.
 
-Expand **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add image showcase), enter a **module name**, choose its **aspect ratio**, optionally select one or more Dashboards or create a new category, then click **保存并收起** (Save and collapse). Each creator keeps its own draft and a fixed storage type; advanced card style offers full cover or minimal without converting the module type. Click the purple stacked-card ribbon icon to experience the module in the **Magical Cards** tab. Settings previews support browsing and sliding only; they cannot flip or start editing sessions.
+Expand **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add image showcase), enter a **module name**, choose its **work type** (ordinary modules only) and **aspect ratio**, optionally select one or more Dashboards or create a new category, then click **保存并收起** (Save and collapse). Each creator keeps its own draft and a fixed storage type; advanced card style offers full cover or minimal without converting the module type. Click the purple stacked-card ribbon icon to experience the module in the **Magical Cards** tab. Settings previews support browsing and sliding only; they cannot flip or start editing sessions.
 
 ![Basic module settings with name, aspect ratio, save controls and collapsed advanced settings](previews/settings.png)
 
@@ -186,7 +209,7 @@ Show whole image preserves all image content and may leave space when the ratios
 
 **Where is my data saved?**
 
-Works are ordinary Markdown notes inside the card directory. Appearance and module order are stored in `_数据/卡片配置.md`. Local plugin configuration stores the directory, first-run progress, and recovery information. Switching directories neither imports examples again nor moves existing works.
+Works are ordinary Markdown notes inside the card directory. Appearance and module order are stored in `_数据/卡片配置.md`. Local plugin configuration stores the directory, first-run progress, module works Dashboard preference, update-dialog read state, and recovery information. Switching directories neither imports examples again nor moves existing works.
 
 **What if the tab turns black after changing an appearance?**
 
@@ -194,39 +217,31 @@ Wait for the save to finish, quit and restart Obsidian, then reopen the same vau
 
 **Does the plugin use the network or clipboard?**
 
-No account or data sync is required. Built-in examples work offline. User-supplied remote cover URLs load from their image servers. The Copy control writes generated code only after you click it. When editing a title, pasting reads only the plain text from that paste event; there is no background clipboard reading. The linked-note picker searches note paths within your vault and does not send note content elsewhere.
+WeRead import is optional. Only clicking **读取书架** sends a current-shelf request to the official WeRead gateway at `https://i.weread.qq.com/api/agent/gateway`, using the authorization key held in SecretStorage. There is no automatic sync or note upload. Built-in examples work offline. Remote cover URLs, including imported covers, load from their image servers. The plugin does not collect telemetry. The Copy control writes generated code only after you click it. When editing a title, pasting reads only the plain text from that paste event; there is no background clipboard reading. The linked-note picker searches note paths within your vault and does not send note content elsewhere.
 
 <details>
-<summary>Upgrading from Barry Cards and recovering drafts</summary>
+<summary>Upgrading from the previous plugin and recovering drafts</summary>
 
 Existing `barry-cards` blocks, work IDs, `bw_*` properties, views, and recovery drafts remain compatible. Previous directory settings and unknown configuration fields are preserved.
 
 Back up `.obsidian/plugins/barry-cards/` and your card directory, then disable the old plugin and let pending edits finish saving. Install the three new files in `magical-cards`, preserve the old `data.json` and recovery JSON files in the new directory, then enable the new plugin according to the previous enabled state. Do not enable both standalone plugins together.
 
-Compatible hosts share the existing runtime. New versions add missing block languages and cover-reading support without recreating collections or clearing editing and sorting drafts. If a draft cannot be saved during final shutdown, it is written to a recovery JSON file in the plugin directory and its location is shown.
+New versions preserve existing collections, editing and sorting drafts. If a draft cannot be saved during final shutdown, it is written to a recovery JSON file in the plugin directory and its location is shown.
 
 </details>
 
-**0.3.0 changes:** image showcases add batch import, optional names and editable back descriptions. Basic module settings are now name and aspect ratio, with advanced options collapsed and a three-card limit per module. Reading, film and custom modules can be hidden and restored without losing data or order. Settings previews only browse; use the purple cards ribbon icon to open the Magical Cards tab for editing.
+## 0.9.0 changes
 
-**0.3.1 changes:** curved galleries retire unused WebGL contexts and reuse their canvas for ratio and direction changes; the first-run guide uses the author's revised text; the new showcase option is named “添加图片橱窗” (Add image showcase); appearance saves include a recovery hint for a black tab.
+- **WeRead bookshelf import:** authorize in Settings, load your shelf, search and select ebooks or audio albums, then import into the built-in reading module or an ordinary book module. Existing cards are skipped within a module; other modules can hold independent copies.
+- **Independent module works Dashboard:** the portal action before search opens a compact statistics, featured-work and cover-grid page. Search, status filters and temporary sorting are available, and Return restores the source position.
+- **Book modules:** choose Film or Book when creating an ordinary module. Film remains the default; existing module types cannot be converted.
 
-**0.4.0 changes:** cards modules and image showcases have separate collapsed creators with independent drafts. The cards view adds All and named Dashboards with manual existing-module selection, editing, deletion and independent module ordering. Categories share existing data, new modules are not assigned automatically, and module hiding remains global.
+See [Releases](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases) for the full release history.
 
-**0.4.2 changes:** hiding remains reversible, and **移出此 Dashboard** (Remove from this Dashboard) changes only the current category. Confirmed **移除模块** (Delete module) removes module configuration, all category references and module positions while preserving work notes and images. Existing embeds report a deleted module; there is no module restoration control. Unsaved edits and ordering are checked before deletion; failures and conflicts preserve the original module and drafts. Compatible host: **0.1.38**.
+## License and source
 
-## Development and license
+From **0.9.0**, author-owned Magical Cards code uses a [proprietary license](LICENSE). Personal and business use is free, and personal backups and private modifications are allowed. Redistributing, rebranding for distribution or selling the plugin or source from this version onward requires the author’s permission. The complete project, tests and build process are maintained in a private source repository. This public repository provides installation, updates, documentation and [issue tracking](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/issues).
+
+Previously published MIT versions retain their original [MIT license](LICENSE-LEGACY-MIT); the new terms do not revoke rights already granted for those versions. Third-party components retain their own licenses in [THIRD_PARTY.md](THIRD_PARTY.md). Covers and previews containing them remain the property of their respective rights holders and are excluded from the author’s code license. Preserve the [cover sources and rights notice](examples/SOURCES.md).
 
 The [example vault](examples/vault/) contains only three books, three films, and independent example IDs. Install the three plugin files and open it with Obsidian. Its card directory is `示例`. The [guide template](examples/Magical_Cards示例及用法说明.md) is used for the first-run experience.
-
-```sh
-npm ci
-npm run lint
-npm run typecheck
-npm test
-npm run build
-```
-
-For the browser development preview, run `npm run preview` and open `http://127.0.0.1:4319`. See [VERIFICATION.md](VERIFICATION.md) for recorded checks and platform limits, and [COMMUNITY.md](COMMUNITY.md) for community review status.
-
-Code is licensed under [MIT](LICENSE). Third-party covers and previews containing them are excluded from the code license and remain the property of their rights holders. Preserve the [cover sources and rights notice](examples/SOURCES.md). Layout, React, and build adaptation notices are in [THIRD_PARTY.md](THIRD_PARTY.md).

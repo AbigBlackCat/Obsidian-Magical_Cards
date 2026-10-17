@@ -1,6 +1,1 @@
-node_modules/
-main.js
-styles.css
-dist/
 .DS_Store
-.playwright-cli/

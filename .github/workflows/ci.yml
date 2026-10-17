@@ -1,9 +1,10 @@
-name: Verify and release
+name: Verify distribution
 on:
   pull_request:
   push:
     branches: [main]
-    tags: ['[0-9]*.[0-9]*.[0-9]*']
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -16,52 +17,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ github.event.release.tag_name || github.ref }}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version-file: .nvmrc
+          node-version: '24'
           package-manager-cache: false
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run assets:check
-      - run: npm run build:repro
-      - run: npm run release:check
-
-  release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-    needs: verify
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          package-manager-cache: false
-      - run: npm ci
-      - run: npm run assets:check
-      - run: npm run build:repro
-      - name: Verify exact release tag and files
-        run: node scripts/check-release.mjs "$RELEASE_TAG"
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-      - name: Attest the three installation files
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
-        with:
-          subject-path: |
-            main.js
-            manifest.json
-            styles.css
-          create-storage-record: false
-      - name: Publish only the three installation files
-        run: gh release create "$RELEASE_TAG" main.js manifest.json styles.css --verify-tag --title "$RELEASE_TAG" --generate-notes
+      - name: Check public files
+        run: node scripts/check-distribution.mjs .
+      - name: Check published installation files
+        if: github.event_name == 'release'
+        run: |
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/release-files"
+          node scripts/check-distribution.mjs . "$RUNNER_TEMP/release-files" "$RELEASE_TAG"
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}

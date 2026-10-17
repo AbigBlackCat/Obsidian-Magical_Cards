@@ -11,4 +11,4 @@
 | 思考，快与慢 | demo-book-thinking.jpg | [微信读书封面 CDN](https://cdn.weread.qq.com/weread/cover/86/YueWen_573975/t6_YueWen_573975.jpg) |
 | 模仿欲望 | demo-book-mimetic.jpg | [微信读书封面 CDN](https://cdn.weread.qq.com/weread/cover/25/cpplatform_9sjl1i18ntuwyfv9xslckd/t6_cpplatform_9sjl1i18ntuwyfv9xslckd1681901602.jpg) |
 
-封面及由封面构成的预览图不属于代码 MIT 许可证。其著作权归各自权利人；本仓库没有授予封面再出版或商业使用权。开发、分享代码时请保留本说明。
+封面及由封面构成的预览图不受作者代码许可授权。其著作权归各自权利人；本仓库没有授予封面再出版或商业使用权。请保留本说明。

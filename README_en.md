@@ -83,7 +83,15 @@ Every Dashboard is an ordinary category and can contain any number of modules. T
 
 Use the horizontal category menu in the cards tab to create, rename or delete a Dashboard. Deleting a category preserves its modules and data. Drag the tabs, or focus a tab and press Alt / Option + Left or Right, to reorder categories. Each Dashboard keeps its own module order, and each window remembers the selected category by ID.
 
-Manage module membership in **Settings**:
+The selected category expands to show its name; other categories show icons, with full names available on hover or keyboard focus. Choose an icon when creating or editing a category, or use Automatic to match its name. Existing categories require no migration, and icon changes preserve membership and order.
+
+Module actions spring open from a round button into a compact capsule, with larger touch targets on mobile. In the Magical Cards tab, desktop hides the permanent paging row: drag, scroll or use arrow keys to browse. Phones and iPads retain Previous / Next and hold-to-repeat. The curtain's enlarged viewer keeps its adjacent-card controls. Note embeds, settings previews and other hosts retain their existing paging rules.
+
+The Dashboard action menu offers **加入已有模块** (Join existing modules) and **新建卡片模块** (Create cards module). Search and select existing modules to append them to the current category without copying notes or images. New modules take a name, work type and aspect ratio and join the category on Save; use the module action menu for further styling. Failed saves retain input and selections, with Reload available after external category changes.
+
+**移出卡片模块** (Move modules out) searches and selects members of the current category. Confirming removes only their membership in that category; module settings, other categories, notes and images remain, and modules can be joined again. Create Dashboard uses a grid-plus icon, while Create cards module uses a card-plus icon.
+
+You can also manage module membership in **Settings**:
 
 - **Add to Dashboard:** expand a module, choose existing categories, or create a category and save it together with the module. Category selection is optional when creating a module.
 - **Remove from Dashboard:** the exit-arrow icon beside a membership removes only that category reference; other categories and note embeds keep displaying the module.
@@ -98,13 +106,13 @@ Click the portal action immediately before search in a module menu to browse its
 
 Return restores the source page's scroll position and portal focus. If the source was closed, or the works page was restored after restarting Obsidian, Return opens the Magical Cards category view. Custom cards prefer their linked note; showcase cards open the module note.
 
-**启用模组作品 Dashboard** (Enable module works Dashboard) is enabled by default and saved in local plugin configuration. Turning it off immediately hides portal actions and shows a disabled message on open works pages, with Return still available. Existing installations open Magical Cards Settings after an upgrade and show the update dialog once for that version; closing it or choosing **知道了** records it as read. Fresh installations keep the existing starter guide. No work-data migration, film fields or Dashboard category changes are introduced.
+**启用模组作品 Dashboard** (Enable module works Dashboard) is enabled by default and saved in local plugin configuration. Turning it off immediately hides portal actions and shows a disabled message on open works pages, with Return still available. Existing installations open Magical Cards Settings after an upgrade and show the update dialog once for that version; closing it or choosing the checkmark button records it as read. Fresh installations keep the existing starter guide. No work-data migration, film fields or Dashboard category changes are introduced.
 
-### Five layouts
+### Seven layouts and extension previews
 
-| Coverflow carousel | Album rail |
+| Folded-cover carousel | Fan card rack |
 | --- | --- |
-| ![Coverflow carousel in a native Obsidian note](previews/coverflow-carousel.png) | ![Album rail in a native Obsidian note, showing sleeves only](previews/album-rail.png) |
+| ![Folded-cover carousel in a native Obsidian note](previews/coverflow-carousel.png) | ![Fan card rack in a native Obsidian note, showing sleeves only](previews/album-rail.png) |
 | Horizontal curved gallery | Skewed carousel |
 | ![Horizontal scroll-bend gallery in a native Obsidian note](previews/scroll-bend.png) | ![Skewed carousel in a native Obsidian note](previews/skewed-carousel.png) |
 
@@ -112,13 +120,24 @@ The cylindrical layout is shown at the top of this page. The curved gallery also
 
 ![Vertical scroll-bend gallery in a native Obsidian note](previews/scroll-bend-vertical.png)
 
-Layouts do not autoplay. Album rail displays sleeves without playback controls or a spinning record. The curved gallery provides an **打开笔记** (Open note) control for the current card and a summary editor. It falls back to ordinary cards if WebGL or texture loading fails. The system's reduced-motion preference disables bending and transitions.
+Two more layouts are available through **动效布局** (Layout):
+
+| Layout | Browsing |
+| --- | --- |
+| 3D转轮 (3D wheel) | The ring shows at most eight cards; dragging, arrow keys and paging buttons still browse the entire collection. Browsing is manual by default, with an optional **自动旋转** (Auto rotate) switch. |
+| 纸片卷曲 (Curling paper) | A continuous mesh draws the bent paper without white gaps between slices. Use dragging, arrow keys or paging buttons; repeated covers are visual copies of the same cards. |
+
+Auto rotate appears only for the wheel and starts off. When enabled, it pauses during hover, focus, dragging and back-of-card editing; animation also stops outside the viewport or while the page is hidden. The five existing layouts remain manual. The wheel and curling-paper layout use their own visible-card arrangements and ignore the three-card limit, while preserving its saved value for other layouts.
+
+The curved gallery, curtain and magazine scroller read cover bytes through Obsidian and create safe image data for rendering, including remote covers whose servers do not allow cross-origin canvas access. Original cover references stay unchanged; failed reads show a safe placeholder while browsing and editing remain available.
+
+Fan card rack displays sleeves without playback controls or a spinning record. The curved gallery provides an **打开笔记** (Open note) control for the current card and a summary editor. It falls back to ordinary cards if WebGL or texture loading fails. Slide curtain is now preview-only under About → Extension effects. Existing modules and embeds render as cylinders without rewriting saved settings or code blocks. Its in-memory demo has no edit, note-opening or apply action and falls back to ordinary cards when WebGL fails. Reduced motion disables wheel auto rotation, curtain swinging and magazine bending while preserving button and keyboard browsing. New layouts use existing work covers and do not include the reference sites' demo artwork.
 
 ![Dashboard categories reference shared modules and save their own order](previews/dashboards.png)
 
 ## WeRead bookshelf import
 
-In Settings → Magical Cards, expand **微信读书** (collapsed by default). Open [获取 API Key](https://weread.qq.com/r/weread-skills), paste your key, and choose **保存授权**. The password field clears after saving. Choose **读取书架**, search by title or author, and select books; none are selected initially. Ebooks and audio albums are supported.
+In Settings → Magical Cards, open **微信读书** from the category index. Open [获取 API Key](https://weread.qq.com/r/weread-skills), paste your key, and choose **保存授权**. The password field clears after saving. Choose **读取书架**, search by title or author, and select books; none are selected initially. Ebooks and audio albums are supported.
 
 Choose a book module and select **导入所选**. Leaving the target unset uses the built-in reading module under its current name. Deleted targets require a valid replacement and are never restored automatically. New ordinary modules offer **作品类型：影视／书籍** (Film / Book), defaulting to Film; existing types cannot be converted. Showcases and film modules are excluded.
 
@@ -128,15 +147,25 @@ The key is stored only in an independent Obsidian SecretStorage slot, never in p
 
 ## Appearance and settings
 
-Settings are ordered as **Enable module works Dashboard → Card directory → WeRead → Examples → Add cards module → Add image showcase → Existing modules → Note code generator**. Both creation groups, examples, existing modules and advanced settings start collapsed.
+Settings open with five categories: **Card module management, General and data, WeRead, Note embeds, About**. Card module management provides a compact searchable list with card-module and image-showcase filters. Click a module to open its editing dialog, with basic fields and independently expandable advanced settings and Dashboard membership. General and data contains the directory and works Dashboard switch; Note embeds contains code generation.
 
-Expand **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add image showcase), enter a **module name**, choose its **work type** (ordinary modules only) and **aspect ratio**, optionally select one or more Dashboards or create a new category, then click **保存并收起** (Save and collapse). Each creator keeps its own draft and a fixed storage type; advanced card style offers full cover or minimal without converting the module type. Click the purple stacked-card ribbon icon to experience the module in the **Magical Cards** tab. Settings previews support browsing and sliding only; they cannot flip or start editing sessions.
+Returning to a category or module list neither saves nor discards the current settings session's drafts; unsaved modules are marked. Native settings search still locates actual module fields. Search first opens the relevant dialog and then focuses the field. Settings editors do not mount card previews. Switching internal categories preserves WeRead imports and unsubmitted authorization input; closing the entire settings session retains the existing cleanup behavior.
+
+Choose **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add image showcase), enter a **module name**, choose its **work type** (ordinary modules only) and **aspect ratio**, optionally select one or more Dashboards or create a new category, then click **保存** (Save) at the bottom right. Each creator keeps its own draft and a fixed storage type; advanced card style offers full cover or minimal without converting the module type. Click the purple stacked-card ribbon icon to experience the module in the **Magical Cards** tab. Closing the dialog keeps the current Settings-session draft; Reload discards unsaved choices. Settings editors do not display previews.
 
 ![Basic module settings with name, aspect ratio, save controls and collapsed advanced settings](previews/settings.png)
 
-**高级设置** (Advanced settings) contains **card style → image fit → material → layout → three-card limit**. Direction appears only for the curved gallery. New modules default to **full cover, fill and crop, paper, 2:3, skewed carousel, three-card limit off**. Reading/film examples and existing modules keep their appearance. The three-card option is per module and does not remove any images.
+**高级设置** (Advanced settings) contains **card style → image fit → material → layout**, followed by applicable options: the three-card limit for existing layouts, **自动旋转** (Auto rotate, initially off) for the wheel, and direction for the curved gallery. New modules default to **full cover, fill and crop, paper, 2:3, skewed carousel, three-card limit off**. Reading/film examples and existing modules keep their appearance. The three-card option is per module where supported and does not remove any images.
 
-![Showcase advanced settings with layout, three-card limit, flipping, name position and a read-only preview](previews/settings-advanced.png)
+Choose from **paper, matte, holographic foil, magazine, metal, glass and jade**, combined with any layout. Matte and foil retain clear cover images, with texture concentrated on edges, backing and subtle highlights. Jade uses soft pale-green edges and backing while keeping the cover clear. Changing material preserves original images, proportions and work data; existing and new-module defaults remain unchanged.
+
+Choose **模块样式** (Module style) in a module's action menu to adjust its appearance in a dialog while the underlying module previews changes. **保存** (Save) at the bottom right updates other displays of the same module and plugin settings; **取消** (Cancel), closing the dialog or Escape restores the saved appearance. Save or cancel unsaved choices before switching categories. Layout and direction explicitly set in a note code block retain precedence over module settings.
+
+Note embeds always inherit the module material; saving a material change updates every display of that module.
+
+About includes a reusable Changelog dialog grouped by version, date and additions/improvements/fixes. The latest entry opens by default, older entries collapse. Version 1.0.0 includes the layout, material, category and settings updates. The bottom-right checkmark confirms and closes; there is no donation button.
+
+![Showcase advanced settings with layout, three-card limit, flipping and name position](previews/settings-advanced.png)
 
 The trash icon beside an expanded module heading **deletes the module**, preserving work notes, showcase notes and images. The exit-arrow beside a Dashboard membership **removes only that category reference**. Both operations are available only in Settings and have explicit icon labels. Save failures keep the membership or module and retain unsaved appearance drafts.
 
@@ -193,7 +222,7 @@ Dragging modules inside an embed changes only that block. The plugin atomically 
 <details>
 <summary>Advanced: override a layout for one embed</summary>
 
-`collection` refers to `book`, `film`, or an existing custom collection's stable ID. Add `layout` to a module to select `cylinder`, `coverflow-carousel`, `album-rail`, `scroll-bend`, or `skewed-carousel`. A curved gallery can also use `orientation: vertical`. Overrides apply only to that embed; omitted values inherit collection settings.
+`collection` refers to `book`, `film`, or an existing custom collection's stable ID. Add `layout` to a module to select `cylinder`, `coverflow-carousel`, `album-rail`, `scroll-bend`, `skewed-carousel`, `3d-wheel-carousel`, or `magazine-scroller`. A curved gallery can also use `orientation: vertical`. Legacy `hologram-slide-curtain` overrides remain readable and render as cylinders without rewriting the code block. Overrides apply only to that embed; omitted values inherit collection settings. Wheel auto rotation uses the module setting and has no separate embed field.
 
 </details>
 
@@ -201,7 +230,7 @@ Dragging modules inside an embed changes only that block. The plugin atomically 
 
 **Does the three-card option hide or delete other works?**
 
-No. It shows the current card and at most two neighbors at once. Every work remains available to browse; collection size is unchanged.
+No. In supported layouts it shows the current card and at most two neighbors at once. Every work remains available to browse; collection size is unchanged. The wheel, slide curtain and magazine scroller ignore this limit and hide the option while preserving its saved value.
 
 **Why is there space around a cover?**
 
@@ -229,6 +258,14 @@ Back up `.obsidian/plugins/barry-cards/` and your card directory, then disable t
 New versions preserve existing collections, editing and sorting drafts. If a draft cannot be saved during final shutdown, it is written to a recovery JSON file in the plugin directory and its location is shown.
 
 </details>
+
+## 1.0.0 changes
+
+- New 3D wheel and curling-card layouts, seven materials including jade, clearer covers and smoother motion.
+- Categorized Settings and modal module editors, searchable Dashboard membership controls, category icons and distinct create icons.
+- Desktop cards hide permanent paging buttons; phones and iPads keep them. The slide curtain is available as a read-only extension preview.
+- Magical Cards category and module works pages hide library-wide diagnostics while keeping operation failures and retry controls.
+- Existing modules, notes, images, embeds and drafts remain compatible.
 
 ## 0.9.1 fixes
 

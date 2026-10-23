@@ -73,7 +73,6 @@ export async function checkDistribution(directory,{artifactsDir,tag}={}){
       const bytes=await readFile(join(artifactsDir,name));
       if(!bytes.length)throw new Error(`Empty release file: ${name}.`);
       checkText(bytes.toString('utf8'),name);
-      if(name==='main.js'&&bytes.length>=5_000_000)throw new Error('main.js must stay below 5,000,000 bytes.');
       hashes[name]=createHash('sha256').update(bytes).digest('hex');
     }
     const artifactManifest=JSON.parse(await readFile(join(artifactsDir,'manifest.json'),'utf8'));

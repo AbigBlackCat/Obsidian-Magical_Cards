@@ -1,1 +1,10 @@
+node_modules/
+main.js
+styles.css
+dist/
 .DS_Store
+.playwright-cli/
+.impeccable/
+output/
+.local-release/
+/verification/

@@ -14,6 +14,14 @@
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/issues">反馈问题</a>
 </p>
 
+## Installation
+
+Magical Cards requires Obsidian 1.11.4 or later. Open **Settings → Community plugins → Browse**, search for **Magical Cards**, then install and enable it. To install manually, download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/latest), place them in your vault's `.obsidian/plugins/magical-cards/` folder, and reload Obsidian.
+
+## Usage
+
+Open the cards view using the ribbon icon or the **打开卡片视图** command. Use the module's add button to create a book, film, or image card; click a card to open its note, or flip it to edit its summary. The module menu provides search, appearance settings, a works dashboard, and a timeline for browsing dated cards. Your notes and manual card order remain yours. For detailed instructions and feature descriptions, see the [English guide](README_en.md). The plugin interface is currently in Chinese.
+
 <p align="center"><strong>阅读影视推荐卡片风格:</strong></p>
 
 <p align="center">

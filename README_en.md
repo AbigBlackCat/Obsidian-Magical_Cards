@@ -32,6 +32,7 @@ From **0.9.0**, the complete source is maintained in a private repository. This 
 - [Installation](#installation)
 - [Usage](#usage)
 - [Features and layouts](#features-and-layouts)
+- [Media cases and the 3D timeline](#media-cases-and-the-3d-timeline)
 - [WeRead bookshelf import](#weread-bookshelf-import)
 - [Appearance and settings](#appearance-and-settings)
 - [Note embeds](#note-embeds)
@@ -74,6 +75,7 @@ The **查看示例及用法说明** (Open examples and guide) command reopens th
 | Dashboards | Organize modules into equal categories, assign them in Settings, and drag tabs to reorder categories. Each category has an independent module order. |
 | WeRead import | Authorize in Settings, load the current shelf, and select books to import into a book module. |
 | Module works Dashboard | Use the portal action before search to open the module’s statistics, latest work, filters and cover grid. |
+| 3D timeline | Browse dated cards in reading, film, custom and image showcase modules, independently of their saved order. |
 | Reorder modules | Drag the title handle, or focus it and press Alt / Option + ↑ / ↓. |
 | Embed collections | Use reading mode or Live Preview; the same collection can appear in multiple notes. |
 
@@ -108,7 +110,17 @@ Return restores the source page's scroll position and portal focus. If the sourc
 
 **启用模组作品 Dashboard** (Enable module works Dashboard) is enabled by default and saved in local plugin configuration. Turning it off immediately hides portal actions and shows a disabled message on open works pages, with Return still available. Existing installations open Magical Cards Settings after an upgrade and show the update dialog once for that version; closing it or choosing the checkmark button records it as read. Fresh installations keep the existing starter guide. No work-data migration, film fields or Dashboard category changes are introduced.
 
-### Seven layouts and extension previews
+### Media cases and the 3D timeline
+
+Choose **盒装封面** (Boxed cover) and **3D 斜列漫游** (3D diagonal gallery) in module appearance. The **影像盒** (Media case) material mixes transparent CD cases and matte-black VHS cases using stable choices weighted by cover brightness. Refreshing or reordering does not reshuffle them. Choose automatic mixing or force either case for a module; an individual card's choice takes precedence.
+
+The timeline action is immediately to the right of **查看全部作品** (View all works) in each module menu. The first time, choose collection/recorded date or work date and add dates to individual cards. Year, year-month and full dates are supported. After saving, the module remembers its choice and opens the gallery directly next time; an unsaved draft reopens the settings. Use the pencil in the work-date heading to rename it for that module. The segmented date editor uses an existing default when available, or pre-fills today's local date for an empty field.
+
+Drag cards directly, release or stop scrolling to settle, and select the current card to open details; closing returns it to the gallery. Details offer the original note and card editing. The gallery mounts nearby cards while retaining access to the whole collection; its date order never changes the module's manual order. The upper-right action menu contains search, **补充时间** (Add dates) and timeline settings. Add dates lists cards missing the selected date in a searchable dialog and can also show all cards. A separate bottom ruler displays the current full date.
+
+Collection dates default to card creation dates. New showcase images record their addition date; older images can be dated manually. Work dates prefer a manual value, then a WeRead ebook's publication date or a film's valid release year. For a WeRead source card, **微信读书补全出版时间** (Fill publication date from WeRead) adds the result to the draft; **保存并进入** saves it to the note. Clearing a manual value restores its default. Conflicts retain the draft and failed batch items can be retried. The timeline remains available if the module works Dashboard is disabled.
+
+### Layouts and extension previews
 
 | Folded-cover carousel | Fan card rack |
 | --- | --- |
@@ -139,11 +151,11 @@ Fan card rack displays sleeves without playback controls or a spinning record. T
 
 In Settings → Magical Cards, open **微信读书** from the category index. Open [获取 API Key](https://weread.qq.com/r/weread-skills), paste your key, and choose **保存授权**. The password field clears after saving. Choose **读取书架**, search by title or author, and select books; none are selected initially. Ebooks and audio albums are supported.
 
-Choose a book module and select **导入所选**. Leaving the target unset uses the built-in reading module under its current name. Deleted targets require a valid replacement and are never restored automatically. New ordinary modules offer **作品类型：影视／书籍** (Film / Book), defaulting to Film; existing types cannot be converted. Showcases and film modules are excluded.
+Choose a book module and select **导入所选**. Available ebook publication dates are read and saved to the note's `publicationDate` for the timeline. Leaving the target unset uses the built-in reading module under its current name. Deleted targets require a valid replacement and are never restored automatically. New ordinary modules offer **作品类型：影视／书籍** (Film / Book), defaulting to Film; existing types cannot be converted. Showcases and film modules are excluded.
 
 The same source book is skipped within a target without changing existing notes or manual content. Other modules receive independent notes; manual books without source IDs are not matched by title. Successful and skipped books are deselected; failed books stay selected for retry. Import locks authorization, target and directory changes. Closing Settings allows the import to finish; disabling the plugin or deleting the target stops subsequent writes. The target, shelf and selection last only for this Settings session.
 
-The key is stored only in an independent Obsidian SecretStorage slot, never in plugin settings, card configuration or work notes. Only the official current-shelf endpoint is requested after your click. No automatic sync, highlights, thoughts, reading time, per-book details or article-collection cards are included. Missing summaries and personal ratings stay empty. Audio-series completion is not treated as your reading completion.
+The key is stored only in an independent Obsidian SecretStorage slot, never in plugin settings, card configuration or work notes. Loading the shelf, importing selected ebooks and filling a publication date make user-initiated requests to the official WeRead gateway. Unavailable or invalid publication dates stay empty, and a failed lookup does not prevent importing the basic book; dates can be filled later. Audio album IDs have no verified book-detail mapping, so their publication dates are not inferred. No automatic sync, highlights, thoughts, reading time or article-collection cards are included. Missing summaries and personal ratings stay empty. Audio-series completion is not treated as your reading completion.
 
 ## Appearance and settings
 
@@ -246,7 +258,7 @@ Wait for the save to finish, quit and restart Obsidian, then reopen the same vau
 
 **Does the plugin use the network or clipboard?**
 
-WeRead import is optional. Only clicking **读取书架** sends a current-shelf request to the official WeRead gateway at `https://i.weread.qq.com/api/agent/gateway`, using the authorization key held in SecretStorage. There is no automatic sync or note upload. Built-in examples work offline. Remote cover URLs, including imported covers, load from their image servers. The plugin does not collect telemetry. The Copy control writes generated code only after you click it. When editing a title, pasting reads only the plain text from that paste event; there is no background clipboard reading. The linked-note picker searches note paths within your vault and does not send note content elsewhere.
+WeRead import is optional. Loading the shelf, importing selected ebooks or filling publication dates sends the relevant shelf or book-detail requests to the official WeRead gateway at `https://i.weread.qq.com/api/agent/gateway`, using the authorization key held in SecretStorage. There is no automatic sync or note upload. Built-in examples work offline. Remote cover URLs, including imported covers, load from their image servers. The plugin does not collect telemetry. The Copy control writes generated code only after you click it. When editing a title, pasting reads only the plain text from that paste event; there is no background clipboard reading. The linked-note picker searches note paths within your vault and does not send note content elsewhere.
 
 <details>
 <summary>Upgrading from the previous plugin and recovering drafts</summary>
@@ -258,6 +270,14 @@ Back up `.obsidian/plugins/barry-cards/` and your card directory, then disable t
 New versions preserve existing collections, editing and sorting drafts. If a draft cannot be saved during final shutdown, it is written to a recovery JSON file in the plugin directory and its location is shown.
 
 </details>
+
+## 1.1.0 changes
+
+- Browse reading, film, custom and image showcase cards in a 3D timeline, with per-module date preferences, partial dates and a searchable dialog for missing dates.
+- Drag cards directly and settle on release; open card details and return to the same place. Timeline sorting does not change the module's manual order.
+- Choose boxed covers, the 3D diagonal gallery and media cases that mix transparent CD and matte-black VHS cases, with module and per-card overrides.
+- Save available ebook publication dates during WeRead import or fill them for existing WeRead cards from timeline settings.
+- Review card-note issues and associated notes in the warning dialog, ignore individual issues, and have resolved issues disappear automatically.
 
 ## 1.0.0 changes
 

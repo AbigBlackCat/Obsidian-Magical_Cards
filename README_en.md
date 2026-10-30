@@ -1,7 +1,7 @@
 [简体中文](README.md) · English
 
 <h1 align="center">Magical Cards</h1>
-<p align="center">Browse your books and films as cover cards, and bring them into your notes.</p>
+<p align="center">Browse your books, films and collections as cover cards, and bring them into your notes.</p>
 <p align="center">
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/AbigBlackCat/Obsidian-Magical_Cards?style=flat-square"></a>
   <a href="LICENSE"><img alt="License: free use, restricted redistribution" src="https://img.shields.io/badge/license-free_use-blue?style=flat-square"></a>
@@ -21,7 +21,7 @@
 
 <img width="688" height="761" alt="Magical Cards community listing" src="https://github.com/user-attachments/assets/e37d8e9a-3b02-46fe-8985-22c086d64986" />
 
-Magical Cards is an Obsidian plugin for browsing and editing book, film and image showcase cards on desktop and mobile. Open a dedicated cards view or embed collections in your notes. Both use the same work notes, with search, sorting, linked notes, and editable summaries on the back of each card.
+Magical Cards is an Obsidian plugin for browsing and editing book, film, general collection and image showcase cards on desktop and mobile. Open a dedicated cards view or embed collections in your notes. Both use the same work notes, with search, sorting, linked notes, and editable summaries on the back of each card.
 
 From **0.9.0**, the complete source is maintained in a private repository. This public repository continues to provide installation, updates, documentation and Issues. Personal and business use is free under the [license and redistribution terms](#license-and-source).
 
@@ -118,7 +118,7 @@ The timeline action is immediately to the right of **查看全部作品** (View 
 
 Drag cards directly, release or stop scrolling to settle, and select the current card to open details; closing returns it to the gallery. Details offer the original note and card editing. The gallery mounts nearby cards while retaining access to the whole collection; its date order never changes the module's manual order. The upper-right action menu contains search, **补充时间** (Add dates) and timeline settings. Add dates lists cards missing the selected date in a searchable dialog and can also show all cards. A separate bottom ruler displays the current full date.
 
-Collection dates default to card creation dates. New showcase images record their addition date; older images can be dated manually. Work dates prefer a manual value, then a WeRead ebook's publication date or a film's valid release year. For a WeRead source card, **微信读书补全出版时间** (Fill publication date from WeRead) adds the result to the draft; **保存并进入** saves it to the note. Clearing a manual value restores its default. Conflicts retain the draft and failed batch items can be retried. The timeline remains available if the module works Dashboard is disabled.
+Collection dates default to card creation dates. New showcase images record their addition date; older images can be dated manually. Work dates prefer a manual value, then a WeRead ebook's publication date, a film's valid release year or a general work's valid year. For a WeRead source card, **微信读书补全出版时间** (Fill publication date from WeRead) adds the result to the draft; **保存并进入** saves it to the note. Clearing a manual value restores its default. Conflicts retain the draft and failed batch items can be retried. The timeline remains available if the module works Dashboard is disabled.
 
 ### Layouts and extension previews
 
@@ -151,7 +151,7 @@ Fan card rack displays sleeves without playback controls or a spinning record. T
 
 In Settings → Magical Cards, open **微信读书** from the category index. Open [获取 API Key](https://weread.qq.com/r/weread-skills), paste your key, and choose **保存授权**. The password field clears after saving. Choose **读取书架**, search by title or author, and select books; none are selected initially. Ebooks and audio albums are supported.
 
-Choose a book module and select **导入所选**. Available ebook publication dates are read and saved to the note's `publicationDate` for the timeline. Leaving the target unset uses the built-in reading module under its current name. Deleted targets require a valid replacement and are never restored automatically. New ordinary modules offer **作品类型：影视／书籍** (Film / Book), defaulting to Film; existing types cannot be converted. Showcases and film modules are excluded.
+Choose a book module and select **导入所选**. Available ebook publication dates are read and saved to the note's `publicationDate` for the timeline. Leaving the target unset uses the built-in reading module under its current name. Deleted targets require a valid replacement and are never restored automatically. New ordinary modules offer **通用／书籍／影视** (General / Book / Film), defaulting to General; existing types cannot be converted. Showcases, general and film modules are excluded from WeRead import.
 
 The same source book is skipped within a target without changing existing notes or manual content. Other modules receive independent notes; manual books without source IDs are not matched by title. Successful and skipped books are deselected; failed books stay selected for retry. Import locks authorization, target and directory changes. Closing Settings allows the import to finish; disabling the plugin or deleting the target stops subsequent writes. The target, shelf and selection last only for this Settings session.
 
@@ -163,7 +163,7 @@ Settings open with five categories: **Card module management, General and data, 
 
 Returning to a category or module list neither saves nor discards the current settings session's drafts; unsaved modules are marked. Native settings search still locates actual module fields. Search first opens the relevant dialog and then focuses the field. Settings editors do not mount card previews. Switching internal categories preserves WeRead imports and unsubmitted authorization input; closing the entire settings session retains the existing cleanup behavior.
 
-Choose **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add image showcase), enter a **module name**, choose its **work type** (ordinary modules only) and **aspect ratio**, optionally select one or more Dashboards or create a new category, then click **保存** (Save) at the bottom right. Each creator keeps its own draft and a fixed storage type; advanced card style offers full cover or minimal without converting the module type. Click the purple stacked-card ribbon icon to experience the module in the **Magical Cards** tab. Closing the dialog keeps the current Settings-session draft; Reload discards unsaved choices. Settings editors do not display previews.
+Choose **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add image showcase), enter a **module name**, choose its **work type** (ordinary modules only) and **aspect ratio**, optionally select one or more Dashboards or create a new category, then click **保存** (Save) at the bottom right. Each creator keeps its own draft and a fixed storage type; advanced card style offers full cover or minimal without converting the module type. Click the gold card ribbon icon to experience the module in the **Magical Cards** tab. Closing the dialog keeps the current Settings-session draft; Reload discards unsaved choices. Settings editors do not display previews.
 
 ![Basic module settings with name, aspect ratio, save controls and collapsed advanced settings](previews/settings.png)
 
@@ -183,7 +183,7 @@ The trash icon beside an expanded module heading **deletes the module**, preserv
 
 Cards and showcase toolbars use a horizontal action menu for search, add, sort, edit and individual-card deletion. Success messages disappear after four seconds; errors and retry prompts remain visible. Click the transparent region at the upper-right of the current card to flip it, or focus the carousel and press F. No flip icon covers the image. Other card areas still open the note; Save, Cancel and Retry remain accessible.
 
-Enter a directory relative to the current vault, such as `卡片库`. Work notes live under `书籍` (books) and `观影` (films); showcases live under `橱窗/<module ID>/`. Configuration is in `_数据/卡片配置.md`. Changing this setting does not move existing data. Absolute computer paths are rejected.
+Enter a directory relative to the current vault, such as `卡片库`. Work notes live under `书籍` (books), `观影` (films) and `收藏` (general works); showcases live under `橱窗/<module ID>/`. Configuration is in `_数据/卡片配置.md`. Changing this setting does not move existing data. Absolute computer paths are rejected.
 
 ### Ordinary-card image imports and note properties
 
@@ -191,7 +191,7 @@ Reading, film and custom ordinary-module menus include **批量导入图片／SV
 
 Partial retries resend only unfinished files and retain stable IDs. They never duplicate successful cards or overwrite later title, summary or cover edits. Complete or explicitly discard unfinished imports before switching categories or deleting modules; discard keeps files already written. File retry queues last only while the shared library remains open. After a full application exit, selecting files again starts a new import.
 
-Work notes initially show only **Name and Summary**. Expand **更多信息** (More information) for the other properties. Watching date/status controls are removed while stored values remain intact. Each film-type card can rename its “Director” field, for example to “Developer”; an empty label restores the default.
+Work notes initially show only **Name and Summary**. Expand **更多信息** (More information) for the other properties. Watching date/status controls are removed while stored values remain intact. Each film or general card can rename its creator field, for example to “Developer”; an empty label restores “Director” for films or “Creator” for general works.
 
 The new **32:15 wide image** ratio suits banners near 2.13:1. **2:3 portrait cover** is the general portrait preset. Contain preserves the full image; fill/crop fills the card and may trim its edges.
 
@@ -295,7 +295,7 @@ Fix transparent module deletion confirmations overlapping Settings. The dialog s
 
 - **WeRead bookshelf import:** authorize in Settings, load your shelf, search and select ebooks or audio albums, then import into the built-in reading module or an ordinary book module. Existing cards are skipped within a module; other modules can hold independent copies.
 - **Independent module works Dashboard:** the portal action before search opens a compact statistics, featured-work and cover-grid page. Search, status filters and temporary sorting are available, and Return restores the source position.
-- **Book modules:** choose Film or Book when creating an ordinary module. Film remains the default; existing module types cannot be converted.
+- **Work types:** choose General, Book or Film when creating an ordinary module. General is the default; existing module types cannot be converted.
 
 See [Releases](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases) for the full release history.
 

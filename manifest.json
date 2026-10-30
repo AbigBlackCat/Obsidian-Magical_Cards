@@ -1,9 +1,9 @@
 {
   "id": "magical-cards",
   "name": "Magical Cards",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "minAppVersion": "1.11.4",
-  "description": "Browse book, film and image showcase cards with editable descriptions, draggable modules and note embeds.",
+  "description": "Browse books, films and other collections as cards with editable descriptions, draggable modules and note embeds.",
   "author": "AbigBlackCat",
   "isDesktopOnly": false
 }

@@ -77,7 +77,7 @@ On mobile, choose **打开 Magical Cards** (Open Magical Cards) from the bottom 
 
 ## Usage
 
-On first use in an empty directory, the plugin creates a guide, three books, and three films in `卡片库` and opens the guide. The six editable covers are bundled with the plugin and work offline.
+On first use in an empty directory, the plugin creates three books and three films in `卡片库`. It does not automatically create or open a guide. The six editable covers are bundled with the plugin and work offline.
 
 The initial appearance is **cylindrical layout, full cover, fill and crop, paper material, 2:3, and at most three visible cards**. You can still browse every work using paging buttons on mobile, or dragging and arrow keys on desktop.
 
@@ -85,7 +85,7 @@ The initial appearance is **cylindrical layout, full cover, fill and crop, paper
 2. **Add a work:** click `+` in a module and enter its title, cover, and details.
 3. **Write a summary:** flip a card to edit its back, or open the linked work note.
 
-The **查看示例及用法说明** (Open examples and guide) command reopens the guide and can retry an interrupted initialization. Existing collections and appearances are preserved. Deleted examples do not return on restart.
+Run **查看示例及用法说明** (Open examples and guide) manually to create and open the guide; run it again to reopen it. The command can also retry an interrupted initialization. Existing collections and appearances are preserved. Deleted examples do not return on restart.
 
 ## Features and layouts
 
@@ -130,7 +130,7 @@ Click the portal action immediately before search in a module menu to browse its
 
 Return restores the source page's scroll position and portal focus. If the source was closed, or the works page was restored after restarting Obsidian, Return opens the Magical Cards category view. Custom cards prefer their linked note; showcase cards open the module note.
 
-**启用模组作品 Dashboard** (Enable module works Dashboard) is enabled by default and saved in local plugin configuration. Turning it off immediately hides portal actions and shows a disabled message on open works pages, with Return still available. Existing installations open Magical Cards Settings after an upgrade and show the update dialog once for that version; closing it or choosing the checkmark button records it as read. Fresh installations keep the existing starter guide. No work-data migration, film fields or Dashboard category changes are introduced.
+**启用模组作品 Dashboard** (Enable module works Dashboard) is enabled by default and saved in local plugin configuration. Turning it off immediately hides portal actions and shows a disabled message on open works pages, with Return still available. Existing installations open Magical Cards Settings after an upgrade and show the update dialog once for that version; closing it or choosing the checkmark button records it as read. Fresh installations keep the example cards; the guide is created and opened only when you run its command manually. No work-data migration, film fields or Dashboard category changes are introduced.
 
 ### Media cases and the 3D timeline
 
@@ -327,4 +327,4 @@ From **0.9.0**, author-owned Magical Cards code uses a [proprietary license](LIC
 
 Previously published MIT versions retain their original [MIT license](LICENSE-LEGACY-MIT); the new terms do not revoke rights already granted for those versions. Third-party components retain their own licenses in [THIRD_PARTY.md](THIRD_PARTY.md). Covers and previews containing them remain the property of their respective rights holders and are excluded from the author’s code license. Preserve the [cover sources and rights notice](examples/SOURCES.md).
 
-The [example vault](examples/vault/) contains only three books, three films, and independent example IDs. Install the three plugin files and open it with Obsidian. Its card directory is `示例`. The [guide template](examples/Magical_Cards示例及用法说明.md) is used for the first-run experience.
+The [example vault](examples/vault/) contains only three books, three films, and independent example IDs. Install the three plugin files and open it with Obsidian. Its card directory is `示例`. The [guide template](examples/Magical_Cards示例及用法说明.md) is used when you manually run **查看示例及用法说明** (Open examples and guide).

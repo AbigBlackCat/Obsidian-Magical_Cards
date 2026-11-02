@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="title desc">
+  <title id="title">让喜欢的卡片，继续被认真打磨。</title>
+  <desc id="desc">暖白色背景上的紫色卡片与充电符号，邀请支持 Magical Cards 作者。</desc>
+  <rect width="1200" height="300" rx="20" fill="#f7f4ef"/>
+  <g fill="#302b36" font-family="'Noto Serif CJK SC','Songti SC',serif" font-size="47" font-weight="600">
+    <text x="64" y="108">让喜欢的卡片，</text>
+    <text x="64" y="174">继续被认真打磨。</text>
+  </g>
+  <text x="66" y="237" fill="#665b70" font-family="'Noto Sans CJK SC','PingFang SC',sans-serif" font-size="22">一杯咖啡的心意，也是继续创作的动力。</text>
+  <g transform="translate(923 150)">
+    <rect x="-84" y="-99" width="132" height="190" rx="12" fill="#d9cce7" transform="rotate(-17)"/>
+    <rect x="-47" y="-100" width="132" height="190" rx="12" fill="#b49acd" transform="rotate(13)"/>
+    <rect x="-66" y="-100" width="132" height="200" rx="12" fill="#65447e"/>
+    <rect x="-42" y="-72" width="84" height="4" rx="2" fill="#d8c3e9"/>
+    <path d="M8-45-23 7H-3L-11 45 25-10H4Z" fill="#fff8ea"/>
+    <rect x="-42" y="68" width="54" height="4" rx="2" fill="#d8c3e9"/>
+  </g>
+</svg>

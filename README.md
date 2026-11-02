@@ -11,7 +11,8 @@
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/latest">下载插件</a> ·
   <a href="#开始使用">使用说明</a> ·
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases">更新日志</a> ·
-  <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/issues">反馈问题</a>
+  <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/issues">反馈问题</a> ·
+  <a href="#给作者充电">给作者充电</a>
 </p>
 
 ## Installation
@@ -49,6 +50,24 @@ Magical Cards 是桌面和手机上的 Obsidian 卡片插件，用于浏览、�
 
 从 **0.9.0** 起，完整源码在私有仓库维护；本公开仓库继续提供安装更新、使用文档及 Issues。个人与企业可免费正常使用，许可与再分发限制见[使用许可](#使用许可与源码)。
 
+## 给作者充电
+
+<p align="center">
+  <img src="previews/support-banner.svg" width="800" alt="让喜欢的卡片，继续被认真打磨。一杯咖啡的心意，也是继续创作的动力。">
+</p>
+
+如果 Magical Cards 让你更喜欢打开自己的笔记库，欢迎请作者喝杯咖啡。
+
+从卡片翻面的手感，到手机上的每一次滑动，背后都是持续的开发、测试与打磨。开发不易，你的一点支持，会为接下来的维护与更新多充一格电。
+
+<p align="center"><strong>我要给作者充电</strong><br>支付宝 / 微信扫一扫，金额随心。</p>
+<p align="center">
+  <a href="previews/alipay-pay.png"><img src="previews/alipay-pay.png" width="254" alt="作者的支付宝收款码，使用支付宝扫一扫付款；点击查看或保存完整原图。"></a>
+  &nbsp;
+  <a href="previews/wechat-pay.jpg"><img src="previews/wechat-pay.jpg" width="280" alt="作者的微信收款码，使用微信扫一扫付款；点击查看或保存完整原图。"></a>
+</p>
+<p align="center">手机上可点击收款码打开原图，保存后在支付宝或微信「扫一扫 → 相册」中识别。<br><sub>支持完全自愿，不影响插件的免费使用。感谢每一份心意，也谢谢你喜欢这些卡片。</sub></p>
+
 ## 目录
 
 - [开始使用](#开始使用)
@@ -58,6 +77,7 @@ Magical Cards 是桌面和手机上的 Obsidian 卡片插件，用于浏览、�
 - [嵌入笔记](#嵌入笔记)
 - [常见问题与数据](#常见问题与数据)
 - [使用许可与源码](#使用许可与源码)
+- [给作者充电](#给作者充电)
 
 ## 开始使用
 

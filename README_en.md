@@ -10,7 +10,8 @@
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases/latest">Download</a> ·
   <a href="#usage">Usage</a> ·
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases">Changelog</a> ·
-  <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/issues">Report a bug</a>
+  <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/issues">Report a bug</a> ·
+  <a href="#support-the-author">Support the author</a>
 </p>
 
 **The author’s preferred card style; the plugin offers several layouts:**
@@ -27,6 +28,22 @@ From **0.9.0**, the complete source is maintained in a private repository. This 
 
 **The interface is currently in Chinese.** This guide includes the original labels so you can find the controls. Install from the community browser or use the manual steps below.
 
+## Support the author
+
+**A little support keeps these cards growing.**
+
+If Magical Cards makes opening your vault a little more enjoyable, you're welcome to buy the author a coffee.
+
+Every card flip and swipe takes ongoing development, testing, and refinement. Your support gives the next round of maintenance and updates a little more momentum.
+
+<p align="center"><strong>Give the author a little boost</strong><br>Scan with Alipay or WeChat Pay and choose any amount.</p>
+<p align="center">
+  <a href="previews/alipay-pay.png"><img src="previews/alipay-pay.png" width="254" alt="The author's Alipay QR code. Scan to support, or click to open and save the original image."></a>
+  &nbsp;
+  <a href="previews/wechat-pay.jpg"><img src="previews/wechat-pay.jpg" width="280" alt="The author's WeChat Pay QR code. Scan to support, or click to open and save the original image."></a>
+</p>
+<p align="center">On your phone, open and save the image, then select it in Alipay's or WeChat's Scan → Album.<br><sub>Support is voluntary. The plugin remains free to use. Thank you for every contribution—and for enjoying these cards.</sub></p>
+
 ## Contents
 
 - [Installation](#installation)
@@ -38,6 +55,7 @@ From **0.9.0**, the complete source is maintained in a private repository. This 
 - [Note embeds](#note-embeds)
 - [FAQ and data](#faq-and-data)
 - [License and source](#license-and-source)
+- [Support the author](#support-the-author)
 
 ## Installation
 

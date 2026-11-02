@@ -1,5 +1,18 @@
 # Magical Cards changelog
 
+## 1.3.0 — 2026-11-02
+
+- 新增图鉴样式，提供暗色展台、浅色设定集、武侠·墨铸、冰晶·凝霜、玻璃·澄镜五种预设；后三种使用独立绘制的静态边缘装饰，适合透明人物、武器与其他收藏图片。
+- 图鉴正面只显示图片与名称；轮播与时间线通过原有右上角透明热区或 F 键查看背面详情，复用返回图标；阅读资料与展开编辑分开。
+- 查看全部页单击选中并更新横幅，双击卡片或点击横幅打开笔记；普通作品可通过横幅星标切换精选，同一笔记的形态共用精选状态。
+- 新增模块内单选分类及同笔记多形态卡组；附加图片与说明保存在原笔记正文，橱窗分组沿用共享模块笔记。
+- 查看全部页提供组内同排的网格展示，长组可横向浏览，保留搜索、筛选、临时排序和原笔记入口。
+- 排序改用独立弹窗，支持搜索、拖拽、上移、下移、置顶和置底；普通卡组整体移动，橱窗支持组内与跨组排序。
+- 优化邻近封面的预加载与缓冲，减少轮播切换时的空白，并修复透明翻面热区命中与翻面时邻卡重新排位。
+- 保存失败保留首次排序基线与目标顺序，外部变更后拒绝覆盖；关闭、模块移除和卡片库切换保护未完成草稿，停用时纳入本地恢复备份。
+
+Codex cards now offer five presets, name-only fronts and readable backs. View all supports selection, banner updates, double-click opening and favorites. Categories, forms sharing one note, grouped grids and automatic-save ordering dialogs preserve original notes and retain failed drafts for recovery.
+
 ## 1.2.1 — 2026-11-02
 
 - 首次安装不再自动创建或打开 Markdown 说明页；需要时可手动执行「查看示例及用法说明」。

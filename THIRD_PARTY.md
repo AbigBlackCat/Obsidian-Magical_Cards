@@ -97,3 +97,49 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
+
+## Codex edge materials in 1.3.0
+
+公开发行版的武侠、冰晶与玻璃图鉴边缘由作者使用静态 SVG 几何路径、描线和渐变独立绘制，配合插件已有 CSS 与 Canvas 材质接口。装饰限制在边缘区域，用户提供的封面继续单独显示。发行包不包含游戏导出纹理、游戏角色或武器图片。
+
+The public release uses independently drawn static SVG edge artwork. Extracted game textures, character images and weapon images are not distributed with the plugin.
+
+## React Bits GlassSurface / GlassIcons / BorderGlow
+
+2026-11-02 的图鉴材质参考了以下 React Bits 组件的静态视觉特点；项目上游为 [React Bits](https://github.com/DavidHDev/react-bits)：
+
+- [GlassSurface](https://reactbits.dev/components/glass-surface)：低透明度底面与内侧高光。
+- [GlassIcons](https://reactbits.dev/components/glass-icons)：前后亮边与倒角层次。
+- [BorderGlow](https://reactbits.dev/components/border-glow)：边缘隔离与细描线。
+
+实现使用独立静态 SVG、CSS 伪元素及现有 Canvas 接口，没有复制参考组件的 JavaScript、鼠标跟随、动态折射或动画算法。本次三个参考版本随附的许可证内容一致，采用 **MIT + Commons Clause License Condition v1.0**，并非不附加条件的 MIT；其原始许可证 SHA-256 为 `f4c33af6739191537738662d223b68d77bc226f4b57ea883e16481d8cc5c73c9`。完整许可证原文保留如下，不由 Magical Cards 的作者代码许可替代：
+
+These references inform static visual treatments. Their archived license notice is retained in full; the author's license does not relicense the referenced components.
+
+```text
+MIT + Commons Clause License Condition v1.0
+
+Copyright (c) 2026 David Haz
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, and distribute the Software **as part of an application, website, or product**, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+## Commons Clause Restriction
+
+You may use this Software, including for any commercial purpose, **so long as you do not sell, sublicense, or redistribute the components themselves-whether alone, in a bundle, or as a ported version.**
+
+## No Warranty
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

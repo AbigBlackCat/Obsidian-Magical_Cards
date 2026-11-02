@@ -52,6 +52,7 @@ Every card flip and swipe takes ongoing development, testing, and refinement. Yo
 
 - [Installation](#installation)
 - [Usage](#usage)
+- [Codex cards, groups and ordering](#codex-cards-groups-and-ordering)
 - [Features and layouts](#features-and-layouts)
 - [Media cases and the 3D timeline](#media-cases-and-the-3d-timeline)
 - [WeRead bookshelf import](#weread-bookshelf-import)
@@ -87,6 +88,18 @@ The initial appearance is **cylindrical layout, full cover, fill and crop, paper
 
 Run **查看示例及用法说明** (Open examples and guide) manually to create and open the guide; run it again to reopen it. The command can also retry an interrupted initialization. Existing collections and appearances are preserved. Deleted examples do not return on restart.
 
+## Codex cards, groups and ordering
+
+In the module menu, open **模块样式** (Module style), choose **图鉴** (Codex), then select one of five presets: **暗色展台** (Dark display), **浅色设定集** (Light artbook), **武侠·墨铸** (Wuxia), **冰晶·凝霜** (Ice crystal), or **玻璃·澄镜** (Clear glass). The three Wuxia, Ice crystal and Clear glass edge treatments accompany the two plain presets. Codex starts with a 3:4 ratio and full-image display for transparent characters, weapons and other collectibles. Release decorations use independently drawn static SVGs; no extracted game textures or character images are bundled.
+
+**Front and details.** Codex fronts show only the image and name. In carousels and timelines, use the current card's existing transparent upper-right region, or press F, to read its summary, category, dates and other details on the back. The existing return icon flips it to the front. Expand the summary editor when needed; reading details does not start an edit.
+
+**View all.** A single click selects a card and updates the banner. Double-click the card or click its banner to open the corresponding note. Ordinary works have a banner star for marking or removing a favorite; forms sharing one note share that favorite status. The grid keeps a group's cards on the same row, with horizontal scrolling for long groups.
+
+**Categories and groups.** Manage categories from the module menu, then use **分类与分组** (Categories and groups) to assign a single category or add multiple visual forms to one work note. Additional images and descriptions live in that note's body. Showcase cards continue sharing their module note, and grouped showcase cards inherit the group's category.
+
+**Ordering and drafts.** **排序卡片／排序图片** (Sort cards / Sort images) opens a searchable dialog with dragging, up, down, top and bottom controls. Each move saves automatically; close with **完成** (Done). Ordinary work groups move together, with additional-form ordering available in Categories and groups. Showcase members move within their group; crossing a group boundary moves the whole group. Failed saves retain the target order for retry or explicit discard before closing. Nearby-image preloading reduces blank transitions. Conflicts preserve drafts, and unfinished operations are included in local recovery records on shutdown.
+
 ## Features and layouts
 
 | Feature | How to use it |
@@ -96,7 +109,7 @@ Run **查看示例及用法说明** (Open examples and guide) manually to create
 | Back-of-card summaries | Flip the card and write. Switching layouts preserves the current card and summary draft. |
 | Dashboards | Organize modules into equal categories, assign them in Settings, and drag tabs to reorder categories. Each category has an independent module order. |
 | WeRead import | Authorize in Settings, load the current shelf, and select books to import into a book module. |
-| Module works Dashboard | Use the portal action before search to open the module’s statistics, latest work, filters and cover grid. |
+| Module works Dashboard | Use the portal action before search to open the module’s statistics, selected-card banner, filters and cover grid. |
 | 3D timeline | Browse dated cards in reading, film, custom and image showcase modules, independently of their saved order. |
 | Reorder modules | Drag the title handle, or focus it and press Alt / Option + ↑ / ↓. |
 | Embed collections | Use reading mode or Live Preview; the same collection can appear in multiple notes. |
@@ -126,7 +139,7 @@ First-time users get a normal, renameable and deletable 示例 (Example) Dashboa
 
 ### Module works Dashboard
 
-Click the portal action immediately before search in a module menu to browse its statistics, latest update, search, filters, temporary sorting and cover grid. Opening from the Magical Cards category view uses the same tab; note embeds reuse a Magical Cards tab in the same window, creating one only when needed. The page header contains only **返回** (Return) and the module name. Temporary sorting does not rewrite saved module order; existing cover proportions and note-opening behavior are retained.
+Click the portal action immediately before search in a module menu to browse its statistics, selected-card banner, search, filters, temporary sorting and cover grid. Opening from the Magical Cards category view uses the same tab; note embeds reuse a Magical Cards tab in the same window, creating one only when needed. The page header contains only **返回** (Return) and the module name. Temporary sorting does not rewrite saved module order. Select a card to update the banner, or double-click it to open its note.
 
 Return restores the source page's scroll position and portal focus. If the source was closed, or the works page was restored after restarting Obsidian, Return opens the Magical Cards category view. Custom cards prefer their linked note; showcase cards open the module note.
 
@@ -185,13 +198,13 @@ Settings open with five categories: **Card module management, General and data, 
 
 Returning to a category or module list neither saves nor discards the current settings session's drafts; unsaved modules are marked. Native settings search still locates actual module fields. Search first opens the relevant dialog and then focuses the field. Settings editors do not mount card previews. Switching internal categories preserves WeRead imports and unsubmitted authorization input; closing the entire settings session retains the existing cleanup behavior.
 
-Choose **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add image showcase), enter a **module name**, choose its **work type** (ordinary modules only) and **aspect ratio**, optionally select one or more Dashboards or create a new category, then click **保存** (Save) at the bottom right. Each creator keeps its own draft and a fixed storage type; advanced card style offers full cover or minimal without converting the module type. Click the gold card ribbon icon to experience the module in the **Magical Cards** tab. Closing the dialog keeps the current Settings-session draft; Reload discards unsaved choices. Settings editors do not display previews.
+Choose **添加卡片模块** (Add cards module) or **添加图片橱窗** (Add image showcase), enter a **module name**, choose its **work type** (ordinary modules only) and **aspect ratio**, optionally select one or more Dashboards or create a new category, then click **保存** (Save) at the bottom right. Each creator keeps its own draft and a fixed storage type; advanced card styles include full cover, minimal, case and codex without converting the module type. Click the gold card ribbon icon to experience the module in the **Magical Cards** tab. Closing the dialog keeps the current Settings-session draft; Reload discards unsaved choices. Settings editors do not display previews.
 
 ![Basic module settings with name, aspect ratio, save controls and collapsed advanced settings](previews/settings.png)
 
 **高级设置** (Advanced settings) contains **card style → image fit → material → layout**, followed by applicable options: the three-card limit for existing layouts, **自动旋转** (Auto rotate, initially off) for the wheel, and direction for the curved gallery. New modules default to **full cover, fill and crop, paper, 2:3, skewed carousel, three-card limit off**. Reading/film examples and existing modules keep their appearance. The three-card option is per module where supported and does not remove any images.
 
-Choose from **paper, matte, holographic foil, magazine, metal, glass and jade**, combined with any layout. Matte and foil retain clear cover images, with texture concentrated on edges, backing and subtle highlights. Jade uses soft pale-green edges and backing while keeping the cover clear. Changing material preserves original images, proportions and work data; existing and new-module defaults remain unchanged.
+Choose from **paper, matte, holographic foil, magazine, metal, glass, jade, media case, wuxia and ice crystal**, combined with any layout. Matte and foil retain clear cover images, with texture concentrated on edges, backing and subtle highlights. Jade uses soft pale-green edges and backing while keeping the cover clear. Changing material preserves original images, proportions and work data; existing and new-module defaults remain unchanged.
 
 Choose **模块样式** (Module style) in a module's action menu to adjust its appearance in a dialog while the underlying module previews changes. **保存** (Save) at the bottom right updates other displays of the same module and plugin settings; **取消** (Cancel), closing the dialog or Escape restores the saved appearance. Save or cancel unsaved choices before switching categories. Layout and direction explicitly set in a note code block retain precedence over module settings.
 

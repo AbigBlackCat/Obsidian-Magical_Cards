@@ -1,5 +1,13 @@
 # Magical Cards changelog
 
+## 1.3.1 — 2026-11-02
+
+- 更新日志标题旁新增红心图标，可在浏览器打开作者的 Ko-fi 页面，自愿给作者充电。
+- 首次安装及版本更新均显示带有充电入口的更新日志；点击红心不会关闭日志或提前标记已读。
+- 保留 1.3.0 的图鉴卡片、分组图库、同笔记多形态与排序功能，以及现有笔记和配置。
+
+The changelog now includes a heart linking to the author’s Ko-fi page on first installation, after updates and when reopened from About. Supporting the author is optional. Clicking the link keeps the log open and does not acknowledge it.
+
 ## 1.3.0 — 2026-11-02
 
 - 新增图鉴样式，提供暗色展台、浅色设定集、武侠·墨铸、冰晶·凝霜、玻璃·澄镜五种预设；后三种使用独立绘制的静态边缘装饰，适合透明人物、武器与其他收藏图片。

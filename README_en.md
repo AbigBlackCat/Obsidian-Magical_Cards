@@ -143,7 +143,7 @@ Click the portal action immediately before search in a module menu to browse its
 
 Return restores the source page's scroll position and portal focus. If the source was closed, or the works page was restored after restarting Obsidian, Return opens the Magical Cards category view. Custom cards prefer their linked note; showcase cards open the module note.
 
-**启用模组作品 Dashboard** (Enable module works Dashboard) is enabled by default and saved in local plugin configuration. Turning it off immediately hides portal actions and shows a disabled message on open works pages, with Return still available. Existing installations open Magical Cards Settings after an upgrade and show the update dialog once for that version; closing it or choosing the checkmark button records it as read. Fresh installations keep the example cards; the guide is created and opened only when you run its command manually. No work-data migration, film fields or Dashboard category changes are introduced.
+**启用模组作品 Dashboard** (Enable module works Dashboard) is enabled by default and saved in local plugin configuration. Turning it off immediately hides portal actions and shows a disabled message on open works pages, with Return still available. On first installation and the first load after each version update, Magical Cards Settings opens with that version's changelog; closing it or choosing the checkmark button records it as read. The red heart beside the dialog title opens [Ko-fi](https://ko-fi.com/ffbarry) for optional support. Fresh installations keep the example cards; the guide is created and opened only when you run its command manually. No work-data migration, film fields or Dashboard category changes are introduced.
 
 ### Media cases and the 3D timeline
 
@@ -210,7 +210,7 @@ Choose **模块样式** (Module style) in a module's action menu to adjust its a
 
 Note embeds always inherit the module material; saving a material change updates every display of that module.
 
-About includes a reusable Changelog dialog grouped by version, date and additions/improvements/fixes. The latest entry opens by default, older entries collapse. Version 1.0.0 includes the layout, material, category and settings updates. The bottom-right checkmark confirms and closes; there is no donation button.
+About includes a reusable Changelog dialog grouped by version, date and additions/improvements/fixes. The latest entry opens by default, older entries collapse. Version 1.0.0 includes the layout, material, category and settings updates. The bottom-right checkmark confirms and closes. The red heart beside the title opens [Ko-fi](https://ko-fi.com/ffbarry) to support the author; support is optional and does not affect free use of the plugin.
 
 ![Showcase advanced settings with layout, three-card limit, flipping and name position](previews/settings-advanced.png)
 

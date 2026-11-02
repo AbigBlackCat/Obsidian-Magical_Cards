@@ -1,5 +1,13 @@
 # Magical Cards changelog
 
+## 1.3.2 — 2026-11-02
+
+- 「查看全部」页新增「手动排序」，普通卡片、通用收藏和图片橱窗共用排序弹窗，支持拖拽、上移、下移、置顶和置底，调整完整模块顺序。
+- 排序前保存共享草稿并检查未完成的图片导入或移动；保留冲突提示、失败重试和关闭后的入口焦点恢复。
+- 倾斜轮播根据实际容器空间调整可见邻卡数量，避免为容纳邻卡额外缩小当前卡片，改善透明图片在窄容器下的重叠与交互；切换三卡限制会即时重算布局。
+
+The View all gallery now opens shared manual ordering dialogs for work cards and image showcases, with draft checks, conflict handling and focus restoration. Skewed carousels adapt visible neighbors to the actual container width, preserving the active card size and recalculating when the three-card setting changes.
+
 ## 1.3.1 — 2026-11-02
 
 - 更新日志标题旁新增红心图标，可在浏览器打开作者的 Ko-fi 页面，自愿给作者充电。

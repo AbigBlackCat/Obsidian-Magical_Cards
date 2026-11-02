@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="8"><g class="magical-cards-gold-card" stroke="none">
+    <g transform="rotate(-12 37 55)">
+      <rect x="13" y="25" width="49" height="67" rx="8" fill="#76501d"/>
+      <rect x="13" y="21" width="49" height="67" rx="8" fill="#bd8b3d" stroke="#946526" stroke-width="2"/>
+      <path d="M21 24h33a5 5 0 0 1 5 5v45L16 39V29a5 5 0 0 1 5-5Z" fill="#dfb963"/>
+      <path d="M18 69v10a4 4 0 0 0 4 4h14" fill="none" stroke="#f2d895" stroke-width="2" stroke-linecap="round"/>
+    </g>
+    <g transform="rotate(9 59 48)">
+      <rect x="33" y="13" width="52" height="74" rx="8" fill="#79501c"/>
+      <rect x="33" y="9" width="52" height="74" rx="8" fill="#d5a34b" stroke="#986b2b" stroke-width="2"/>
+      <path d="M41 10h36a7 7 0 0 1 7 7v43L34 30V17a7 7 0 0 1 7-7Z" fill="#ebc878"/>
+      <path d="M41 11h35a6 6 0 0 1 6 6v5L35 43V17a6 6 0 0 1 6-6Z" fill="#f7dfa1"/>
+      <rect x="37" y="13" width="44" height="66" rx="5" fill="none" stroke="#fff0c4" stroke-opacity=".65" stroke-width="1.5"/>
+      <path d="m59 33 11 13-11 13-11-13Z" fill="#fff0be"/>
+      <path d="m59 31 11 13-11 13-11-13Z" fill="#916027"/>
+      <path d="m59 31 11 13H59Z" fill="#b78030"/>
+      <path d="M49 67h20" fill="none" stroke="#fff0be" stroke-width="3" stroke-linecap="round"/>
+      <path d="M49 65h20" fill="none" stroke="#a4742c" stroke-width="3" stroke-linecap="round"/>
+    </g>
+  </g></svg>

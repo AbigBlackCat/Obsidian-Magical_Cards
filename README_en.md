@@ -1,6 +1,6 @@
 [简体中文](README.md) · English
 
-<h1 align="center">Magical Cards</h1>
+<h1 align="center"><img src="previews/magical-cards-gold.svg" width="42" height="42" alt=""> Magical Cards</h1>
 <p align="center">Browse your books, films and collections as cover cards, and bring them into your notes.</p>
 <p align="center">
   <a href="https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/AbigBlackCat/Obsidian-Magical_Cards?style=flat-square"></a>
@@ -38,11 +38,15 @@ Every card flip and swipe takes ongoing development, testing, and refinement. Yo
 
 <p align="center"><strong>Give the author a little boost</strong><br>Scan with Alipay or WeChat Pay and choose any amount.</p>
 <p align="center">
-  <a href="previews/alipay-pay.png"><img src="previews/alipay-pay.png" width="254" alt="The author's Alipay QR code. Scan to support, or click to open and save the original image."></a>
-  &nbsp;
-  <a href="previews/wechat-pay.jpg"><img src="previews/wechat-pay.jpg" width="280" alt="The author's WeChat Pay QR code. Scan to support, or click to open and save the original image."></a>
+  <a href="previews/support-payments.svg?raw=true">
+    <picture>
+      <source media="(max-width: 640px)" srcset="previews/support-payments-mobile.svg">
+      <img src="previews/support-payments.svg" width="800" alt="Matching Alipay and WeChat Pay QR cards, separated by a red heart. Click to enlarge.">
+    </picture>
+  </a>
 </p>
-<p align="center">On your phone, open and save the image, then select it in Alipay's or WeChat's Scan → Album.<br><sub>Support is voluntary. The plugin remains free to use. Thank you for every contribution—and for enjoying these cards.</sub></p>
+<p align="center"><a href="previews/alipay-pay.png?raw=true">Enlarge Alipay code</a> · <a href="previews/wechat-pay.jpg?raw=true">Enlarge WeChat code</a></p>
+<p align="center">On your phone, use an enlarge link above to open and save the original code, then select it in Alipay's or WeChat's Scan → Album.<br><sub>Support is voluntary. The plugin remains free to use. Thank you for every contribution—and for enjoying these cards.</sub></p>
 
 ## Contents
 

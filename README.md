@@ -1,4 +1,4 @@
-# Magical Cards
+<h1><img src="previews/magical-cards-gold.svg" width="42" height="42" alt=""> Magical Cards</h1>
 
 [English guide](README_en.md) · [更新日志](https://github.com/AbigBlackCat/Obsidian-Magical_Cards/releases)
 
@@ -62,11 +62,15 @@ Magical Cards 是桌面和手机上的 Obsidian 卡片插件，用于浏览、�
 
 <p align="center"><strong>我要给作者充电</strong><br>支付宝 / 微信扫一扫，金额随心。</p>
 <p align="center">
-  <a href="previews/alipay-pay.png"><img src="previews/alipay-pay.png" width="254" alt="作者的支付宝收款码，使用支付宝扫一扫付款；点击查看或保存完整原图。"></a>
-  &nbsp;
-  <a href="previews/wechat-pay.jpg"><img src="previews/wechat-pay.jpg" width="280" alt="作者的微信收款码，使用微信扫一扫付款；点击查看或保存完整原图。"></a>
+  <a href="previews/support-payments.svg?raw=true">
+    <picture>
+      <source media="(max-width: 640px)" srcset="previews/support-payments-mobile.svg">
+      <img src="previews/support-payments.svg" width="800" alt="支付宝与微信收款码，统一尺寸的白色收款卡，中间由红色爱心分隔。点击放大。">
+    </picture>
+  </a>
 </p>
-<p align="center">手机上可点击收款码打开原图，保存后在支付宝或微信「扫一扫 → 相册」中识别。<br><sub>支持完全自愿，不影响插件的免费使用。感谢每一份心意，也谢谢你喜欢这些卡片。</sub></p>
+<p align="center"><a href="previews/alipay-pay.png?raw=true">放大支付宝码</a> · <a href="previews/wechat-pay.jpg?raw=true">放大微信码</a></p>
+<p align="center">手机上可点击上方放大链接打开对应原图，保存后在支付宝或微信「扫一扫 → 相册」中识别。<br><sub>支持完全自愿，不影响插件的免费使用。感谢每一份心意，也谢谢你喜欢这些卡片。</sub></p>
 
 ## 目录
 

@@ -20,7 +20,7 @@ const exampleFiles=[
   ...demoFilms.map(name=>`examples/vault/示例/附件/demo-film-${name}.${name==='lost'?'svg':'png'}`),
 ];
 const previews=['album-rail','coverflow-carousel','cylinder','dashboards','note-embed','scroll-bend-vertical','scroll-bend','settings-advanced','settings','showcase-back','showcase-dark','showcase-front','skewed-carousel'];
-const allowedFiles=new Set([...requiredFiles,'.gitignore',...exampleFiles,...previews.map(name=>`previews/${name}.png`),'previews/support-banner.svg','previews/alipay-pay.png','previews/wechat-pay.jpg']);
+const allowedFiles=new Set([...requiredFiles,'.gitignore',...exampleFiles,...previews.map(name=>`previews/${name}.png`),'previews/magical-cards-gold.svg','previews/support-banner.svg','previews/support-payments.svg','previews/support-payments-mobile.svg','previews/alipay-pay.png','previews/wechat-pay.jpg']);
 const allowedDirectories=new Set([...allowedFiles].flatMap(file=>file.split('/').slice(0,-1).map((_,index)=>file.split('/').slice(0,index+1).join('/'))));
 
 function checkText(text,name){
